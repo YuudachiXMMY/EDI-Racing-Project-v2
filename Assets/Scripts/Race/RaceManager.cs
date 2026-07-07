@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 /// <summary>
 /// Main orchestrator: loads CSV data, spawns cars, manages race lifecycle.
@@ -12,6 +13,8 @@ public class RaceManager : MonoBehaviour
     public LapTracker LapTracker;
     public ScoreManager ScoreManager;
     public RaceConfig Config;
+    public EventManager EventManager;
+    public WeatherEffect WeatherEffect;
 
     [Header("Data")]
     public TextAsset DefaultCsvData;
@@ -41,8 +44,25 @@ public class RaceManager : MonoBehaviour
         }
 
         LapTracker.OnLapCompleted += OnCarCompletedLap;
+
+        if (EventManager != null)
+        {
+            EventManager.RegisterCars(spawnedCars);
+            EventManager.Activate();
+            EventManager.OnEventTriggered += OnEventTriggered;
+        }
+
         raceStarted = true;
         Debug.Log($"[RaceManager] Race started with {spawnedCars.Count} cars");
+    }
+
+    private void OnEventTriggered(RaceEventConfig config, int affectedCount)
+    {
+        if (WeatherEffect == null) return;
+        if (config.EventType == RaceEventType.SnowWeather)
+            WeatherEffect.ActivateSnow(config.Duration);
+        else if (config.EventType == RaceEventType.NightWeather)
+            WeatherEffect.ActivateNight(config.Duration);
     }
 
     private void OnCarCompletedLap(CarIdentity car)
@@ -55,7 +75,7 @@ public class RaceManager : MonoBehaviour
     // Temporary debug output — replaced by UI in Phase 4
     private void Update()
     {
-        if (raceStarted && Input.GetKeyDown(KeyCode.F1))
+        if (raceStarted && Keyboard.current != null && Keyboard.current[Key.F1].wasPressedThisFrame)
             Debug.Log("[Scoreboard]\n" + ScoreManager.GetScoreboardText());
     }
 }

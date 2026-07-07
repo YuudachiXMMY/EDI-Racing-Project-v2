@@ -33,6 +33,9 @@ public class CarController : MonoBehaviour
     private int collisionCount;
     private float speedMultiplier = 1f;
 
+    // Event speed modifier stacking
+    private int activeModifierCount;
+
     private const int MaxRecoveryAttempts = 3;
 
     public void Initialize(WaypointPath path, float speed, float angularSpeed, float acceleration,
@@ -223,9 +226,18 @@ public class CarController : MonoBehaviour
 
     private IEnumerator SpeedModifierCoroutine(float delta, float duration)
     {
+        activeModifierCount++;
         agent.speed += delta;
         yield return new WaitForSeconds(duration);
-        agent.speed = baseSpeed;
+        agent.speed -= delta;
+        activeModifierCount--;
+
+        // Safety: if all modifiers expired, snap back to base accounting for collision multiplier
+        if (activeModifierCount <= 0)
+        {
+            activeModifierCount = 0;
+            agent.speed = baseSpeed * speedMultiplier;
+        }
     }
 
     public float BaseSpeed => baseSpeed;
