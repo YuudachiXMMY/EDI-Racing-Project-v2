@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
@@ -32,5 +33,35 @@ public class ScoreManager : MonoBehaviour
             sb.AppendLine($"({i + 1}) [{c.CurrentLap}] {c.TeamName} - {c.CheckpointTime:F1}s");
         }
         return sb.ToString();
+    }
+
+    public void Clear()
+    {
+        cars.Clear();
+    }
+
+    public RaceResults CollectResults(List<EventLogEntry> eventLog, float raceTime)
+    {
+        var ranked = GetRankedCars();
+        var rankings = new CarResult[ranked.Count];
+        for (int i = 0; i < ranked.Count; i++)
+        {
+            var c = ranked[i];
+            rankings[i] = new CarResult
+            {
+                Rank = i + 1,
+                TeamName = c.TeamName,
+                ColorIndex = c.ColorIndex,
+                LapsCompleted = c.CurrentLap,
+                CheckpointsPassed = c.TotalCheckpointsPassed,
+                TotalTime = c.CheckpointTime
+            };
+        }
+        return new RaceResults
+        {
+            Rankings = rankings,
+            EventLog = eventLog != null ? eventLog.ToArray() : Array.Empty<EventLogEntry>(),
+            TotalRaceTime = raceTime
+        };
     }
 }

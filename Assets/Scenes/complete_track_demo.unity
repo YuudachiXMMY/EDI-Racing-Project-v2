@@ -1048,6 +1048,9 @@ GameObject:
   - component: {fileID: 678175345}
   - component: {fileID: 678175344}
   - component: {fileID: 678175343}
+  - component: {fileID: 678175348}
+  - component: {fileID: 678175349}
+  - component: {fileID: 678175350}
   m_Layer: 0
   m_Name: RaceManager
   m_TagString: Untagged
@@ -1122,7 +1125,10 @@ MonoBehaviour:
   LapTracker: {fileID: 678175344}
   ScoreManager: {fileID: 678175343}
   Config: {fileID: 11400000, guid: cbc0435e527a04e84a656f031033b31f, type: 2}
+  EventManager: {fileID: 678175348}
+  WeatherEffect: {fileID: 678175349}
   DefaultCsvData: {fileID: 4900000, guid: 922590bc3f0b14792a7c0acaac05ce5d, type: 3}
+  SessionManager: {fileID: 678175350}
 --- !u!4 &678175347
 Transform:
   m_ObjectHideFlags: 0
@@ -1139,6 +1145,44 @@ Transform:
   - {fileID: 837503963}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &678175348
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 678175342}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cf64d660f97114ba1996c941b1bb22bf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::EventManager
+  Schedule: {fileID: 11400000, guid: 23727db08484044718de9cb1beef93a8, type: 2}
+--- !u!114 &678175349
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 678175342}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 15bf96ed8e22343a3afb18cb3769b7d3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WeatherEffect
+--- !u!114 &678175350
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 678175342}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f128762faae9b4c8cb9bf78c882e5e91, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SessionManager
+  SaveFolder: Sessions
 --- !u!1 &688125115
 GameObject:
   m_ObjectHideFlags: 0
@@ -3170,7 +3214,7 @@ MonoBehaviour:
   m_OverrideTileSize: 0
   m_TileSize: 256
   m_OverrideVoxelSize: 0
-  m_VoxelSize: 0.16666667
+  m_VoxelSize: 0.36666667
   m_MinRegionArea: 2
   m_NavMeshData: {fileID: 23800000, guid: 57c9dd8d26aa84a1b83f6807bbe4b17e, type: 2}
   m_BuildHeightMesh: 0
