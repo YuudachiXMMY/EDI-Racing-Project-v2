@@ -1,10 +1,11 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
 /// <summary>
 /// Main orchestrator: loads CSV data, spawns cars, manages race lifecycle.
-/// Press F1 during play mode to print debug scoreboard.
+/// Keyboard shortcuts: T=scoreboard, P=save, L=load, X=export.
 /// </summary>
 public class RaceManager : MonoBehaviour
 {
@@ -19,8 +20,14 @@ public class RaceManager : MonoBehaviour
     [Header("Data")]
     public TextAsset DefaultCsvData;
 
+    [Header("Session")]
+    public SessionManager SessionManager;
+
     private List<GameObject> spawnedCars;
     private bool raceStarted;
+    private bool raceFinished;
+    private float raceStartTime;
+    private readonly List<EventLogEntry> eventLog = new List<EventLogEntry>();
 
     private void Start()
     {
@@ -34,7 +41,11 @@ public class RaceManager : MonoBehaviour
     {
         var carDataList = CsvParser.Parse(csvContent);
         Debug.Log($"[RaceManager] Parsed {carDataList.Count} cars from CSV");
+        LoadAndStartRace(carDataList);
+    }
 
+    public void LoadAndStartRace(List<CarData> carDataList)
+    {
         spawnedCars = CarSpawner.SpawnCars(carDataList);
 
         foreach (var car in spawnedCars)
@@ -52,12 +63,45 @@ public class RaceManager : MonoBehaviour
             EventManager.OnEventTriggered += OnEventTriggered;
         }
 
+        eventLog.Clear();
+        raceStartTime = Time.time;
+        raceFinished = false;
         raceStarted = true;
         Debug.Log($"[RaceManager] Race started with {spawnedCars.Count} cars");
     }
 
+    public void ResetRace()
+    {
+        LapTracker.OnLapCompleted -= OnCarCompletedLap;
+        if (EventManager != null)
+        {
+            EventManager.OnEventTriggered -= OnEventTriggered;
+            EventManager.ClearRegisteredCars();
+        }
+
+        if (spawnedCars != null)
+        {
+            foreach (var car in spawnedCars)
+                if (car != null) Destroy(car);
+            spawnedCars.Clear();
+        }
+
+        ScoreManager.Clear();
+        eventLog.Clear();
+        raceStarted = false;
+        raceFinished = false;
+    }
+
     private void OnEventTriggered(RaceEventConfig config, int affectedCount)
     {
+        eventLog.Add(new EventLogEntry
+        {
+            Timestamp = Time.time - raceStartTime,
+            EventName = config.DisplayName,
+            AffectedCount = affectedCount,
+            TotalCars = spawnedCars != null ? spawnedCars.Count : 0
+        });
+
         if (WeatherEffect == null) return;
         if (config.EventType == RaceEventType.SnowWeather)
             WeatherEffect.ActivateSnow(config.Duration);
@@ -69,13 +113,106 @@ public class RaceManager : MonoBehaviour
     {
         Debug.Log($"[Race] {car.TeamName} completed lap {car.CurrentLap}");
         if (car.CurrentLap >= Config.TotalLaps)
+        {
             Debug.Log($"[Race] {car.TeamName} FINISHED!");
+            if (!raceFinished)
+            {
+                raceFinished = true;
+                Debug.Log($"[RaceManager] Race complete! Winner: {car.TeamName}");
+            }
+        }
     }
 
-    // Temporary debug output — replaced by UI in Phase 4
+    private SessionData BuildSessionData()
+    {
+        var cars = Array.Empty<CarData>();
+        if (spawnedCars != null)
+        {
+            var carList = new List<CarData>();
+            foreach (var car in spawnedCars)
+            {
+                if (car == null) continue;
+                var id = car.GetComponent<CarIdentity>();
+                if (id != null)
+                    carList.Add(new CarData(id.TeamName, id.ColorIndex, id.Functions));
+            }
+            cars = carList.ToArray();
+        }
+
+        var events = Array.Empty<SavedEventConfig>();
+        if (EventManager != null && EventManager.Schedule != null)
+        {
+            events = new SavedEventConfig[EventManager.Schedule.Events.Length];
+            for (int i = 0; i < events.Length; i++)
+                events[i] = SavedEventConfig.FromConfig(EventManager.Schedule.Events[i]);
+        }
+
+        return new SessionData
+        {
+            SessionName = "Race Session",
+            CreatedAt = DateTime.Now.ToString("o"),
+            Cars = cars,
+            Events = events,
+            RaceSettings = SavedRaceConfig.FromScriptableObject(Config),
+            Results = ScoreManager.CollectResults(eventLog, Time.time - raceStartTime)
+        };
+    }
+
+    private void LoadSession(SessionData session)
+    {
+        ResetRace();
+
+        session.RaceSettings.ApplyTo(Config);
+
+        if (EventManager != null && EventManager.Schedule != null && session.Events.Length > 0)
+        {
+            int count = Mathf.Min(session.Events.Length, EventManager.Schedule.Events.Length);
+            for (int i = 0; i < count; i++)
+            {
+                Key key = EventManager.Schedule.Events[i].TriggerKey;
+                EventManager.Schedule.Events[i] = session.Events[i].ToConfig(key);
+            }
+        }
+
+        var carDataList = new List<CarData>(session.Cars);
+        LoadAndStartRace(carDataList);
+    }
+
+    // Debug keys: T=scoreboard, P=save, L=load, X=export results
     private void Update()
     {
-        if (raceStarted && Keyboard.current != null && Keyboard.current[Key.F1].wasPressedThisFrame)
+        if (Keyboard.current == null) return;
+
+        if (raceStarted && Keyboard.current[Key.T].wasPressedThisFrame)
             Debug.Log("[Scoreboard]\n" + ScoreManager.GetScoreboardText());
+
+        if (SessionManager == null) return;
+
+        if (raceStarted && Keyboard.current[Key.P].wasPressedThisFrame)
+        {
+            var session = BuildSessionData();
+            SessionManager.SaveSession(session);
+        }
+
+        if (Keyboard.current[Key.L].wasPressedThisFrame)
+        {
+            string path = SessionManager.FindLatestSession();
+            if (path != null)
+            {
+                var session = SessionManager.LoadSession(path);
+                if (session != null)
+                    LoadSession(session);
+            }
+            else
+            {
+                Debug.LogWarning("[RaceManager] No saved sessions found");
+            }
+        }
+
+        if (raceStarted && Keyboard.current[Key.X].wasPressedThisFrame)
+        {
+            var results = ScoreManager.CollectResults(eventLog, Time.time - raceStartTime);
+            SessionManager.ExportResults(results);
+        }
     }
 }

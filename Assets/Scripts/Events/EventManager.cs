@@ -106,6 +106,12 @@ public class EventManager : MonoBehaviour
         Debug.LogWarning($"[EventManager] No event of type '{type}' found in schedule");
     }
 
+    public void ClearRegisteredCars()
+    {
+        registeredCars.Clear();
+        isActive = false;
+    }
+
     public int RegisteredCarCount => registeredCars.Count;
     public bool IsActive => isActive;
 }
