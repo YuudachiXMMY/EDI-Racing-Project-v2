@@ -1106,7 +1106,22 @@ MonoBehaviour:
   SpawnPoint: {fileID: 837503963}
   WaypointPath: {fileID: 777925400}
   Config: {fileID: 11400000, guid: cbc0435e527a04e84a656f031033b31f, type: 2}
-  StartingGridPositions: []
+  StartingGridPositions:
+  - {fileID: 240209212}
+  - {fileID: 979303971}
+  - {fileID: 1414070137}
+  - {fileID: 969984682}
+  - {fileID: 1057060686}
+  - {fileID: 1097196465}
+  - {fileID: 206321469}
+  - {fileID: 1669117306}
+  - {fileID: 460111576}
+  - {fileID: 99160501}
+  - {fileID: 1326717292}
+  - {fileID: 388884660}
+  - {fileID: 1496900715}
+  - {fileID: 1438903948}
+  - {fileID: 2134174384}
   AgentTypeName: Car
   NavMeshSampleRadius: 20
 --- !u!114 &678175346

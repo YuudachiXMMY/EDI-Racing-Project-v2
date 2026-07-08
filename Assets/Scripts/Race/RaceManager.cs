@@ -6,6 +6,7 @@ using UnityEngine.InputSystem;
 /// <summary>
 /// Main orchestrator: loads CSV data, spawns cars, manages race lifecycle.
 /// Keyboard shortcuts: T=scoreboard, P=save, L=load, X=export.
+/// Exposes events and public API for UI integration (Phase 4).
 /// </summary>
 public class RaceManager : MonoBehaviour
 {
@@ -29,9 +30,23 @@ public class RaceManager : MonoBehaviour
     private float raceStartTime;
     private readonly List<EventLogEntry> eventLog = new List<EventLogEntry>();
 
+    // --- Phase 4: UI Integration ---
+    public GameState CurrentState { get; private set; } = GameState.Setup;
+    public event Action<GameState> OnStateChanged;
+    public List<GameObject> SpawnedCars => spawnedCars;
+
+    private void SetState(GameState state)
+    {
+        CurrentState = state;
+        OnStateChanged?.Invoke(state);
+    }
+
     private void Start()
     {
-        if (DefaultCsvData != null)
+        SetState(GameState.Setup);
+
+        // Auto-start when no SetupScreen is present in the scene
+        if (FindFirstObjectByType<SetupScreen>() == null && DefaultCsvData != null)
         {
             LoadAndStartRace(DefaultCsvData.text);
         }
@@ -67,6 +82,7 @@ public class RaceManager : MonoBehaviour
         raceStartTime = Time.time;
         raceFinished = false;
         raceStarted = true;
+        SetState(GameState.Racing);
         Debug.Log($"[RaceManager] Race started with {spawnedCars.Count} cars");
     }
 
@@ -90,6 +106,44 @@ public class RaceManager : MonoBehaviour
         eventLog.Clear();
         raceStarted = false;
         raceFinished = false;
+        SetState(GameState.Setup);
+    }
+
+    // --- Phase 4: Public API for UI ---
+
+    public void PauseRace()
+    {
+        if (!raceStarted || raceFinished) return;
+        Time.timeScale = 0f;
+        SetState(GameState.Paused);
+        Debug.Log("[RaceManager] Race paused");
+    }
+
+    public void ResumeRace()
+    {
+        if (CurrentState != GameState.Paused) return;
+        Time.timeScale = 1f;
+        SetState(GameState.Racing);
+        Debug.Log("[RaceManager] Race resumed");
+    }
+
+    public void SaveCurrentSession()
+    {
+        if (SessionManager == null || !raceStarted) return;
+        var session = BuildSessionData();
+        SessionManager.SaveSession(session);
+    }
+
+    public void ExportCurrentResults()
+    {
+        if (SessionManager == null || !raceStarted) return;
+        var results = ScoreManager.CollectResults(eventLog, Time.time - raceStartTime);
+        SessionManager.ExportResults(results);
+    }
+
+    public void LoadFromSession(SessionData session)
+    {
+        LoadSession(session);
     }
 
     private void OnEventTriggered(RaceEventConfig config, int affectedCount)
