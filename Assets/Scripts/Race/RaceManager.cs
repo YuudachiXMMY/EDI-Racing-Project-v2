@@ -24,6 +24,9 @@ public class RaceManager : MonoBehaviour
     [Header("Session")]
     public SessionManager SessionManager;
 
+    [Header("Network (Optional)")]
+    public NetworkSync NetworkSync;
+
     private List<GameObject> spawnedCars;
     private bool raceStarted;
     private bool raceFinished;
@@ -84,6 +87,10 @@ public class RaceManager : MonoBehaviour
         raceStarted = true;
         SetState(GameState.Racing);
         Debug.Log($"[RaceManager] Race started with {spawnedCars.Count} cars");
+
+        // Broadcast to students if hosting
+        if (NetworkSync != null)
+            NetworkSync.BroadcastRaceStart(carDataList);
     }
 
     public void ResetRace()
@@ -144,6 +151,18 @@ public class RaceManager : MonoBehaviour
     public void LoadFromSession(SessionData session)
     {
         LoadSession(session);
+    }
+
+    /// <summary>
+    /// Student-side: spawns visual-only cars (no NavMesh/AI) for network sync.
+    /// </summary>
+    public void LoadAndStartRaceVisualOnly(List<CarData> carDataList)
+    {
+        spawnedCars = CarSpawner.SpawnVisualCars(carDataList);
+        raceStarted = true;
+        raceFinished = false;
+        SetState(GameState.Racing);
+        Debug.Log($"[RaceManager] Visual-only race started with {spawnedCars.Count} cars");
     }
 
     private void OnEventTriggered(RaceEventConfig config, int affectedCount)

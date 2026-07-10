@@ -125,6 +125,35 @@ public class CarSpawner : MonoBehaviour
         return position;
     }
 
+    /// <summary>
+    /// Spawns visual-only cars for student clients. No NavMeshAgent, CarController,
+    /// Rigidbody, or BoxCollider — positions are set by NetworkSync.
+    /// </summary>
+    public List<GameObject> SpawnVisualCars(List<CarData> carDataList)
+    {
+        var spawnedCars = new List<GameObject>();
+        for (int i = 0; i < carDataList.Count; i++)
+        {
+            var data = carDataList[i];
+            int prefabIndex = Mathf.Clamp(data.ColorIndex, 0, CarPrefabs.Length - 1);
+            GameObject prefab = CarPrefabs[prefabIndex];
+
+            Vector3 spawnPos = SpawnPoint != null ? SpawnPoint.position : Vector3.zero;
+            Quaternion spawnRot = SpawnPoint != null ? SpawnPoint.rotation : Quaternion.identity;
+
+            GameObject car = Instantiate(prefab, spawnPos, spawnRot);
+            car.transform.localScale *= Config.CarScale;
+            car.name = data.TeamName;
+
+            var identity = car.GetComponent<CarIdentity>();
+            if (identity == null) identity = car.AddComponent<CarIdentity>();
+            identity.Initialize(data);
+
+            spawnedCars.Add(car);
+        }
+        return spawnedCars;
+    }
+
     private int FindAgentTypeID(string typeName)
     {
         if (cachedAgentTypeID != -1) return cachedAgentTypeID;

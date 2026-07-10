@@ -20,6 +20,7 @@ public class RaceUI : MonoBehaviour
     public EventPanel Events;
     public RaceControlPanel Controls;
     public SetupScreen Setup;
+    public JoinScreen JoinScreen;
 
     private void Start()
     {
@@ -36,12 +37,24 @@ public class RaceUI : MonoBehaviour
             RaceManager.OnStateChanged -= OnStateChanged;
     }
 
+    /// <summary>
+    /// Set role from network state. Called by NetworkSync or external code.
+    /// </summary>
+    public void SetRoleFromNetwork(bool isHost)
+    {
+        Role = isHost ? UserRole.Professor : UserRole.Student;
+        ApplyRole();
+        OnStateChanged(RaceManager != null ? RaceManager.CurrentState : GameState.Setup);
+    }
+
     private void ApplyRole()
     {
         bool isProfessor = Role == UserRole.Professor;
 
         if (Events != null) Events.gameObject.SetActive(isProfessor);
         if (Controls != null) Controls.gameObject.SetActive(isProfessor);
+        if (Setup != null) Setup.gameObject.SetActive(isProfessor);
+        if (JoinScreen != null) JoinScreen.gameObject.SetActive(!isProfessor);
 
         // Switch camera mode based on role
         if (CameraManager != null)

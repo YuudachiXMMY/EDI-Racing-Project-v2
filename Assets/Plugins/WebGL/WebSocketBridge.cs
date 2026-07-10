@@ -1,0 +1,170 @@
+using System;
+using System.Collections.Concurrent;
+using UnityEngine;
+#if UNITY_WEBGL && !UNITY_EDITOR
+using System.Runtime.InteropServices;
+#else
+using System.Net.WebSockets;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+#endif
+
+/// <summary>
+/// Cross-platform WebSocket wrapper. Uses jslib in WebGL builds,
+/// System.Net.WebSockets.ClientWebSocket in Editor/Standalone.
+/// Attach to a GameObject named "WebSocketBridge" (jslib SendMessage target).
+/// </summary>
+public class WebSocketBridge : MonoBehaviour
+{
+    public event Action OnOpen;
+    public event Action<string> OnMessage;
+    public event Action OnClose;
+    public event Action<string> OnError;
+
+    public bool IsConnected { get; private set; }
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+    [DllImport("__Internal")] private static extern void WebSocketBridge_Connect(string url, string goName);
+    [DllImport("__Internal")] private static extern void WebSocketBridge_Send(string msg);
+    [DllImport("__Internal")] private static extern void WebSocketBridge_Close();
+    [DllImport("__Internal")] private static extern int WebSocketBridge_GetState();
+
+    public void Connect(string url)
+    {
+        WebSocketBridge_Connect(url, gameObject.name);
+    }
+
+    public void Send(string message)
+    {
+        if (IsConnected)
+            WebSocketBridge_Send(message);
+    }
+
+    public void Close()
+    {
+        WebSocketBridge_Close();
+        IsConnected = false;
+    }
+
+    // Called from jslib via SendMessage
+    public void OnWebSocketOpen(string _)
+    {
+        IsConnected = true;
+        OnOpen?.Invoke();
+    }
+
+    public void OnWebSocketMessage(string data)
+    {
+        OnMessage?.Invoke(data);
+    }
+
+    public void OnWebSocketClose(string code)
+    {
+        IsConnected = false;
+        OnClose?.Invoke();
+    }
+
+    public void OnWebSocketError(string error)
+    {
+        OnError?.Invoke(error);
+    }
+
+#else
+    private ClientWebSocket socket;
+    private CancellationTokenSource cts;
+    private readonly ConcurrentQueue<Action> mainThreadActions = new ConcurrentQueue<Action>();
+
+    public async void Connect(string url)
+    {
+        Close();
+
+        socket = new ClientWebSocket();
+        cts = new CancellationTokenSource();
+
+        try
+        {
+            await socket.ConnectAsync(new Uri(url), cts.Token);
+            IsConnected = true;
+            mainThreadActions.Enqueue(() => OnOpen?.Invoke());
+            _ = ReceiveLoop();
+        }
+        catch (Exception e)
+        {
+            mainThreadActions.Enqueue(() => OnError?.Invoke(e.Message));
+        }
+    }
+
+    public async void Send(string message)
+    {
+        if (socket == null || socket.State != WebSocketState.Open) return;
+        var bytes = Encoding.UTF8.GetBytes(message);
+        try
+        {
+            await socket.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, cts.Token);
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"[WebSocketBridge] Send error: {e.Message}");
+        }
+    }
+
+    public void Close()
+    {
+        IsConnected = false;
+        cts?.Cancel();
+        if (socket != null && socket.State == WebSocketState.Open)
+        {
+            try { socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None); }
+            catch { /* ignore */ }
+        }
+        socket = null;
+    }
+
+    private async Task ReceiveLoop()
+    {
+        var buffer = new byte[8192];
+        var sb = new StringBuilder();
+
+        try
+        {
+            while (socket != null && socket.State == WebSocketState.Open && !cts.Token.IsCancellationRequested)
+            {
+                sb.Clear();
+                WebSocketReceiveResult result;
+                do
+                {
+                    result = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), cts.Token);
+                    if (result.MessageType == WebSocketMessageType.Close)
+                    {
+                        IsConnected = false;
+                        mainThreadActions.Enqueue(() => OnClose?.Invoke());
+                        return;
+                    }
+                    sb.Append(Encoding.UTF8.GetString(buffer, 0, result.Count));
+                } while (!result.EndOfMessage);
+
+                string msg = sb.ToString();
+                mainThreadActions.Enqueue(() => OnMessage?.Invoke(msg));
+            }
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception)
+        {
+            IsConnected = false;
+            mainThreadActions.Enqueue(() => OnClose?.Invoke());
+        }
+    }
+
+    private void Update()
+    {
+        while (mainThreadActions.TryDequeue(out var action))
+            action();
+    }
+
+    private void OnDestroy()
+    {
+        Close();
+    }
+#endif
+}
