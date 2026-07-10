@@ -549,6 +549,70 @@ RectTransform:
   m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 0, y: 0}
   m_Pivot: {x: 0.5, y: 0.5}
+--- !u!1 &164942952
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 164942955}
+  - component: {fileID: 164942954}
+  - component: {fileID: 164942953}
+  m_Layer: 0
+  m_Name: NetworkManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &164942953
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 164942952}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: cb07fc8268a864bb890ee235f6c8b976, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NetworkSync
+  RaceManager: {fileID: 678175346}
+  NetworkManager: {fileID: 164942954}
+  ScoreManager: {fileID: 678175343}
+  StateUpdateInterval: 0.1
+  LeaderboardInterval: 0.5
+  InterpolationSpeed: 15
+--- !u!114 &164942954
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 164942952}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: de9962b464d1348459a6638800bbe803, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::NetworkManager
+  ServerUrl: ws://localhost:8080
+--- !u!4 &164942955
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 164942952}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0.333654, y: -0.6234381, z: 0.333654, w: 0.6234381}
+  m_LocalPosition: {x: -136.91489, y: 12.583313, z: -29.1}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &188809662
 GameObject:
   m_ObjectHideFlags: 0
@@ -2149,6 +2213,7 @@ MonoBehaviour:
   WeatherEffect: {fileID: 678175349}
   DefaultCsvData: {fileID: 4900000, guid: 922590bc3f0b14792a7c0acaac05ce5d, type: 3}
   SessionManager: {fileID: 678175350}
+  NetworkSync: {fileID: 0}
 --- !u!4 &678175347
 Transform:
   m_ObjectHideFlags: 0
@@ -2281,6 +2346,10 @@ MonoBehaviour:
   StartDefaultButton: {fileID: 1555869349}
   LoadSessionButton: {fileID: 1269035023}
   InfoText: {fileID: 102719145}
+  NetworkManager: {fileID: 0}
+  HostButton: {fileID: 0}
+  RoomCodeText: {fileID: 0}
+  StudentCountText: {fileID: 0}
 --- !u!224 &692145203
 RectTransform:
   m_ObjectHideFlags: 0
@@ -2922,6 +2991,7 @@ MonoBehaviour:
   Events: {fileID: 252779077}
   Controls: {fileID: 453172281}
   Setup: {fileID: 692145202}
+  JoinScreen: {fileID: 0}
 --- !u!114 &868943146
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9329,6 +9399,7 @@ SceneRoots:
   m_Roots:
   - {fileID: 354533038}
   - {fileID: 1817236228}
+  - {fileID: 164942955}
   - {fileID: 347777353}
   - {fileID: 777925401}
   - {fileID: 583778721}
