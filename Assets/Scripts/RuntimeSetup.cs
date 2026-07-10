@@ -126,7 +126,8 @@ public class RuntimeSetup : MonoBehaviour
 
     private void SetupUI()
     {
-        if (FindFirstObjectByType<RaceUI>() != null) return;
+        var existingUI = FindFirstObjectByType<RaceUI>();
+        if (existingUI != null && existingUI.Setup != null) return;
 
         // Screen-space Canvas
         GameObject canvasObj = new GameObject("RuntimeUI");

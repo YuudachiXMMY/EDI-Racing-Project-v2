@@ -24,6 +24,14 @@ public class SetupScreen : MonoBehaviour
 
     private void Start()
     {
+        // Auto-find RaceManager if not assigned in Inspector
+        if (RaceManager == null)
+        {
+            RaceManager = FindFirstObjectByType<RaceManager>();
+            if (RaceManager == null)
+                Debug.LogError("[SetupScreen] No RaceManager found in scene!");
+        }
+
         if (StartDefaultButton != null)
             StartDefaultButton.onClick.AddListener(StartWithDefaultData);
         if (LoadSessionButton != null)
@@ -96,7 +104,13 @@ public class SetupScreen : MonoBehaviour
 
     private void StartWithDefaultData()
     {
-        if (RaceManager == null) return;
+        if (RaceManager == null)
+        {
+            Debug.LogError("[SetupScreen] RaceManager is null! Cannot start race.");
+            if (InfoText != null)
+                InfoText.text = "Error: RaceManager not found.";
+            return;
+        }
 
         if (RaceManager.DefaultCsvData != null)
         {
@@ -105,6 +119,7 @@ public class SetupScreen : MonoBehaviour
         }
         else
         {
+            Debug.LogWarning("[SetupScreen] No DefaultCsvData assigned on RaceManager.");
             if (InfoText != null)
                 InfoText.text = "No default CSV data assigned.";
         }
@@ -112,7 +127,11 @@ public class SetupScreen : MonoBehaviour
 
     private void LoadLatestSession()
     {
-        if (RaceManager == null || RaceManager.SessionManager == null) return;
+        if (RaceManager == null || RaceManager.SessionManager == null)
+        {
+            Debug.LogWarning("[SetupScreen] RaceManager or SessionManager is null.");
+            return;
+        }
 
         string path = RaceManager.SessionManager.FindLatestSession();
         if (path != null)

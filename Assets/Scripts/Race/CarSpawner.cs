@@ -56,7 +56,7 @@ public class CarSpawner : MonoBehaviour
                 spawnRot = SpawnPoint.rotation;
             }
 
-            spawnPos = SnapToNavMesh(spawnPos, data.TeamName);
+            spawnPos = SnapToNavMesh(spawnPos, data.TeamName, agentTypeID);
 
             GameObject car = Instantiate(prefab, spawnPos, spawnRot);
             car.transform.localScale *= Config.CarScale;
@@ -72,12 +72,19 @@ public class CarSpawner : MonoBehaviour
             rb.angularDamping = Config.RigidbodyAngularDrag;
             rb.isKinematic = true; // NavMeshAgent controls movement; non-kinematic Rigidbody conflicts
 
+            // Deactivate before adding NavMeshAgent so it doesn't try to initialize
+            // with the default agent type (Humanoid) before we set the correct one
+            car.SetActive(false);
+
             var agent = car.GetComponent<NavMeshAgent>();
             if (agent == null) agent = car.AddComponent<NavMeshAgent>();
             agent.agentTypeID = agentTypeID;
             agent.baseOffset = Config.BaseOffset;
             agent.radius = Config.AgentRadius;
             agent.obstacleAvoidanceType = ObstacleAvoidanceType.HighQualityObstacleAvoidance;
+
+            car.SetActive(true);
+            agent.Warp(spawnPos);
 
             // Add trigger collider fitted to car mesh for inelastic collision detection
             var trigger = car.AddComponent<BoxCollider>();
@@ -89,7 +96,9 @@ public class CarSpawner : MonoBehaviour
             controller.Initialize(WaypointPath, Config.DefaultSpeed, Config.AngularSpeed, Config.Acceleration,
                 Config.WaypointLateralOffset, Config.StuckTimeThreshold,
                 Config.StuckDistanceThreshold, Config.StuckRecoveryOffset,
-                Config.CollisionSpeedFactor, Config.CollisionRecoveryTime);
+                Config.CollisionSpeedFactor, Config.CollisionRecoveryTime,
+                Config.LookAheadDistance, Config.CurveSlowdownFactor,
+                Config.ForwardDetectionRange, Config.ForwardSlowdownFactor);
 
             spawnedCars.Add(car);
         }
@@ -114,10 +123,15 @@ public class CarSpawner : MonoBehaviour
         );
     }
 
-    private Vector3 SnapToNavMesh(Vector3 position, string carName)
+    private Vector3 SnapToNavMesh(Vector3 position, string carName, int agentTypeID)
     {
+        var filter = new NavMeshQueryFilter
+        {
+            agentTypeID = agentTypeID,
+            areaMask = NavMesh.AllAreas
+        };
         NavMeshHit hit;
-        if (NavMesh.SamplePosition(position, out hit, NavMeshSampleRadius, NavMesh.AllAreas))
+        if (NavMesh.SamplePosition(position, out hit, NavMeshSampleRadius, filter))
         {
             return hit.position;
         }

@@ -37,6 +37,19 @@ public class RaceConfig : ScriptableObject
     [Tooltip("How far (meters) a stuck car offsets sideways to attempt recovery.")]
     public float StuckRecoveryOffset = 5f;
 
+    [Header("AI Navigation - Advanced")]
+    [Tooltip("Meters ahead along the waypoint path to aim for. Higher = smoother cornering but wider lines.")]
+    public float LookAheadDistance = 15f;
+
+    [Tooltip("How much to slow down in curves (0=no slowdown, 1=full stop at hairpin). Speed is multiplied by (1 - factor * curvature).")]
+    public float CurveSlowdownFactor = 0.5f;
+
+    [Tooltip("Forward raycast range (meters) for detecting cars ahead. Triggers anticipatory braking.")]
+    public float ForwardDetectionRange = 12f;
+
+    [Tooltip("Speed multiplier when a car is detected directly ahead (0-1).")]
+    public float ForwardSlowdownFactor = 0.6f;
+
     [Header("Collision")]
     [Tooltip("Speed multiplier while colliding with another car (0-1). Lower = more slowdown.")]
     public float CollisionSpeedFactor = 0.4f;

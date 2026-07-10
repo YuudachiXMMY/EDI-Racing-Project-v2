@@ -16,17 +16,21 @@ MonoBehaviour:
   AngularSpeed: 800
   Acceleration: 60
   BaseOffset: 0.42
-  CarScale: 1.5
+  CarScale: 2.5
   RigidbodyMass: 100
   RigidbodyAngularDrag: 0.5
   SpawnOffsetX: 7
   SpawnOffsetZ: 1.2
   SpawnSpreadMultiplier: 5
   AgentRadius: 1.1
-  WaypointLateralOffset: 10
-  StuckTimeThreshold: 2
-  StuckDistanceThreshold: 1
-  StuckRecoveryOffset: 0.5
+  WaypointLateralOffset: 25
+  StuckTimeThreshold: 1
+  StuckDistanceThreshold: 0.5
+  StuckRecoveryOffset: 0.2
+  LookAheadDistance: 5
+  CurveSlowdownFactor: 0.5
+  ForwardDetectionRange: 12
+  ForwardSlowdownFactor: 0.6
   CollisionSpeedFactor: 0.6
   CollisionRecoveryTime: 0.8
   TotalLaps: 3
