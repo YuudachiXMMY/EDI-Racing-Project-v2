@@ -1,20 +1,57 @@
+using System.Collections.Generic;
 using System.Text;
 
 /// <summary>
 /// Formats race results as CSV strings for export.
+/// Dynamically includes all car attribute columns.
 /// WebGL-compatible: produces string content, no file I/O.
 /// </summary>
 public static class ResultsExporter
 {
     public static string ExportRankingsCsv(RaceResults results)
     {
-        var sb = new StringBuilder();
-        sb.AppendLine("Rank,TeamName,ColorIndex,LapsCompleted,CheckpointsPassed,Time");
-        if (results.Rankings == null) return sb.ToString();
+        if (results.Rankings == null || results.Rankings.Length == 0)
+            return "Rank,TeamName,LapsCompleted,CheckpointsPassed,Time\n";
 
+        // Collect all unique attribute keys across all cars (preserve insertion order)
+        var allKeys = new List<string>();
         foreach (var car in results.Rankings)
         {
-            sb.AppendLine($"{car.Rank},{EscapeCsv(car.TeamName)},{car.ColorIndex},{car.LapsCompleted},{car.CheckpointsPassed},{car.TotalTime:F2}");
+            if (car.Attributes == null) continue;
+            foreach (var attr in car.Attributes)
+                if (!string.IsNullOrEmpty(attr.Key) && !allKeys.Contains(attr.Key))
+                    allKeys.Add(attr.Key);
+        }
+
+        var sb = new StringBuilder();
+
+        // Header
+        sb.Append("Rank,TeamName");
+        foreach (var key in allKeys)
+            sb.Append($",{EscapeCsv(key)}");
+        sb.AppendLine(",LapsCompleted,CheckpointsPassed,Time");
+
+        // Data rows
+        foreach (var car in results.Rankings)
+        {
+            sb.Append($"{car.Rank},{EscapeCsv(car.TeamName)}");
+            foreach (var key in allKeys)
+            {
+                string val = "";
+                if (car.Attributes != null)
+                {
+                    for (int i = 0; i < car.Attributes.Length; i++)
+                    {
+                        if (string.Equals(car.Attributes[i].Key, key, System.StringComparison.OrdinalIgnoreCase))
+                        {
+                            val = car.Attributes[i].Value;
+                            break;
+                        }
+                    }
+                }
+                sb.Append($",{EscapeCsv(val)}");
+            }
+            sb.AppendLine($",{car.LapsCompleted},{car.CheckpointsPassed},{car.TotalTime:F2}");
         }
         return sb.ToString();
     }
@@ -26,9 +63,8 @@ public static class ResultsExporter
         if (results.EventLog == null) return sb.ToString();
 
         foreach (var entry in results.EventLog)
-        {
             sb.AppendLine($"{entry.Timestamp:F2},{EscapeCsv(entry.EventName)},{entry.AffectedCount},{entry.TotalCars}");
-        }
+
         return sb.ToString();
     }
 

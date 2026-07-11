@@ -125,10 +125,22 @@ public struct CarResult
 {
     public int Rank;
     public string TeamName;
-    public int ColorIndex;
+    public AttributeEntry[] Attributes;
     public int LapsCompleted;
     public int CheckpointsPassed;
     public float TotalTime;
+
+    public int ColorIndex
+    {
+        get
+        {
+            if (Attributes == null) return 0;
+            for (int i = 0; i < Attributes.Length; i++)
+                if (string.Equals(Attributes[i].Key, "colorIndex", System.StringComparison.OrdinalIgnoreCase))
+                    if (int.TryParse(Attributes[i].Value, out int val)) return val;
+            return 0;
+        }
+    }
 }
 
 /// <summary>

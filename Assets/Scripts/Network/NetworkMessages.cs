@@ -73,28 +73,60 @@ public class RaceStartMessage
 }
 
 [Serializable]
+public struct NetAttribute
+{
+    public string k;
+    public string v;
+}
+
+[Serializable]
 public struct NetCarData
 {
     public string teamName;
-    public int colorIndex;
-    public string functions; // slash-separated, e.g. "facerecog/glasses/male"
+    public NetAttribute[] attrs;
 
     public static NetCarData FromCarData(CarData cd)
     {
-        return new NetCarData
+        NetAttribute[] netAttrs;
+        if (cd.Attributes != null && cd.Attributes.Length > 0)
         {
-            teamName = cd.TeamName,
-            colorIndex = cd.ColorIndex,
-            functions = cd.Functions != null ? string.Join("/", cd.Functions) : ""
-        };
+            netAttrs = new NetAttribute[cd.Attributes.Length];
+            for (int i = 0; i < cd.Attributes.Length; i++)
+            {
+                netAttrs[i] = new NetAttribute
+                {
+                    k = cd.Attributes[i].Key,
+                    v = cd.Attributes[i].Value
+                };
+            }
+        }
+        else
+        {
+            netAttrs = Array.Empty<NetAttribute>();
+        }
+        return new NetCarData { teamName = cd.TeamName, attrs = netAttrs };
     }
 
     public CarData ToCarData()
     {
-        string[] funcs = string.IsNullOrEmpty(functions)
-            ? Array.Empty<string>()
-            : functions.Split('/');
-        return new CarData(teamName, colorIndex, funcs);
+        AttributeEntry[] entries;
+        if (attrs != null && attrs.Length > 0)
+        {
+            entries = new AttributeEntry[attrs.Length];
+            for (int i = 0; i < attrs.Length; i++)
+            {
+                entries[i] = new AttributeEntry
+                {
+                    Key = attrs[i].k,
+                    Value = attrs[i].v
+                };
+            }
+        }
+        else
+        {
+            entries = Array.Empty<AttributeEntry>();
+        }
+        return new CarData(teamName, entries);
     }
 }
 

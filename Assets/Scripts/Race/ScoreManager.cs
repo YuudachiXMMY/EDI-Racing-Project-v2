@@ -51,7 +51,9 @@ public class ScoreManager : MonoBehaviour
             {
                 Rank = i + 1,
                 TeamName = c.TeamName,
-                ColorIndex = c.ColorIndex,
+                Attributes = c.Attributes != null
+                    ? (AttributeEntry[])c.Attributes.Clone()
+                    : Array.Empty<AttributeEntry>(),
                 LapsCompleted = c.CurrentLap,
                 CheckpointsPassed = c.TotalCheckpointsPassed,
                 TotalTime = c.CheckpointTime

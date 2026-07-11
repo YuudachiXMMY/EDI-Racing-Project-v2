@@ -213,7 +213,9 @@ public class RaceManager : MonoBehaviour
                 if (car == null) continue;
                 var id = car.GetComponent<CarIdentity>();
                 if (id != null)
-                    carList.Add(new CarData(id.TeamName, id.ColorIndex, id.Functions));
+                    carList.Add(new CarData(id.TeamName, id.Attributes != null
+                        ? (AttributeEntry[])id.Attributes.Clone()
+                        : Array.Empty<AttributeEntry>()));
             }
             cars = carList.ToArray();
         }
