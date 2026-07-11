@@ -57,6 +57,16 @@ public class RaceConfig : ScriptableObject
     [Tooltip("Seconds to recover full speed after separating from a collision.")]
     public float CollisionRecoveryTime = 1f;
 
+    [Header("Trail Settings")]
+    [Tooltip("How long the trail persists behind the car (seconds).")]
+    public float TrailDuration = 0.5f;
+
+    [Tooltip("Trail width at the car (meters).")]
+    public float TrailStartWidth = 0.8f;
+
+    [Tooltip("Trail width at the tail end (meters).")]
+    public float TrailEndWidth = 0.1f;
+
     [Header("Race Settings")]
     public int TotalLaps = 3;
 }
