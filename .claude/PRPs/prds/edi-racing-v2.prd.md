@@ -231,7 +231,7 @@ Events modify NavMeshAgent.speed at runtime with configurable duration
 | 4 | UI & Camera | Professor controls, student spectator view, score dashboard | complete | with 2, 3 | 1 | [ui-camera.plan.md](../plans/completed/ui-camera.plan.md) |
 | 5 | Multi-Client Sync | WebSocket server, session management, professor-authoritative sync | complete | - | 1, 2, 3, 4 | [multi-client-sync.plan.md](../plans/completed/multi-client-sync.plan.md) |
 | 6 | WebGL Build & Docker | WebGL optimization, Dockerfile, nginx + WS server, compose | complete | - | 5 | [webgl-build-docker.plan.md](../plans/completed/webgl-build-docker.plan.md) |
-| 7 | Polish & Testing | Visual effects, browser compat, 50-car perf testing, docs | pending | - | 6 | - |
+| 7 | Polish & Testing | Visual effects, browser compat, 50-car perf testing, docs | complete | - | 6 | [polish-and-testing.plan.md](../plans/completed/polish-and-testing.plan.md) |
 
 ### Phase Details
 

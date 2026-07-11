@@ -389,6 +389,9 @@ public class CarController : MonoBehaviour
         if (NavMesh.SamplePosition(wp.position, out hit, 10f, NavMesh.AllAreas))
         {
             agent.Warp(hit.position);
+
+            var trail = GetComponent<TrailRenderer>();
+            if (trail != null) trail.Clear();
         }
     }
 

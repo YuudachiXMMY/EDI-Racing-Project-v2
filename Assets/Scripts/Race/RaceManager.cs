@@ -36,6 +36,7 @@ public class RaceManager : MonoBehaviour
     // --- Phase 4: UI Integration ---
     public GameState CurrentState { get; private set; } = GameState.Setup;
     public event Action<GameState> OnStateChanged;
+    public event Action<CarIdentity> OnRaceFinished;
     public List<GameObject> SpawnedCars => spawnedCars;
 
     private void SetState(GameState state)
@@ -101,6 +102,9 @@ public class RaceManager : MonoBehaviour
             EventManager.OnEventTriggered -= OnEventTriggered;
             EventManager.ClearRegisteredCars();
         }
+
+        if (WeatherEffect != null)
+            WeatherEffect.ResetAll();
 
         if (spawnedCars != null)
         {
@@ -192,6 +196,8 @@ public class RaceManager : MonoBehaviour
             {
                 raceFinished = true;
                 Debug.Log($"[RaceManager] Race complete! Winner: {car.TeamName}");
+                OnRaceFinished?.Invoke(car);
+                SetState(GameState.Finished);
             }
         }
     }

@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.Rendering;
 
 /// <summary>
 /// Instantiates car prefabs from CarData at the spawn point.
@@ -91,6 +92,8 @@ public class CarSpawner : MonoBehaviour
             trigger.isTrigger = true;
             FitTriggerToRenderers(trigger, car.transform);
 
+            AddTrailRenderer(car, data.ColorIndex);
+
             var controller = car.GetComponent<CarController>();
             if (controller == null) controller = car.AddComponent<CarController>();
             controller.Initialize(WaypointPath, Config.DefaultSpeed, Config.AngularSpeed, Config.Acceleration,
@@ -163,9 +166,38 @@ public class CarSpawner : MonoBehaviour
             if (identity == null) identity = car.AddComponent<CarIdentity>();
             identity.Initialize(data);
 
+            AddTrailRenderer(car, data.ColorIndex);
+
             spawnedCars.Add(car);
         }
         return spawnedCars;
+    }
+
+    private void AddTrailRenderer(GameObject car, int colorIndex)
+    {
+        var trail = car.AddComponent<TrailRenderer>();
+        trail.time = Config.TrailDuration;
+        trail.startWidth = Config.TrailStartWidth;
+        trail.endWidth = Config.TrailEndWidth;
+        trail.material = new Material(Shader.Find("Sprites/Default"));
+        trail.startColor = GetTrailColor(colorIndex);
+        trail.endColor = new Color(trail.startColor.r, trail.startColor.g, trail.startColor.b, 0f);
+        trail.minVertexDistance = 0.5f;
+        trail.shadowCastingMode = ShadowCastingMode.Off;
+        trail.receiveShadows = false;
+    }
+
+    private static Color GetTrailColor(int colorIndex)
+    {
+        switch (colorIndex)
+        {
+            case 0: return new Color(0.2f, 0.8f, 0.2f);  // green
+            case 1: return new Color(0.3f, 0.3f, 0.3f);  // black/gray
+            case 2: return new Color(0.9f, 0.2f, 0.2f);  // red
+            case 3: return new Color(0.2f, 0.4f, 0.9f);  // blue
+            case 4: return new Color(0.9f, 0.9f, 0.9f);  // white
+            default: return Color.white;
+        }
     }
 
     private int FindAgentTypeID(string typeName)

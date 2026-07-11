@@ -143,6 +143,7 @@ public class RuntimeSetup : MonoBehaviour
         BuildControlPanel(canvasObj.transform);
         BuildEventLog(canvasObj.transform);
         BuildModeLabel(canvasObj.transform);
+        BuildFinishPanel(canvasObj.transform);
     }
 
     private void BuildLeaderboard(Transform parent)
@@ -228,6 +229,18 @@ public class RuntimeSetup : MonoBehaviour
         modeLabel.color = Color.yellow;
     }
 
+    private RaceFinishPanel finishPanel;
+
+    private void BuildFinishPanel(Transform parent)
+    {
+        GameObject obj = new GameObject("FinishPanel");
+        obj.transform.SetParent(parent, false);
+        finishPanel = obj.AddComponent<RaceFinishPanel>();
+        finishPanel.RaceManager = raceManager;
+        finishPanel.ScoreManager = scoreManager;
+        obj.SetActive(false);
+    }
+
     // ── State Management ───────────────────────────────────
 
     private void OnStateChanged(GameState state)
@@ -238,13 +251,29 @@ public class RuntimeSetup : MonoBehaviour
         Transform root = screenCanvas.transform;
 
         var lb = root.Find("LeaderboardPanel");
-        if (lb != null) lb.gameObject.SetActive(racing);
+        if (lb != null) lb.gameObject.SetActive(racing || state == GameState.Finished);
 
         var cp = root.Find("ControlPanel");
         if (cp != null) cp.gameObject.SetActive(racing);
 
         var ep = root.Find("EventLogPanel");
-        if (ep != null) ep.gameObject.SetActive(racing);
+        if (ep != null) ep.gameObject.SetActive(racing || state == GameState.Finished);
+
+        // Finish panel: keep active during Racing (event subscription via OnEnable),
+        // overlay builds itself only when OnRaceFinished fires
+        if (finishPanel != null)
+        {
+            if (state == GameState.Racing)
+            {
+                finishPanel.Hide();
+                finishPanel.gameObject.SetActive(true);
+            }
+            else if (state == GameState.Setup)
+            {
+                finishPanel.Hide();
+                finishPanel.gameObject.SetActive(false);
+            }
+        }
     }
 
     // ── Update Loop ────────────────────────────────────────
