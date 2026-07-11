@@ -19015,6 +19015,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 15bf96ed8e22343a3afb18cb3769b7d3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WeatherEffect
+  NightLightIntensity: 0.15
+  NightAmbientColor: {r: 0.05, g: 0.05, b: 0.15, a: 1}
+  NightTransitionTime: 0.5
 --- !u!114 &1640923437
 MonoBehaviour:
   m_ObjectHideFlags: 0

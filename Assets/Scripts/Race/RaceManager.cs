@@ -180,10 +180,18 @@ public class RaceManager : MonoBehaviour
         });
 
         if (WeatherEffect == null) return;
-        if (rule.Weather == WeatherType.Snow)
-            WeatherEffect.ActivateSnow(rule.Duration);
-        else if (rule.Weather == WeatherType.Night)
-            WeatherEffect.ActivateNight(rule.Duration);
+        switch (rule.Weather)
+        {
+            case WeatherType.Snow:
+                WeatherEffect.ActivateSnow(rule.Duration);
+                break;
+            case WeatherType.Night:
+                WeatherEffect.ActivateNight(rule.Duration);
+                break;
+            case WeatherType.Sunset:
+                WeatherEffect.ActivateSunset(rule.Duration);
+                break;
+        }
     }
 
     private void OnCarCompletedLap(CarIdentity car)

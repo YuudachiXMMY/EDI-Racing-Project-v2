@@ -1,10 +1,11 @@
 /// <summary>
 /// Optional weather VFX associated with an event rule.
-/// When set to Snow or Night, the WeatherEffect component is activated.
+/// Each type triggers skybox transitions and optional particle effects.
 /// </summary>
 public enum WeatherType
 {
     None,
     Snow,
-    Night
+    Night,
+    Sunset
 }

@@ -95,6 +95,18 @@ public class EventSchedule : ScriptableObject
             Weather = WeatherType.Night,
             TriggerKey = Key.Digit7,
             AllowRepeat = true
+        },
+        new EventRule
+        {
+            DisplayName = "Sunset Weather",
+            AttributeName = "",
+            Operator = ComparisonOperator.All,
+            CompareValue = "",
+            SpeedDelta = -3f,
+            Duration = 20f,
+            Weather = WeatherType.Sunset,
+            TriggerKey = Key.Digit8,
+            AllowRepeat = true
         }
     };
 

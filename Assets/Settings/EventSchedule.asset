@@ -13,73 +13,73 @@ MonoBehaviour:
   m_Name: EventSchedule
   m_EditorClassIdentifier: Assembly-CSharp::EventSchedule
   Events:
-  - EventType: 0
-    DisplayName: Name Length Penalty
+  - DisplayName: Name Length Penalty
+    AttributeName: teamName
+    Operator: 6
+    CompareValue: 10
     SpeedDelta: -10
     Duration: 8
-    TargetColorIndex: 0
-    TargetFunction: 
-    NameLengthThreshold: 10
-    TriggerKey: 49
+    Weather: 0
+    TriggerKey: 41
     AllowRepeat: 0
     HasBeenTriggered: 0
-  - EventType: 1
-    DisplayName: Color Boost (Blue)
+  - DisplayName: Color Boost (Blue)
+    AttributeName: colorIndex
+    Operator: 0
+    CompareValue: 3
     SpeedDelta: 15
     Duration: 6
-    TargetColorIndex: 3
-    TargetFunction: 
-    NameLengthThreshold: 0
-    TriggerKey: 50
+    Weather: 0
+    TriggerKey: 42
     AllowRepeat: 0
     HasBeenTriggered: 0
-  - EventType: 2
-    DisplayName: Color Penalty (Red)
+  - DisplayName: Color Penalty (Red)
+    AttributeName: colorIndex
+    Operator: 0
+    CompareValue: 2
     SpeedDelta: -12
     Duration: 8
-    TargetColorIndex: 2
-    TargetFunction: 
-    NameLengthThreshold: 0
-    TriggerKey: 51
+    Weather: 0
+    TriggerKey: 43
     AllowRepeat: 0
     HasBeenTriggered: 0
-  - EventType: 3
-    DisplayName: Function Boost (Password)
+  - DisplayName: Function Boost (Password)
+    AttributeName: functions
+    Operator: 2
+    CompareValue: password
     SpeedDelta: 10
     Duration: 6
-    TargetColorIndex: 0
-    TargetFunction: password
-    NameLengthThreshold: 0
-    TriggerKey: 52
+    Weather: 0
+    TriggerKey: 44
     AllowRepeat: 0
     HasBeenTriggered: 0
-  - EventType: 4
-    DisplayName: Function Penalty (Face Recog)
+  - DisplayName: Function Penalty (Face Recog)
+    AttributeName: functions
+    Operator: 2
+    CompareValue: facerecog
     SpeedDelta: -10
     Duration: 8
-    TargetColorIndex: 0
-    TargetFunction: facerecog
-    NameLengthThreshold: 0
-    TriggerKey: 53
+    Weather: 0
+    TriggerKey: 45
     AllowRepeat: 0
     HasBeenTriggered: 0
-  - EventType: 5
-    DisplayName: Snow Weather
+  - DisplayName: Snow Weather
+    AttributeName: 
+    Operator: 8
+    CompareValue: 
     SpeedDelta: -8
     Duration: 12
-    TargetColorIndex: 0
-    TargetFunction: 
-    NameLengthThreshold: 0
-    TriggerKey: 54
+    Weather: 1
+    TriggerKey: 46
     AllowRepeat: 1
     HasBeenTriggered: 0
-  - EventType: 6
-    DisplayName: Night Weather
+  - DisplayName: Night Weather
+    AttributeName: 
+    Operator: 8
+    CompareValue: 
     SpeedDelta: -5
     Duration: 15
-    TargetColorIndex: 0
-    TargetFunction: 
-    NameLengthThreshold: 0
-    TriggerKey: 55
+    Weather: 2
+    TriggerKey: 47
     AllowRepeat: 1
     HasBeenTriggered: 0
