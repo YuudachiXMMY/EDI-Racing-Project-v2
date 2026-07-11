@@ -15,6 +15,7 @@ public class SessionData
 {
     public string SessionName = "";
     public string CreatedAt = "";
+    public string SurveyConfigName = "";
     public CarData[] Cars = Array.Empty<CarData>();
     public SavedEventRule[] Events = Array.Empty<SavedEventRule>();
     public SavedRaceConfig RaceSettings;
