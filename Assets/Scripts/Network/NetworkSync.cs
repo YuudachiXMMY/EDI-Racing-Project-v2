@@ -157,13 +157,13 @@ public class NetworkSync : MonoBehaviour
         NetworkManager.Send(JsonUtility.ToJson(msg));
     }
 
-    private void OnEventTriggered(RaceEventConfig config, int affectedCount)
+    private void OnEventTriggered(EventRule rule, int affectedCount)
     {
         if (NetworkManager == null || !NetworkManager.IsConnected || !NetworkManager.IsHost) return;
         var cars = RaceManager.SpawnedCars;
         var msg = new EventTriggeredMessage
         {
-            name = config.DisplayName,
+            name = rule.DisplayName,
             affected = affectedCount,
             total = cars != null ? cars.Count : 0
         };

@@ -16,7 +16,7 @@ public class SessionData
     public string SessionName = "";
     public string CreatedAt = "";
     public CarData[] Cars = Array.Empty<CarData>();
-    public SavedEventConfig[] Events = Array.Empty<SavedEventConfig>();
+    public SavedEventRule[] Events = Array.Empty<SavedEventRule>();
     public SavedRaceConfig RaceSettings;
     public RaceResults Results = new RaceResults();
 }
@@ -58,47 +58,47 @@ public struct SavedRaceConfig
 }
 
 /// <summary>
-/// Serializable copy of RaceEventConfig without runtime state (HasBeenTriggered)
+/// Serializable copy of EventRule without runtime state (HasBeenTriggered)
 /// and without Key binding (UI concern, not data).
 /// </summary>
 [Serializable]
-public struct SavedEventConfig
+public struct SavedEventRule
 {
-    public int EventType;
     public string DisplayName;
+    public string AttributeName;
+    public int Operator;
+    public string CompareValue;
     public float SpeedDelta;
     public float Duration;
-    public int TargetColorIndex;
-    public string TargetFunction;
-    public int NameLengthThreshold;
+    public int Weather;
     public bool AllowRepeat;
 
-    public static SavedEventConfig FromConfig(RaceEventConfig config)
+    public static SavedEventRule FromRule(EventRule rule)
     {
-        return new SavedEventConfig
+        return new SavedEventRule
         {
-            EventType = (int)config.EventType,
-            DisplayName = config.DisplayName ?? "",
-            SpeedDelta = config.SpeedDelta,
-            Duration = config.Duration,
-            TargetColorIndex = config.TargetColorIndex,
-            TargetFunction = config.TargetFunction ?? "",
-            NameLengthThreshold = config.NameLengthThreshold,
-            AllowRepeat = config.AllowRepeat
+            DisplayName = rule.DisplayName ?? "",
+            AttributeName = rule.AttributeName ?? "",
+            Operator = (int)rule.Operator,
+            CompareValue = rule.CompareValue ?? "",
+            SpeedDelta = rule.SpeedDelta,
+            Duration = rule.Duration,
+            Weather = (int)rule.Weather,
+            AllowRepeat = rule.AllowRepeat
         };
     }
 
-    public RaceEventConfig ToConfig(Key triggerKey)
+    public EventRule ToRule(Key triggerKey)
     {
-        return new RaceEventConfig
+        return new EventRule
         {
-            EventType = (RaceEventType)EventType,
             DisplayName = DisplayName,
+            AttributeName = AttributeName,
+            Operator = (ComparisonOperator)Operator,
+            CompareValue = CompareValue,
             SpeedDelta = SpeedDelta,
             Duration = Duration,
-            TargetColorIndex = TargetColorIndex,
-            TargetFunction = TargetFunction,
-            NameLengthThreshold = NameLengthThreshold,
+            Weather = (WeatherType)Weather,
             TriggerKey = triggerKey,
             AllowRepeat = AllowRepeat,
             HasBeenTriggered = false
