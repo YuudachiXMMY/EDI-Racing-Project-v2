@@ -5,6 +5,7 @@ using System.Collections;
 /// Manages weather visual effects using Customizable Skybox materials.
 /// Smoothly transitions between day/night/snow/sunset skyboxes and
 /// adjusts directional light + ambient color to match.
+/// Supports automatic day/sunset cycling driven by race time.
 /// Snow also spawns a camera-following particle blizzard.
 /// </summary>
 public class WeatherEffect : MonoBehaviour
@@ -26,9 +27,24 @@ public class WeatherEffect : MonoBehaviour
     [Tooltip("Sunset skybox material")]
     public Material SunsetSkybox;
 
+    [Header("Day/Sunset Cycle")]
+    [Tooltip("Automatically cycle between day and sunset during the race")]
+    public bool DayCycleEnabled = true;
+
+    [Tooltip("Total seconds for one full Day → Sunset → Day cycle")]
+    public float DayCycleDuration = 90f;
+
+    [Tooltip("Fraction of the cycle spent in daytime (0-1). The rest is sunset.")]
+    [Range(0.2f, 0.8f)]
+    public float DayFraction = 0.6f;
+
     [Header("Transition")]
     [Tooltip("Seconds to blend between skybox states")]
     public float TransitionTime = 1.5f;
+
+    [Header("Day Lighting")]
+    [Tooltip("Ambient color during daytime")]
+    public Color DayAmbientColor = new Color(0.53f, 0.53f, 0.53f);
 
     [Header("Night Lighting")]
     [Tooltip("Directional light intensity during night")]
@@ -66,6 +82,12 @@ public class WeatherEffect : MonoBehaviour
     // Transition state
     private Coroutine activeTransition;
 
+    // Day cycle state
+    private bool cycleRunning;
+    private float cycleStartTime;
+    private bool cycleInSunset; // tracks current phase to avoid re-triggering
+    private bool eventOverrideActive; // true when snow/night/manual-sunset overrides cycle
+
     private void Awake()
     {
         CreateSnowSystem();
@@ -83,11 +105,57 @@ public class WeatherEffect : MonoBehaviour
         originalSkybox = RenderSettings.skybox;
         hasStoredOriginals = true;
 
-        // If a DaySkybox is assigned but scene has default, apply it
         if (DaySkybox != null && originalSkybox != DaySkybox)
         {
             RenderSettings.skybox = DaySkybox;
             originalSkybox = DaySkybox;
+        }
+    }
+
+    // ── Day/Sunset Cycle ─────────────────────────────────
+
+    /// <summary>
+    /// Start the automatic day/sunset cycle. Called when race begins.
+    /// </summary>
+    public void StartCycle()
+    {
+        if (!DayCycleEnabled) return;
+        cycleRunning = true;
+        cycleStartTime = Time.time;
+        cycleInSunset = false;
+        eventOverrideActive = false;
+        Debug.Log($"[Weather] Day/sunset cycle started ({DayCycleDuration}s period, {DayFraction * 100:F0}% day)");
+    }
+
+    /// <summary>
+    /// Stop the automatic cycle. Called on race reset.
+    /// </summary>
+    public void StopCycle()
+    {
+        cycleRunning = false;
+    }
+
+    private void Update()
+    {
+        if (!cycleRunning || !DayCycleEnabled || eventOverrideActive) return;
+        if (DayCycleDuration <= 0f) return;
+
+        float elapsed = Time.time - cycleStartTime;
+        float phase = (elapsed % DayCycleDuration) / DayCycleDuration;
+
+        bool shouldBeSunset = phase >= DayFraction;
+
+        if (shouldBeSunset && !cycleInSunset)
+        {
+            cycleInSunset = true;
+            TransitionTo(SunsetSkybox, SunsetLightIntensity, SunsetLightColor, SunsetAmbientColor);
+            Debug.Log("[Weather] Cycle → Sunset");
+        }
+        else if (!shouldBeSunset && cycleInSunset)
+        {
+            cycleInSunset = false;
+            TransitionTo(DaySkybox, originalLightIntensity, originalLightColor, DayAmbientColor);
+            Debug.Log("[Weather] Cycle → Day");
         }
     }
 
@@ -135,6 +203,7 @@ public class WeatherEffect : MonoBehaviour
     public void ActivateSnow(float duration)
     {
         IsSnowActive = true;
+        eventOverrideActive = true;
         if (snowParticles != null) snowParticles.Play();
         TransitionTo(SnowSkybox, originalLightIntensity * 0.7f, originalLightColor, SnowAmbientColor);
         Debug.Log("[Weather] Snow started");
@@ -144,7 +213,7 @@ public class WeatherEffect : MonoBehaviour
             IsSnowActive = false;
             if (snowParticles != null)
                 snowParticles.Stop(true, ParticleSystemStopBehavior.StopEmitting);
-            RestoreDefaults();
+            EndEventOverride();
             Debug.Log("[Weather] Snow ended");
         }));
     }
@@ -154,31 +223,63 @@ public class WeatherEffect : MonoBehaviour
     public void ActivateNight(float duration)
     {
         IsNightActive = true;
+        eventOverrideActive = true;
         TransitionTo(NightSkybox, NightLightIntensity, originalLightColor, NightAmbientColor);
         Debug.Log("[Weather] Night started");
 
         StartCoroutine(DeactivateAfter(duration, () =>
         {
             IsNightActive = false;
-            RestoreDefaults();
+            EndEventOverride();
             Debug.Log("[Weather] Night ended");
         }));
     }
 
-    // ── Sunset ────────────────────────────────────────────
+    // ── Sunset (event-triggered, not cycle) ───────────────
 
     public void ActivateSunset(float duration)
     {
         IsSunsetActive = true;
+        eventOverrideActive = true;
         TransitionTo(SunsetSkybox, SunsetLightIntensity, SunsetLightColor, SunsetAmbientColor);
-        Debug.Log("[Weather] Sunset started");
+        Debug.Log("[Weather] Sunset started (event)");
 
         StartCoroutine(DeactivateAfter(duration, () =>
         {
             IsSunsetActive = false;
-            RestoreDefaults();
-            Debug.Log("[Weather] Sunset ended");
+            EndEventOverride();
+            Debug.Log("[Weather] Sunset ended (event)");
         }));
+    }
+
+    // ── Override Management ───────────────────────────────
+
+    /// <summary>
+    /// Called when an event-triggered weather ends.
+    /// Resumes the day/sunset cycle at the correct phase.
+    /// </summary>
+    private void EndEventOverride()
+    {
+        if (IsSnowActive || IsNightActive || IsSunsetActive) return;
+        eventOverrideActive = false;
+
+        // Immediately snap to the correct cycle phase
+        if (cycleRunning && DayCycleEnabled)
+        {
+            float elapsed = Time.time - cycleStartTime;
+            float phase = (elapsed % DayCycleDuration) / DayCycleDuration;
+            bool shouldBeSunset = phase >= DayFraction;
+
+            cycleInSunset = shouldBeSunset;
+            if (shouldBeSunset)
+                TransitionTo(SunsetSkybox, SunsetLightIntensity, SunsetLightColor, SunsetAmbientColor);
+            else
+                TransitionTo(DaySkybox, originalLightIntensity, originalLightColor, DayAmbientColor);
+        }
+        else
+        {
+            TransitionTo(originalSkybox, originalLightIntensity, originalLightColor, originalAmbientColor);
+        }
     }
 
     // ── Skybox + Lighting Transition ──────────────────────
@@ -192,20 +293,11 @@ public class WeatherEffect : MonoBehaviour
                                                         targetLightColor, targetAmbient));
     }
 
-    private void RestoreDefaults()
-    {
-        if (!hasStoredOriginals) return;
-        // Only restore if no other weather is active
-        if (IsSnowActive || IsNightActive || IsSunsetActive) return;
-        TransitionTo(originalSkybox, originalLightIntensity, originalLightColor, originalAmbientColor);
-    }
-
     private IEnumerator SkyTransition(Material targetSkybox, float targetIntensity,
                                       Color targetLightColor, Color targetAmbient)
     {
         if (!hasStoredOriginals) yield break;
 
-        // Instant skybox swap (shader-based skybox can't lerp cross-material)
         if (targetSkybox != null)
             RenderSettings.skybox = targetSkybox;
 
@@ -262,6 +354,9 @@ public class WeatherEffect : MonoBehaviour
     {
         StopAllCoroutines();
         activeTransition = null;
+        cycleRunning = false;
+        eventOverrideActive = false;
+        cycleInSunset = false;
 
         IsSnowActive = false;
         IsNightActive = false;

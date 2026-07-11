@@ -82,6 +82,9 @@ public class RaceManager : MonoBehaviour
             EventManager.OnEventTriggered += OnEventTriggered;
         }
 
+        if (WeatherEffect != null)
+            WeatherEffect.StartCycle();
+
         eventLog.Clear();
         raceStartTime = Time.time;
         raceFinished = false;
