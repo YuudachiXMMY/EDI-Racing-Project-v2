@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>{{{ PRODUCT_NAME }}}</title>
+  <style>
+    * { margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #1a1a2e; }
+    #unity-canvas { width: 100%; height: 100%; display: block; }
+    #loading-overlay {
+      position: fixed; inset: 0; display: flex; flex-direction: column;
+      justify-content: center; align-items: center;
+      background: #1a1a2e; color: #e0e0e0; font-family: system-ui, sans-serif;
+      z-index: 100;
+    }
+    #loading-overlay h1 { font-size: 2rem; margin-bottom: 1.5rem; color: #fff; }
+    #progress-bar-bg {
+      width: 320px; height: 8px; background: #333; border-radius: 4px; overflow: hidden;
+    }
+    #progress-bar {
+      width: 0%; height: 100%; background: #4fc3f7; border-radius: 4px;
+      transition: width 0.2s ease;
+    }
+    #loading-text { margin-top: 0.75rem; font-size: 0.9rem; color: #aaa; }
+  </style>
+</head>
+<body>
+  <div id="loading-overlay">
+    <h1>EDI Racing Game</h1>
+    <div id="progress-bar-bg"><div id="progress-bar"></div></div>
+    <div id="loading-text">Loading...</div>
+  </div>
+  <canvas id="unity-canvas" tabindex="-1"></canvas>
+  <script src="{{{ UNITY_LOADER_URL }}}"></script>
+  <script>
+    var canvas = document.getElementById("unity-canvas");
+    var overlay = document.getElementById("loading-overlay");
+    var progressBar = document.getElementById("progress-bar");
+    var loadingText = document.getElementById("loading-text");
+
+    createUnityInstance(canvas, {
+      dataUrl: "{{{ DATA_URL }}}",
+      frameworkUrl: "{{{ FRAMEWORK_URL }}}",
+      codeUrl: "{{{ CODE_URL }}}",
+#if MEMORY_FILENAME
+      memoryUrl: "{{{ MEMORY_URL }}}",
+#endif
+#if SYMBOLS_FILENAME
+      symbolsUrl: "{{{ SYMBOLS_URL }}}",
+#endif
+      streamingAssetsUrl: "StreamingAssets",
+      companyName: "{{{ COMPANY_NAME }}}",
+      productName: "{{{ PRODUCT_NAME }}}",
+      productVersion: "{{{ PRODUCT_VERSION }}}",
+    }, function (progress) {
+      var pct = Math.round(progress * 100);
+      progressBar.style.width = pct + "%";
+      loadingText.textContent = "Loading... " + pct + "%";
+    }).then(function (instance) {
+      overlay.style.display = "none";
+      canvas.focus();
+    }).catch(function (error) {
+      loadingText.textContent = "Error: " + error.message;
+      loadingText.style.color = "#f44";
+    });
+  </script>
+</body>
+</html>
