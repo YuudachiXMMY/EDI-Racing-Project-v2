@@ -27,6 +27,9 @@ public class RaceManager : MonoBehaviour
     [Header("Network (Optional)")]
     public NetworkSync NetworkSync;
 
+    [Header("Survey (Optional)")]
+    public SurveyConfigManager SurveyConfigManager;
+
     private List<GameObject> spawnedCars;
     private bool raceStarted;
     private bool raceFinished;
@@ -239,10 +242,15 @@ public class RaceManager : MonoBehaviour
                 events[i] = SavedEventRule.FromRule(EventManager.Schedule.Events[i]);
         }
 
+        string surveyConfigName = "";
+        if (SurveyConfigManager != null && SurveyConfigManager.ActiveConfig != null)
+            surveyConfigName = SurveyConfigManager.ActiveConfig.ConfigName ?? "";
+
         return new SessionData
         {
             SessionName = "Race Session",
             CreatedAt = DateTime.Now.ToString("o"),
+            SurveyConfigName = surveyConfigName,
             Cars = cars,
             Events = events,
             RaceSettings = SavedRaceConfig.FromScriptableObject(Config),
