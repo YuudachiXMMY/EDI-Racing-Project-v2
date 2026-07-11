@@ -74,7 +74,7 @@ public class EventPanel : MonoBehaviour
             EventManager.TriggerEvent(index);
     }
 
-    private void OnEventTriggered(RaceEventConfig config, int affectedCount)
+    private void OnEventTriggered(EventRule rule, int affectedCount)
     {
         if (!initialized) return;
 

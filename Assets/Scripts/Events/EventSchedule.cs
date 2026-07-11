@@ -2,82 +2,110 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 /// <summary>
-/// Pre-configured list of events for a race session.
+/// Pre-configured list of event rules for a race session.
 /// Create via Assets > Create > EDI Racing > Event Schedule.
-/// Professor sets up events here before starting the race.
+/// Professor sets up rules here before starting the race.
 /// </summary>
 [CreateAssetMenu(fileName = "EventSchedule", menuName = "EDI Racing/Event Schedule")]
 public class EventSchedule : ScriptableObject
 {
-    [Tooltip("List of events configured for this race session")]
-    public RaceEventConfig[] Events = new RaceEventConfig[]
+    [Tooltip("List of event rules configured for this race session")]
+    public EventRule[] Events = new EventRule[]
     {
-        new RaceEventConfig
+        new EventRule
         {
-            EventType = RaceEventType.NameLengthPenalty,
             DisplayName = "Name Length Penalty",
+            AttributeName = "teamName",
+            Operator = ComparisonOperator.LengthGreaterThan,
+            CompareValue = "10",
             SpeedDelta = -10f,
             Duration = 8f,
-            NameLengthThreshold = 10,
+            Weather = WeatherType.None,
             TriggerKey = Key.Digit1,
             AllowRepeat = false
         },
-        new RaceEventConfig
+        new EventRule
         {
-            EventType = RaceEventType.ColorBoost,
             DisplayName = "Color Boost (Blue)",
+            AttributeName = "colorIndex",
+            Operator = ComparisonOperator.Equals,
+            CompareValue = "3",
             SpeedDelta = 15f,
             Duration = 6f,
-            TargetColorIndex = 3,
+            Weather = WeatherType.None,
             TriggerKey = Key.Digit2,
             AllowRepeat = false
         },
-        new RaceEventConfig
+        new EventRule
         {
-            EventType = RaceEventType.ColorPenalty,
             DisplayName = "Color Penalty (Red)",
+            AttributeName = "colorIndex",
+            Operator = ComparisonOperator.Equals,
+            CompareValue = "2",
             SpeedDelta = -12f,
             Duration = 8f,
-            TargetColorIndex = 2,
+            Weather = WeatherType.None,
             TriggerKey = Key.Digit3,
             AllowRepeat = false
         },
-        new RaceEventConfig
+        new EventRule
         {
-            EventType = RaceEventType.FunctionBoost,
             DisplayName = "Function Boost (Password)",
+            AttributeName = "functions",
+            Operator = ComparisonOperator.Contains,
+            CompareValue = "password",
             SpeedDelta = 10f,
             Duration = 6f,
-            TargetFunction = "password",
+            Weather = WeatherType.None,
             TriggerKey = Key.Digit4,
             AllowRepeat = false
         },
-        new RaceEventConfig
+        new EventRule
         {
-            EventType = RaceEventType.FunctionPenalty,
             DisplayName = "Function Penalty (Face Recog)",
+            AttributeName = "functions",
+            Operator = ComparisonOperator.Contains,
+            CompareValue = "facerecog",
             SpeedDelta = -10f,
             Duration = 8f,
-            TargetFunction = "facerecog",
+            Weather = WeatherType.None,
             TriggerKey = Key.Digit5,
             AllowRepeat = false
         },
-        new RaceEventConfig
+        new EventRule
         {
-            EventType = RaceEventType.SnowWeather,
             DisplayName = "Snow Weather",
+            AttributeName = "",
+            Operator = ComparisonOperator.All,
+            CompareValue = "",
             SpeedDelta = -8f,
             Duration = 12f,
+            Weather = WeatherType.Snow,
             TriggerKey = Key.Digit6,
             AllowRepeat = true
         },
-        new RaceEventConfig
+        new EventRule
         {
-            EventType = RaceEventType.NightWeather,
             DisplayName = "Night Weather",
+            AttributeName = "",
+            Operator = ComparisonOperator.All,
+            CompareValue = "",
             SpeedDelta = -5f,
             Duration = 15f,
+            Weather = WeatherType.Night,
             TriggerKey = Key.Digit7,
+            AllowRepeat = true
+        },
+        new EventRule
+        {
+            DisplayName = "Sunset Weather",
+            AttributeName = "",
+            Operator = ComparisonOperator.All,
+            CompareValue = "",
+            SpeedDelta = -3f,
+            Duration = 20f,
+            Weather = WeatherType.Sunset,
+            TriggerKey = Key.Digit8,
             AllowRepeat = true
         }
     };

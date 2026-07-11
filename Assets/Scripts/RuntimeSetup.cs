@@ -325,9 +325,9 @@ public class RuntimeSetup : MonoBehaviour
 
     private readonly List<string> eventLogEntries = new List<string>();
 
-    private void OnEventTriggered(RaceEventConfig config, int affectedCount)
+    private void OnEventTriggered(EventRule rule, int affectedCount)
     {
-        string entry = $"[{Time.time:F0}s] {config.DisplayName} ({affectedCount} cars)";
+        string entry = $"[{Time.time:F0}s] {rule.DisplayName} ({affectedCount} cars)";
         eventLogEntries.Add(entry);
 
         if (eventLogEntries.Count > 10)

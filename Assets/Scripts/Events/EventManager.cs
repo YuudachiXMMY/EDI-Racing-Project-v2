@@ -5,7 +5,7 @@ using UnityEngine.InputSystem;
 
 /// <summary>
 /// Manages race events: listens for keyboard triggers,
-/// matches affected cars, applies speed modifiers.
+/// evaluates rules against car attributes, applies speed modifiers.
 /// </summary>
 public class EventManager : MonoBehaviour
 {
@@ -15,7 +15,7 @@ public class EventManager : MonoBehaviour
     private readonly List<CarIdentity> registeredCars = new List<CarIdentity>();
     private bool isActive;
 
-    public event Action<RaceEventConfig, int> OnEventTriggered;
+    public event Action<EventRule, int> OnEventTriggered;
 
     public void RegisterCar(CarIdentity car)
     {
@@ -36,7 +36,7 @@ public class EventManager : MonoBehaviour
     {
         isActive = true;
         Schedule.ResetRuntimeState();
-        Debug.Log($"[EventManager] Activated with {Schedule.Events.Length} events configured");
+        Debug.Log($"[EventManager] Activated with {Schedule.Events.Length} event rules configured");
     }
 
     public void Deactivate()
@@ -61,23 +61,23 @@ public class EventManager : MonoBehaviour
     {
         if (eventIndex < 0 || eventIndex >= Schedule.Events.Length) return;
 
-        var config = Schedule.Events[eventIndex];
+        var rule = Schedule.Events[eventIndex];
 
-        if (config.HasBeenTriggered && !config.AllowRepeat)
+        if (rule.HasBeenTriggered && !rule.AllowRepeat)
         {
-            Debug.Log($"[EventManager] '{config.DisplayName}' already triggered (repeat disabled)");
+            Debug.Log($"[EventManager] '{rule.DisplayName}' already triggered (repeat disabled)");
             return;
         }
 
         int affectedCount = 0;
         foreach (var car in registeredCars)
         {
-            if (EventMatcher.IsAffected(config, car))
+            if (RuleEngine.IsAffected(rule, car))
             {
                 var controller = car.GetComponent<CarController>();
                 if (controller != null)
                 {
-                    controller.ApplySpeedModifier(config.SpeedDelta, config.Duration);
+                    controller.ApplySpeedModifier(rule.SpeedDelta, rule.Duration);
                     affectedCount++;
                 }
             }
@@ -85,25 +85,25 @@ public class EventManager : MonoBehaviour
 
         Schedule.Events[eventIndex].HasBeenTriggered = true;
 
-        Debug.Log($"[EventManager] '{config.DisplayName}' triggered: {affectedCount}/{registeredCars.Count} cars affected (speed {config.SpeedDelta:+#;-#;0} for {config.Duration}s)");
+        Debug.Log($"[EventManager] '{rule.DisplayName}' triggered: {affectedCount}/{registeredCars.Count} cars affected (speed {rule.SpeedDelta:+#;-#;0} for {rule.Duration}s)");
 
-        OnEventTriggered?.Invoke(config, affectedCount);
+        OnEventTriggered?.Invoke(rule, affectedCount);
     }
 
     /// <summary>
-    /// Trigger event by type (for programmatic access / future UI / network sync).
+    /// Trigger event by display name (for programmatic access / future UI / network sync).
     /// </summary>
-    public void TriggerEventByType(RaceEventType type)
+    public void TriggerEventByName(string displayName)
     {
         for (int i = 0; i < Schedule.Events.Length; i++)
         {
-            if (Schedule.Events[i].EventType == type)
+            if (string.Equals(Schedule.Events[i].DisplayName, displayName, StringComparison.OrdinalIgnoreCase))
             {
                 TriggerEvent(i);
                 return;
             }
         }
-        Debug.LogWarning($"[EventManager] No event of type '{type}' found in schedule");
+        Debug.LogWarning($"[EventManager] No event named '{displayName}' found in schedule");
     }
 
     public void ClearRegisteredCars()

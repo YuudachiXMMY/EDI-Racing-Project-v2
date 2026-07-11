@@ -19015,6 +19015,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 15bf96ed8e22343a3afb18cb3769b7d3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WeatherEffect
+  DaySkybox: {fileID: 2100000, guid: 56113b3b655ab7349bab4d7d405c258a, type: 2}
+  NightSkybox: {fileID: 2100000, guid: 52fcefd712182d743a781fde12426775, type: 2}
+  SnowSkybox: {fileID: 2100000, guid: bbbcd551076325545ba102ba8c308520, type: 2}
+  SunsetSkybox: {fileID: 2100000, guid: 7ed994c1997814049b44c36a823bba6c, type: 2}
+  TransitionTime: 1.5
+  NightLightIntensity: 0.15
+  NightAmbientColor: {r: 0.05, g: 0.05, b: 0.15, a: 1}
+  SunsetLightIntensity: 0.6
+  SunsetAmbientColor: {r: 0.45, g: 0.25, b: 0.15, a: 1}
+  SunsetLightColor: {r: 1, g: 0.55, b: 0.2, a: 1}
+  SnowAmbientColor: {r: 0.6, g: 0.65, b: 0.7, a: 1}
 --- !u!114 &1640923437
 MonoBehaviour:
   m_ObjectHideFlags: 0

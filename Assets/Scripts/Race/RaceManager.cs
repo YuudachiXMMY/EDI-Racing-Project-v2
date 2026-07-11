@@ -82,6 +82,9 @@ public class RaceManager : MonoBehaviour
             EventManager.OnEventTriggered += OnEventTriggered;
         }
 
+        if (WeatherEffect != null)
+            WeatherEffect.StartCycle();
+
         eventLog.Clear();
         raceStartTime = Time.time;
         raceFinished = false;
@@ -169,21 +172,29 @@ public class RaceManager : MonoBehaviour
         Debug.Log($"[RaceManager] Visual-only race started with {spawnedCars.Count} cars");
     }
 
-    private void OnEventTriggered(RaceEventConfig config, int affectedCount)
+    private void OnEventTriggered(EventRule rule, int affectedCount)
     {
         eventLog.Add(new EventLogEntry
         {
             Timestamp = Time.time - raceStartTime,
-            EventName = config.DisplayName,
+            EventName = rule.DisplayName,
             AffectedCount = affectedCount,
             TotalCars = spawnedCars != null ? spawnedCars.Count : 0
         });
 
         if (WeatherEffect == null) return;
-        if (config.EventType == RaceEventType.SnowWeather)
-            WeatherEffect.ActivateSnow(config.Duration);
-        else if (config.EventType == RaceEventType.NightWeather)
-            WeatherEffect.ActivateNight(config.Duration);
+        switch (rule.Weather)
+        {
+            case WeatherType.Snow:
+                WeatherEffect.ActivateSnow(rule.Duration);
+                break;
+            case WeatherType.Night:
+                WeatherEffect.ActivateNight(rule.Duration);
+                break;
+            case WeatherType.Sunset:
+                WeatherEffect.ActivateSunset(rule.Duration);
+                break;
+        }
     }
 
     private void OnCarCompletedLap(CarIdentity car)
@@ -220,12 +231,12 @@ public class RaceManager : MonoBehaviour
             cars = carList.ToArray();
         }
 
-        var events = Array.Empty<SavedEventConfig>();
+        var events = Array.Empty<SavedEventRule>();
         if (EventManager != null && EventManager.Schedule != null)
         {
-            events = new SavedEventConfig[EventManager.Schedule.Events.Length];
+            events = new SavedEventRule[EventManager.Schedule.Events.Length];
             for (int i = 0; i < events.Length; i++)
-                events[i] = SavedEventConfig.FromConfig(EventManager.Schedule.Events[i]);
+                events[i] = SavedEventRule.FromRule(EventManager.Schedule.Events[i]);
         }
 
         return new SessionData
@@ -251,7 +262,7 @@ public class RaceManager : MonoBehaviour
             for (int i = 0; i < count; i++)
             {
                 Key key = EventManager.Schedule.Events[i].TriggerKey;
-                EventManager.Schedule.Events[i] = session.Events[i].ToConfig(key);
+                EventManager.Schedule.Events[i] = session.Events[i].ToRule(key);
             }
         }
 
