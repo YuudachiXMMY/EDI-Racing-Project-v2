@@ -4,7 +4,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Pre-race setup overlay. Shown during GameState.Setup.
 /// Allows starting race with default CSV data or loading a saved session.
-/// Optionally hosts a networked room for multi-client sync (Phase 5).
+/// Integrates with SurveyBuilderPanel for config creation (Phase 4).
 /// </summary>
 public class SetupScreen : MonoBehaviour
 {
@@ -22,9 +22,18 @@ public class SetupScreen : MonoBehaviour
     public Text RoomCodeText;
     public Text StudentCountText;
 
+    [Header("Survey Builder (Optional)")]
+    public SurveyConfigManager SurveyConfigManager;
+    public SurveyBuilderPanel BuilderPanel;
+    public ConfigManagerPanel ConfigPanel;
+    public Button NewSurveyButton;
+    public Button LoadConfigButton;
+    public Button TemplateButton;
+    public Button StartWithSurveyButton;
+    public Text ActiveConfigText;
+
     private void Start()
     {
-        // Auto-find RaceManager if not assigned in Inspector
         if (RaceManager == null)
         {
             RaceManager = FindFirstObjectByType<RaceManager>();
@@ -39,14 +48,34 @@ public class SetupScreen : MonoBehaviour
         if (HostButton != null)
             HostButton.onClick.AddListener(HostRoom);
 
+        // Survey builder buttons
+        if (NewSurveyButton != null)
+            NewSurveyButton.onClick.AddListener(OpenNewSurvey);
+        if (LoadConfigButton != null)
+            LoadConfigButton.onClick.AddListener(OpenLoadConfig);
+        if (TemplateButton != null)
+            TemplateButton.onClick.AddListener(OpenTemplates);
+        if (StartWithSurveyButton != null)
+            StartWithSurveyButton.onClick.AddListener(StartWithSurveyConfig);
+
         // Hide network UI if no NetworkManager
         bool hasNetwork = NetworkManager != null;
         if (HostButton != null) HostButton.gameObject.SetActive(hasNetwork);
         if (RoomCodeText != null) RoomCodeText.gameObject.SetActive(false);
         if (StudentCountText != null) StudentCountText.gameObject.SetActive(false);
 
+        // Hide survey UI if no ConfigManager
+        bool hasSurvey = SurveyConfigManager != null;
+        if (NewSurveyButton != null) NewSurveyButton.gameObject.SetActive(hasSurvey);
+        if (LoadConfigButton != null) LoadConfigButton.gameObject.SetActive(hasSurvey);
+        if (TemplateButton != null) TemplateButton.gameObject.SetActive(hasSurvey);
+        if (StartWithSurveyButton != null) StartWithSurveyButton.gameObject.SetActive(hasSurvey);
+        if (ActiveConfigText != null) ActiveConfigText.gameObject.SetActive(hasSurvey);
+
         if (InfoText != null)
             InfoText.text = "Ready to start race.";
+
+        RefreshActiveConfigDisplay();
     }
 
     private void OnEnable()
@@ -68,6 +97,74 @@ public class SetupScreen : MonoBehaviour
             NetworkManager.OnConnectionError -= OnNetworkError;
         }
     }
+
+    // --- Survey Builder Integration ---
+
+    private void OpenNewSurvey()
+    {
+        if (BuilderPanel == null) return;
+        gameObject.SetActive(false);
+        BuilderPanel.Show(null);
+    }
+
+    private void OpenLoadConfig()
+    {
+        if (ConfigPanel == null) return;
+        ConfigPanel.ShowLoadPanel();
+    }
+
+    private void OpenTemplates()
+    {
+        if (ConfigPanel == null) return;
+        ConfigPanel.ShowTemplatePanel();
+    }
+
+    private void StartWithSurveyConfig()
+    {
+        if (SurveyConfigManager == null || SurveyConfigManager.ActiveConfig == null)
+        {
+            if (InfoText != null) InfoText.text = "No active config. Load or create one first.";
+            return;
+        }
+
+        if (RaceManager == null || RaceManager.EventManager == null)
+        {
+            if (InfoText != null) InfoText.text = "Error: RaceManager not ready.";
+            return;
+        }
+
+        // Apply rules from config to EventSchedule
+        SurveyConfigManager.ApplyRulesToSchedule(RaceManager.EventManager.Schedule);
+
+        // Start with default CSV data but using custom rules
+        if (RaceManager.DefaultCsvData != null)
+        {
+            RaceManager.LoadAndStartRace(RaceManager.DefaultCsvData.text);
+            gameObject.SetActive(false);
+        }
+        else
+        {
+            if (InfoText != null) InfoText.text = "No CSV data. Import CSV or wait for survey responses.";
+        }
+    }
+
+    public void RefreshActiveConfigDisplay()
+    {
+        if (ActiveConfigText == null) return;
+
+        if (SurveyConfigManager == null || SurveyConfigManager.ActiveConfig == null)
+        {
+            ActiveConfigText.text = "No active config";
+            return;
+        }
+
+        var config = SurveyConfigManager.ActiveConfig;
+        int qCount = config.Questions != null ? config.Questions.Length : 0;
+        int rCount = config.Rules != null ? config.Rules.Length : 0;
+        ActiveConfigText.text = $"Active: {config.ConfigName} ({qCount} questions, {rCount} rules)";
+    }
+
+    // --- Network ---
 
     private void HostRoom()
     {
@@ -101,6 +198,8 @@ public class SetupScreen : MonoBehaviour
         if (InfoText != null) InfoText.text = $"Network error: {error}";
         if (HostButton != null) HostButton.interactable = true;
     }
+
+    // --- Race Start ---
 
     private void StartWithDefaultData()
     {

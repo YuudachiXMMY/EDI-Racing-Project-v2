@@ -144,6 +144,7 @@ public class RuntimeSetup : MonoBehaviour
         BuildEventLog(canvasObj.transform);
         BuildModeLabel(canvasObj.transform);
         BuildFinishPanel(canvasObj.transform);
+        BuildSurveyBuilder(canvasObj.transform);
     }
 
     private void BuildLeaderboard(Transform parent)
@@ -368,6 +369,96 @@ public class RuntimeSetup : MonoBehaviour
     {
         if (controlStatusText != null)
             controlStatusText.text = message;
+    }
+
+    // ── Survey Builder ──────────────────────────────────────
+
+    private void BuildSurveyBuilder(Transform parent)
+    {
+        if (FindFirstObjectByType<SurveyBuilderPanel>() != null) return;
+
+        var configManager = raceManager.SurveyConfigManager;
+        if (configManager == null) return;
+
+        // Create builder panel (hidden by default)
+        GameObject builderObj = new GameObject("SurveyBuilderPanel");
+        builderObj.transform.SetParent(parent, false);
+        var builderPanel = builderObj.AddComponent<SurveyBuilderPanel>();
+        builderPanel.ConfigManager = configManager;
+
+        // Create config manager panel (hidden by default)
+        GameObject configPanelObj = new GameObject("ConfigManagerPanel");
+        configPanelObj.transform.SetParent(parent, false);
+        var configPanel = configPanelObj.AddComponent<ConfigManagerPanel>();
+        configPanel.ConfigManager = configManager;
+        configPanel.BuilderPanel = builderPanel;
+
+        // Find or create SetupScreen and wire references
+        var setupScreen = FindFirstObjectByType<SetupScreen>();
+        if (setupScreen != null)
+        {
+            setupScreen.SurveyConfigManager = configManager;
+            setupScreen.BuilderPanel = builderPanel;
+            setupScreen.ConfigPanel = configPanel;
+            builderPanel.SetupScreen = setupScreen;
+            configPanel.SetupScreen = setupScreen;
+        }
+
+        // Build setup screen survey buttons if not already present
+        if (setupScreen != null && setupScreen.NewSurveyButton == null)
+        {
+            BuildSetupSurveyButtons(setupScreen, builderPanel, configPanel, configManager);
+        }
+    }
+
+    private void BuildSetupSurveyButtons(SetupScreen setup, SurveyBuilderPanel builder,
+        ConfigManagerPanel configPanel, SurveyConfigManager configManager)
+    {
+        Transform parent = setup.transform;
+
+        // Find or create a button row for survey controls
+        GameObject surveyRow = new GameObject("SurveyButtonRow");
+        surveyRow.transform.SetParent(parent, false);
+        RectTransform rowRt = surveyRow.AddComponent<RectTransform>();
+        rowRt.anchorMin = new Vector2(0.1f, 0.55f);
+        rowRt.anchorMax = new Vector2(0.9f, 0.62f);
+        rowRt.offsetMin = Vector2.zero;
+        rowRt.offsetMax = Vector2.zero;
+
+        HorizontalLayoutGroup hlg = surveyRow.AddComponent<HorizontalLayoutGroup>();
+        hlg.spacing = 10;
+        hlg.childForceExpandWidth = true;
+        hlg.childForceExpandHeight = true;
+        hlg.childControlWidth = true;
+        hlg.childControlHeight = true;
+
+        Button newBtn = CreateButton(surveyRow.transform, "NewSurveyBtn", "New Survey",
+            Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+        newBtn.onClick.AddListener(() => { setup.gameObject.SetActive(false); builder.Show(null); });
+        setup.NewSurveyButton = newBtn;
+
+        Button loadBtn = CreateButton(surveyRow.transform, "LoadConfigBtn", "Load Config",
+            Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+        loadBtn.onClick.AddListener(() => configPanel.ShowLoadPanel());
+        setup.LoadConfigButton = loadBtn;
+
+        Button tplBtn = CreateButton(surveyRow.transform, "TemplateBtn", "Templates",
+            Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+        tplBtn.onClick.AddListener(() => configPanel.ShowTemplatePanel());
+        setup.TemplateButton = tplBtn;
+
+        Button startBtn = CreateButton(surveyRow.transform, "StartSurveyBtn", "Start w/ Config",
+            Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
+        setup.StartWithSurveyButton = startBtn;
+
+        // Active config text below buttons
+        Text activeText = CreateText(parent, "ActiveConfigText", "No active config",
+            14, TextAnchor.MiddleCenter,
+            new Vector2(0.1f, 0.48f), new Vector2(0.9f, 0.54f),
+            Vector2.zero, Vector2.zero);
+        activeText.color = Color.yellow;
+        setup.ActiveConfigText = activeText;
+        setup.SurveyConfigManager = configManager;
     }
 
     // ── Car Labels ─────────────────────────────────────────
