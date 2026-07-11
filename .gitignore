@@ -80,6 +80,8 @@ mono_crash.*
 *.unitypackage
 *.unitypackage.meta
 *.app
+Deploy/webgl-build/*
+!Deploy/webgl-build/.gitkeep
 
 # Crashlytics generated file
 crashlytics-build.properties

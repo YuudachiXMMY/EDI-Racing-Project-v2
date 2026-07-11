@@ -1,15 +1,23 @@
 using System;
 using UnityEngine;
+#if UNITY_WEBGL && !UNITY_EDITOR
+using System.Runtime.InteropServices;
+#endif
 
 /// <summary>
 /// Manages WebSocket connection lifecycle, room creation/joining,
 /// and message routing. Attach to a GameObject in the scene.
+/// In WebGL builds, the server URL is auto-detected from the page hostname.
 /// </summary>
 public class NetworkManager : MonoBehaviour
 {
     [Header("Configuration")]
-    [Tooltip("WebSocket server URL (ws://host:port)")]
+    [Tooltip("WebSocket server URL. Ignored in WebGL builds (auto-detected from page URL).")]
     public string ServerUrl = "ws://localhost:8080";
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+    [DllImport("__Internal")] private static extern string WebSocketBridge_GetPageWebSocketUrl();
+#endif
 
     public bool IsConnected => bridge != null && bridge.IsConnected;
     public bool IsHost { get; private set; }
@@ -58,8 +66,22 @@ public class NetworkManager : MonoBehaviour
     public void Connect()
     {
         if (bridge == null || bridge.IsConnected) return;
-        Debug.Log($"[NetworkManager] Connecting to {ServerUrl}...");
-        bridge.Connect(ServerUrl);
+        string url = GetServerUrl();
+        Debug.Log($"[NetworkManager] Connecting to {url}...");
+        bridge.Connect(url);
+    }
+
+    private string GetServerUrl()
+    {
+#if UNITY_WEBGL && !UNITY_EDITOR
+        string autoUrl = WebSocketBridge_GetPageWebSocketUrl();
+        if (!string.IsNullOrEmpty(autoUrl))
+        {
+            Debug.Log($"[NetworkManager] Auto-detected WebSocket URL: {autoUrl}");
+            return autoUrl;
+        }
+#endif
+        return ServerUrl;
     }
 
     public void Disconnect()

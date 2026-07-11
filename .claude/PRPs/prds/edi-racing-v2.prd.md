@@ -230,7 +230,7 @@ Events modify NavMeshAgent.speed at runtime with configurable duration
 | 3 | Survey & Data | CSV import (v1 format), session save/load, results export | complete | with 2, 4 | 1 | [survey-data.plan.md](../plans/completed/survey-data.plan.md) |
 | 4 | UI & Camera | Professor controls, student spectator view, score dashboard | complete | with 2, 3 | 1 | [ui-camera.plan.md](../plans/completed/ui-camera.plan.md) |
 | 5 | Multi-Client Sync | WebSocket server, session management, professor-authoritative sync | complete | - | 1, 2, 3, 4 | [multi-client-sync.plan.md](../plans/completed/multi-client-sync.plan.md) |
-| 6 | WebGL Build & Docker | WebGL optimization, Dockerfile, nginx + WS server, compose | pending | - | 5 | - |
+| 6 | WebGL Build & Docker | WebGL optimization, Dockerfile, nginx + WS server, compose | complete | - | 5 | [webgl-build-docker.plan.md](../plans/completed/webgl-build-docker.plan.md) |
 | 7 | Polish & Testing | Visual effects, browser compat, 50-car perf testing, docs | pending | - | 6 | - |
 
 ### Phase Details

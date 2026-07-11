@@ -2,16 +2,24 @@ using System;
 using System.IO;
 using System.Linq;
 using UnityEngine;
+#if UNITY_WEBGL && !UNITY_EDITOR
+using System.Runtime.InteropServices;
+#endif
 
 /// <summary>
 /// Saves/loads race sessions as JSON and exports results as CSV.
 /// Files are stored in Application.persistentDataPath/Sessions/.
+/// In WebGL builds, CSV exports trigger a browser download dialog.
 /// </summary>
 public class SessionManager : MonoBehaviour
 {
     [Header("Configuration")]
     [Tooltip("Subfolder name within Application.persistentDataPath for session files")]
     public string SaveFolder = "Sessions";
+
+#if UNITY_WEBGL && !UNITY_EDITOR
+    [DllImport("__Internal")] private static extern void WebSocketBridge_DownloadFile(string filename, string content);
+#endif
 
     public string SaveSession(SessionData session)
     {
@@ -57,12 +65,8 @@ public class SessionManager : MonoBehaviour
 
     public string ExportResults(RaceResults results)
     {
-        string dir = GetSaveDirectory();
-        Directory.CreateDirectory(dir);
-
         string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
         string filename = $"results_{timestamp}.csv";
-        string path = Path.Combine(dir, filename);
 
         string csv = ResultsExporter.ExportRankingsCsv(results);
         if (results.EventLog != null && results.EventLog.Length > 0)
@@ -71,10 +75,18 @@ public class SessionManager : MonoBehaviour
             csv += ResultsExporter.ExportEventLogCsv(results);
         }
 
+#if UNITY_WEBGL && !UNITY_EDITOR
+        WebSocketBridge_DownloadFile(filename, csv);
+        Debug.Log($"[SessionManager] Results download triggered: {filename}");
+        return filename;
+#else
+        string dir = GetSaveDirectory();
+        Directory.CreateDirectory(dir);
+        string path = Path.Combine(dir, filename);
         File.WriteAllText(path, csv);
-
         Debug.Log($"[SessionManager] Results exported: {path}");
         return path;
+#endif
     }
 
     public string[] GetSavedSessionPaths()
