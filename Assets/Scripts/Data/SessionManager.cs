@@ -63,12 +63,14 @@ public class SessionManager : MonoBehaviour
         return files.OrderByDescending(f => File.GetLastWriteTimeUtc(f)).First();
     }
 
-    public string ExportResults(RaceResults results)
+    public string ExportResults(RaceResults results, SurveyConfig config = null)
     {
         string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
         string filename = $"results_{timestamp}.csv";
 
-        string csv = ResultsExporter.ExportRankingsCsv(results);
+        string csv = config != null
+            ? ResultsExporter.ExportRankingsCsv(results, config)
+            : ResultsExporter.ExportRankingsCsv(results);
         if (results.EventLog != null && results.EventLog.Length > 0)
         {
             csv += "\nEvent Log\n";

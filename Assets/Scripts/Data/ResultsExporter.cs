@@ -8,6 +8,21 @@ using System.Text;
 /// </summary>
 public static class ResultsExporter
 {
+    public static string ExportRankingsCsv(RaceResults results, SurveyConfig config)
+    {
+        var sb = new StringBuilder();
+        if (config != null)
+        {
+            sb.AppendLine($"# Survey: {config.ConfigName}");
+            int qCount = config.Questions != null ? config.Questions.Length : 0;
+            int rCount = config.Rules != null ? config.Rules.Length : 0;
+            sb.AppendLine($"# Questions: {qCount}, Rules: {rCount}");
+            sb.AppendLine();
+        }
+        sb.Append(ExportRankingsCsv(results));
+        return sb.ToString();
+    }
+
     public static string ExportRankingsCsv(RaceResults results)
     {
         if (results.Rankings == null || results.Rankings.Length == 0)

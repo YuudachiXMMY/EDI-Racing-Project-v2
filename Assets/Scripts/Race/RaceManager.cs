@@ -155,7 +155,8 @@ public class RaceManager : MonoBehaviour
     {
         if (SessionManager == null || !raceStarted) return;
         var results = ScoreManager.CollectResults(eventLog, Time.time - raceStartTime);
-        SessionManager.ExportResults(results);
+        var config = SurveyConfigManager != null ? SurveyConfigManager.ActiveConfig : null;
+        SessionManager.ExportResults(results, config);
     }
 
     public void LoadFromSession(SessionData session)
@@ -243,14 +244,19 @@ public class RaceManager : MonoBehaviour
         }
 
         string surveyConfigName = "";
+        SurveyConfig surveyConfig = null;
         if (SurveyConfigManager != null && SurveyConfigManager.ActiveConfig != null)
+        {
             surveyConfigName = SurveyConfigManager.ActiveConfig.ConfigName ?? "";
+            surveyConfig = SurveyConfigManager.ActiveConfig;
+        }
 
         return new SessionData
         {
             SessionName = "Race Session",
             CreatedAt = DateTime.Now.ToString("o"),
             SurveyConfigName = surveyConfigName,
+            SurveyConfig = surveyConfig,
             Cars = cars,
             Events = events,
             RaceSettings = SavedRaceConfig.FromScriptableObject(Config),
@@ -264,7 +270,14 @@ public class RaceManager : MonoBehaviour
 
         session.RaceSettings.ApplyTo(Config);
 
-        if (EventManager != null && EventManager.Schedule != null && session.Events.Length > 0)
+        // Restore SurveyConfig if present (takes priority over raw event list)
+        if (session.SurveyConfig != null && SurveyConfigManager != null)
+        {
+            SurveyConfigManager.SetActiveConfig(session.SurveyConfig);
+            if (EventManager != null && EventManager.Schedule != null)
+                SurveyConfigManager.ApplyRulesToSchedule(EventManager.Schedule);
+        }
+        else if (EventManager != null && EventManager.Schedule != null && session.Events.Length > 0)
         {
             int count = Mathf.Min(session.Events.Length, EventManager.Schedule.Events.Length);
             for (int i = 0; i < count; i++)
@@ -312,7 +325,8 @@ public class RaceManager : MonoBehaviour
         if (raceStarted && Keyboard.current[Key.X].wasPressedThisFrame)
         {
             var results = ScoreManager.CollectResults(eventLog, Time.time - raceStartTime);
-            SessionManager.ExportResults(results);
+            var config = SurveyConfigManager != null ? SurveyConfigManager.ActiveConfig : null;
+            SessionManager.ExportResults(results, config);
         }
     }
 }
