@@ -53,6 +53,31 @@ Zoom,2,password
 2. **Students**: Open the same URL in their browser, enter the room code, and click **Join**
 3. Professor starts the race — all connected student browsers show the race in spectator mode
 
+## Scripts & Commands
+
+<!-- AUTO-GENERATED from scripts/ and Deploy/ -->
+
+| Command | Description |
+|---------|-------------|
+| `./scripts/build-webgl.sh` | Build WebGL from CLI (auto-detects Unity 6 on macOS, or set `UNITY_PATH`) |
+| `./Deploy/fix-webgl.sh` | Validate and patch `index.html` with correct Build artifact filenames |
+| `./Deploy/fix-webgl.sh --serve` | Patch + start local HTTP server on port 8080 for testing |
+| `cd Deploy && docker-compose up --build` | Build Docker image and start nginx + WebSocket server |
+| `cd Server && npm start` | Run WebSocket relay server standalone (for local dev) |
+
+<!-- /AUTO-GENERATED -->
+
+## Environment Variables
+
+<!-- AUTO-GENERATED from Server/server.js and Deploy/docker-compose.yml -->
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `PORT` | No | `8080` (standalone) / `3000` (Docker) | WebSocket server listen port. Set in `docker-compose.yml` as `3000`; nginx proxies `/ws` to this port |
+| `UNITY_PATH` | No | Auto-detected | Path to Unity executable; used by `scripts/build-webgl.sh` |
+
+<!-- /AUTO-GENERATED -->
+
 ## WebGL Build
 
 ### From Unity Editor
@@ -62,10 +87,21 @@ Zoom,2,password
 ### From CLI
 
 ```bash
-Unity -batchmode -executeMethod BuildScript.BuildWebGL -quit
+./scripts/build-webgl.sh
+# Or with explicit Unity path:
+UNITY_PATH=/path/to/Unity ./scripts/build-webgl.sh
 ```
 
 Output: `Deploy/webgl-build/`
+
+### Fix Loading Issues
+
+If the WebGL build gets stuck at loading, run the fixer script:
+
+```bash
+./Deploy/fix-webgl.sh          # patch index.html
+./Deploy/fix-webgl.sh --serve  # patch + serve locally on :8080
+```
 
 ## Docker Deployment
 
@@ -75,8 +111,8 @@ docker-compose up --build
 ```
 
 Open `http://localhost:8080` in a browser. The container runs:
-- **nginx** on port 80 — serves the WebGL build
-- **Node.js WebSocket server** on port 3000 — handles multi-client sync
+- **nginx** on port 80 — serves the WebGL build with Brotli support
+- **Node.js WebSocket server** on port 3000 — handles multi-client sync (proxied via nginx at `/ws`)
 
 The `docker-compose.yml` maps container port 80 to host port 8080.
 
@@ -95,9 +131,11 @@ CheckpointTrigger -> LapTracker -> lap/ranking updates
 **Key components:**
 - **RaceManager** — central orchestrator; game state machine (Setup -> Racing -> Paused -> Finished)
 - **CarController** — NavMeshAgent pathfinding with look-ahead, curvature braking, collision detection
-- **EventManager** — 7 pre-configured event types; professor triggers via keyboard or UI
+- **EventManager** — attribute-based event rules; professor triggers via keyboard or UI
+- **RuleEngine** — evaluates `EventRule` conditions against car attributes (replaces hardcoded event matching)
 - **WeatherEffect** — snow particles and night-mode lighting transitions
 - **NetworkSync** — WebSocket-based professor-to-student state broadcast
+- **SurveyCollector** — collects student survey responses in real-time via WebSocket
 - **SessionManager** — JSON save/load + CSV results export
 
 ## Project Structure
@@ -106,20 +144,31 @@ CheckpointTrigger -> LapTracker -> lap/ranking updates
 Assets/
   Scripts/
     Car/          CarController, CarIdentity
-    Data/         CarData, CsvParser, SessionManager, ResultsExporter
-    Events/       EventManager, EventMatcher, WeatherEffect, RaceEventConfig
-    Race/         RaceManager, CarSpawner, LapTracker, ScoreManager, RaceConfig
-    Camera/       CameraManager, SpectatorCamera, RaceCameraController
-    UI/           RaceUI, SetupScreen, JoinScreen, LeaderboardPanel, EventPanel, RaceFinishPanel
-    Network/      NetworkManager, NetworkSync, NetworkMessages
-    Editor/       TrackSetupEditor, BuildScript
+    Data/         CarData, CsvParser, SessionManager, SessionData, ResultsExporter,
+                  AttributeMapping, SurveyConfig, SurveyConfigManager, SurveyQuestion,
+                  SurveyResponseMapper, SurveyTemplates
+    Events/       EventManager, EventRule, EventSchedule, RuleEngine,
+                  ComparisonOperator, WeatherType, WeatherEffect
+    Race/         RaceManager, CarSpawner, LapTracker, ScoreManager, RaceConfig,
+                  WaypointPath, CheckpointTrigger
+    Camera/       CameraManager, SpectatorCamera, RaceCameraController, FixedCameraPoint
+    UI/           RaceUI, SetupScreen, JoinScreen, LeaderboardPanel, EventPanel,
+                  RaceFinishPanel, RaceControlPanel, StudentSurveyPanel,
+                  SurveyBuilderPanel, ConfigManagerPanel, CarLabel, CarLabelSpawner,
+                  GameState, TabButton, BuilderUIFactory, MappingEditorRow,
+                  QuestionEditorRow, RuleEditorRow
+    Network/      NetworkManager, NetworkSync, NetworkMessages, SurveyCollector
+    Editor/       TrackSetupEditor, BuildScript, SceneWiring
+    RuntimeSetup.cs
   Settings/       RaceConfig.asset, EventSchedule.asset, URP pipeline assets
   Prefabs/Cars/   Car_Green, Car_Black, Car_Red, Car_Blue, Car_White
   Scenes/         complete_track_demo.unity
 Deploy/
-  Dockerfile, docker-compose.yml, nginx/, start.sh, webgl-build/
+  Dockerfile, docker-compose.yml, nginx/, start.sh, fix-webgl.sh, webgl-build/
 Server/
-  server.js       Node.js WebSocket server
+  server.js       Node.js WebSocket server (ws library)
+scripts/
+  build-webgl.sh  CLI WebGL build script
 ```
 
 ## License

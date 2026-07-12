@@ -61,7 +61,7 @@ CheckpointTrigger → LapTracker.OnCarPassedCheckpoint → lap/ranking updates
 
 ### Event System
 
-7 event types matching v1 parity. Events are pre-configured in `EventSchedule` ScriptableObject. Professor triggers via keyboard (1-7) or UI panel. `EventMatcher.IsAffected()` determines which cars are hit. `CarController.ApplySpeedModifier()` applies temporary speed changes via coroutine stacking.
+7 event types matching v1 parity. Events are pre-configured in `EventSchedule` ScriptableObject as `EventRule` structs. Professor triggers via keyboard (1-7) or UI panel. `RuleEngine.Evaluate()` determines which cars are affected based on attribute-based conditions (`ComparisonOperator`). `CarController.ApplySpeedModifier()` applies temporary speed changes via coroutine stacking.
 
 ### UI / Camera (Role-based)
 
@@ -90,8 +90,8 @@ CheckpointTrigger → LapTracker.OnCarPassedCheckpoint → lap/ranking updates
 
 ## Implementation Status
 
-Phases 1-6 complete (core racing, events, data pipeline, UI/camera, WebSocket sync, WebGL/Docker, flexible survey system with integration tests). Remaining:
-- **Phase 7**: Polish, weather VFX, browser testing, 50-car performance
+Phases 1-6 complete (core racing, events, data pipeline, UI/camera, WebSocket sync, WebGL/Docker, flexible survey system with integration tests). Phase 7 partially complete (weather VFX with skybox transitions, day/sunset cycle, snow particles). Remaining:
+- **Phase 7 (remaining)**: Browser testing, 50-car performance optimization
 
 ## Conventions
 
