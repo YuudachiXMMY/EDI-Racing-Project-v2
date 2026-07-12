@@ -120,6 +120,10 @@ wss.on('connection', (ws) => {
         if (room.professor && room.professor.readyState === 1) {
           sendJSON(room.professor, { type: 'student_count', count: room.students.size });
         }
+        // Send cached survey to late-joiner (if survey distributed but race not started)
+        if (room.surveyData && !room.raceStarted) {
+          ws.send(room.surveyData);
+        }
         // If race already started, send latest state to late-joiner
         if (room.latestState) {
           ws.send(room.latestState);
@@ -129,23 +133,31 @@ wss.on('connection', (ws) => {
       }
 
       default: {
-        // Professor broadcast: relay to all students in the room
         const info = clientRooms.get(ws);
-        if (!info || info.role !== 'professor') return;
+        if (!info) return;
         const room = rooms.get(info.roomCode);
         if (!room) return;
 
         const raw = data.toString();
 
-        // Cache race_start and state_update for late-joiners
-        if (msg.type === 'race_start') {
-          room.raceStarted = true;
-          room.latestState = raw;
-        } else if (msg.type === 'state_update') {
-          room.latestState = raw;
-        }
+        if (info.role === 'professor') {
+          // Professor → Students relay
+          if (msg.type === 'race_start') {
+            room.raceStarted = true;
+            room.latestState = raw;
+          } else if (msg.type === 'state_update') {
+            room.latestState = raw;
+          } else if (msg.type === 'survey_questions') {
+            room.surveyData = raw; // Cache for late-joiners
+          }
 
-        broadcastToStudents(info.roomCode, raw);
+          broadcastToStudents(info.roomCode, raw);
+        } else if (info.role === 'student') {
+          // Student → Professor relay
+          if (room.professor && room.professor.readyState === 1) {
+            room.professor.send(raw);
+          }
+        }
         break;
       }
     }

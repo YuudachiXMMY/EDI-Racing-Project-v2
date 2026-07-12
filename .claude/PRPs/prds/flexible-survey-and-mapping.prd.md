@@ -211,7 +211,7 @@ MODIFIED COMPONENTS:
 | 2 | Custom Rule Engine | Replace EventMatcher with configurable rule engine, new EventRule data model, update EventManager | complete | - | 1 | [custom-rule-engine.plan.md](../plans/completed/custom-rule-engine.plan.md) |
 | 3 | Survey Config System | JSON schema for SurveyConfig (questions + mappings + rules), file I/O, template library | complete | with 2 | 1 | [survey-config-system.plan.md](../plans/completed/survey-config-system.plan.md) |
 | 4 | Professor Builder UI | Runtime UI for survey builder, attribute mapping editor, and event rule editor | complete | - | 2, 3 | [professor-builder-ui.plan.md](../plans/completed/professor-builder-ui.plan.md) |
-| 5 | Student Survey System | In-game survey UI for students, WebSocket survey collection, response-to-CarData pipeline | pending | with 4 | 1, 3 | - |
+| 5 | Student Survey System | In-game survey UI for students, WebSocket survey collection, response-to-CarData pipeline | complete | with 4 | 1, 3 | [student-survey-system.plan.md](../plans/completed/student-survey-system.plan.md) |
 | 6 | Integration & Testing | Wire all systems together, end-to-end testing, migration guide, documentation | pending | - | 4, 5 | - |
 
 ### Phase Details

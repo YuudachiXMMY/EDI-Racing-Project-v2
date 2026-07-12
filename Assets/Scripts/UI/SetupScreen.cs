@@ -32,6 +32,12 @@ public class SetupScreen : MonoBehaviour
     public Button StartWithSurveyButton;
     public Text ActiveConfigText;
 
+    [Header("Survey Collection (Optional)")]
+    public SurveyCollector SurveyCollector;
+    public Button DistributeSurveyButton;
+    public Button StartWithResponsesButton;
+    public Text ResponseCountText;
+
     private void Start()
     {
         if (RaceManager == null)
@@ -71,6 +77,19 @@ public class SetupScreen : MonoBehaviour
         if (TemplateButton != null) TemplateButton.gameObject.SetActive(hasSurvey);
         if (StartWithSurveyButton != null) StartWithSurveyButton.gameObject.SetActive(hasSurvey);
         if (ActiveConfigText != null) ActiveConfigText.gameObject.SetActive(hasSurvey);
+
+        // Survey collection buttons
+        if (DistributeSurveyButton != null)
+        {
+            DistributeSurveyButton.gameObject.SetActive(false);
+            DistributeSurveyButton.onClick.AddListener(OnDistributeSurvey);
+        }
+        if (StartWithResponsesButton != null)
+        {
+            StartWithResponsesButton.gameObject.SetActive(false);
+            StartWithResponsesButton.onClick.AddListener(OnStartWithResponses);
+        }
+        if (ResponseCountText != null) ResponseCountText.gameObject.SetActive(false);
 
         if (InfoText != null)
             InfoText.text = "Ready to start race.";
@@ -182,6 +201,11 @@ public class SetupScreen : MonoBehaviour
             RoomCodeText.text = $"Room: {roomCode}";
         }
         if (InfoText != null) InfoText.text = "Room created. Start when ready.";
+
+        // Show distribute button if we have an active config
+        bool canDistribute = SurveyConfigManager != null && SurveyConfigManager.ActiveConfig != null
+            && SurveyCollector != null;
+        if (DistributeSurveyButton != null) DistributeSurveyButton.gameObject.SetActive(canDistribute);
     }
 
     private void OnStudentCountChanged(int count)
@@ -197,6 +221,59 @@ public class SetupScreen : MonoBehaviour
     {
         if (InfoText != null) InfoText.text = $"Network error: {error}";
         if (HostButton != null) HostButton.interactable = true;
+    }
+
+    // --- Survey Collection ---
+
+    private void OnDistributeSurvey()
+    {
+        if (SurveyCollector == null || SurveyConfigManager == null) return;
+        if (SurveyConfigManager.ActiveConfig == null)
+        {
+            if (InfoText != null) InfoText.text = "No active config. Load or create one first.";
+            return;
+        }
+
+        SurveyCollector.DistributeSurvey(SurveyConfigManager.ActiveConfig);
+        SurveyCollector.OnResponseReceived += OnSurveyResponseReceived;
+
+        if (DistributeSurveyButton != null) DistributeSurveyButton.interactable = false;
+        if (ResponseCountText != null)
+        {
+            ResponseCountText.gameObject.SetActive(true);
+            ResponseCountText.text = "Responses: 0";
+        }
+        if (StartWithResponsesButton != null) StartWithResponsesButton.gameObject.SetActive(true);
+        if (InfoText != null) InfoText.text = "Survey distributed. Waiting for responses...";
+    }
+
+    private void OnSurveyResponseReceived(int count)
+    {
+        if (ResponseCountText != null)
+            ResponseCountText.text = $"Responses: {count}";
+        if (StartWithResponsesButton != null)
+            StartWithResponsesButton.interactable = count > 0;
+    }
+
+    private void OnStartWithResponses()
+    {
+        if (SurveyCollector == null || !SurveyCollector.HasResponses) return;
+        if (RaceManager == null) return;
+
+        // Close survey for students
+        SurveyCollector.CloseSurvey();
+
+        // Apply rules from config to EventSchedule
+        if (SurveyConfigManager != null && SurveyConfigManager.ActiveConfig != null
+            && RaceManager.EventManager != null)
+        {
+            SurveyConfigManager.ApplyRulesToSchedule(RaceManager.EventManager.Schedule);
+        }
+
+        // Start race with collected responses
+        var carDataList = SurveyCollector.GetAllCarData();
+        RaceManager.LoadAndStartRace(carDataList);
+        gameObject.SetActive(false);
     }
 
     // --- Race Start ---

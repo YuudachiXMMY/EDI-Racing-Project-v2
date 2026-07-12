@@ -21,6 +21,7 @@ public class RaceUI : MonoBehaviour
     public RaceControlPanel Controls;
     public SetupScreen Setup;
     public JoinScreen JoinScreen;
+    public StudentSurveyPanel StudentSurvey;
 
     private void Start()
     {
@@ -79,5 +80,9 @@ public class RaceUI : MonoBehaviour
             if (Events != null) Events.gameObject.SetActive(isRacing);
             if (Controls != null) Controls.gameObject.SetActive(isRacing);
         }
+
+        // Hide survey panel when race starts
+        if (isRacing && StudentSurvey != null)
+            StudentSurvey.gameObject.SetActive(false);
     }
 }
