@@ -90,9 +90,7 @@ CheckpointTrigger → LapTracker.OnCarPassedCheckpoint → lap/ranking updates
 
 ## Implementation Status
 
-Phases 1-4 complete (core racing, events, data pipeline, UI/camera). Remaining:
-- **Phase 5**: Multi-client WebSocket sync (students view race in their own browser)
-- **Phase 6**: WebGL build + Docker deployment
+Phases 1-6 complete (core racing, events, data pipeline, UI/camera, WebSocket sync, WebGL/Docker, flexible survey system with integration tests). Remaining:
 - **Phase 7**: Polish, weather VFX, browser testing, 50-car performance
 
 ## Conventions

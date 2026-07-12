@@ -1,0 +1,20 @@
+{
+    "name": "EDIRacing.Editor",
+    "rootNamespace": "",
+    "references": [
+        "EDIRacing.Runtime",
+        "Unity.InputSystem",
+        "Unity.AI.Navigation"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
