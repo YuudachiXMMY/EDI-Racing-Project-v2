@@ -46,7 +46,7 @@ public class CarSpawner : MonoBehaviour
                 spawnPos = StartingGridPositions[i].position;
                 spawnRot = StartingGridPositions[i].rotation;
             }
-            else
+            else if (SpawnPoint != null)
             {
                 Vector3 randomOffset = new Vector3(
                     Random.Range(-Config.SpawnOffsetX, Config.SpawnOffsetX),
@@ -55,6 +55,12 @@ public class CarSpawner : MonoBehaviour
                 );
                 spawnPos = SpawnPoint.position + Config.SpawnSpreadMultiplier * randomOffset;
                 spawnRot = SpawnPoint.rotation;
+            }
+            else
+            {
+                Debug.LogWarning($"[CarSpawner] No SpawnPoint assigned and no grid position for car {i} ('{data.TeamName}'). Using origin.");
+                spawnPos = Vector3.zero;
+                spawnRot = Quaternion.identity;
             }
 
             spawnPos = SnapToNavMesh(spawnPos, data.TeamName, agentTypeID);
@@ -179,7 +185,13 @@ public class CarSpawner : MonoBehaviour
         trail.time = Config.TrailDuration;
         trail.startWidth = Config.TrailStartWidth;
         trail.endWidth = Config.TrailEndWidth;
-        trail.material = new Material(Shader.Find("Sprites/Default"));
+        var trailShader = Shader.Find("Universal Render Pipeline/Unlit")
+                         ?? Shader.Find("Sprites/Default")
+                         ?? Shader.Find("UI/Default");
+        if (trailShader != null)
+            trail.material = new Material(trailShader);
+        else
+            Debug.LogWarning("[CarSpawner] No suitable trail shader found; using default material");
         trail.startColor = GetTrailColor(colorIndex);
         trail.endColor = new Color(trail.startColor.r, trail.startColor.g, trail.startColor.b, 0f);
         trail.minVertexDistance = 0.5f;

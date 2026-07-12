@@ -1,5 +1,6 @@
 # MacOS
 .DS_Store
+.playwright-mcp
 
 # Unity .gitignore Template
 # Source: https://github.com/github/gitignore/blob/main/Unity.gitignore

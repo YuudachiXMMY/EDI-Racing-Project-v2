@@ -188,7 +188,13 @@ public class WeatherEffect : MonoBehaviour
         shape.scale = new Vector3(100f, 1f, 100f);
 
         var renderer = snowObj.GetComponent<ParticleSystemRenderer>();
-        renderer.material = new Material(Shader.Find("Particles/Standard Unlit"));
+        var particleShader = Shader.Find("Universal Render Pipeline/Particles/Unlit")
+                             ?? Shader.Find("Particles/Standard Unlit")
+                             ?? Shader.Find("UI/Default");
+        if (particleShader != null)
+            renderer.material = new Material(particleShader);
+        else
+            Debug.LogWarning("[WeatherEffect] No suitable particle shader found; using default material");
         renderer.renderMode = ParticleSystemRenderMode.Billboard;
 
         snowParticles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
