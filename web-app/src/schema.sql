@@ -40,3 +40,14 @@ CREATE TABLE IF NOT EXISTS responses (
 -- Unique constraint: one response per email per survey
 CREATE UNIQUE INDEX IF NOT EXISTS idx_responses_unique
   ON responses(survey_id, email);
+
+-- Built-in survey templates (seeded on first startup)
+CREATE TABLE IF NOT EXISTS templates (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT UNIQUE NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  questions_json TEXT NOT NULL DEFAULT '[]',
+  mappings_json TEXT NOT NULL DEFAULT '[]',
+  rules_json TEXT NOT NULL DEFAULT '[]',
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
