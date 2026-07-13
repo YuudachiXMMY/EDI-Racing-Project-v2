@@ -18,6 +18,19 @@ router.get('/', requireAuth, (req, res) => {
   res.json({ success: true, data: surveys });
 });
 
+// GET /api/surveys/:id/responses/count
+router.get('/:id/responses/count', requireAuth, (req, res) => {
+  const db = getDb();
+  const survey = db.prepare('SELECT id FROM surveys WHERE id = ? AND user_id = ?')
+    .get(req.params.id, req.user.userId);
+  if (!survey) {
+    return res.status(404).json({ success: false, error: 'Survey not found' });
+  }
+  const row = db.prepare('SELECT COUNT(*) as count FROM responses WHERE survey_id = ?')
+    .get(req.params.id);
+  res.json({ success: true, data: { count: row.count } });
+});
+
 // GET /api/surveys/:id — get full survey config
 router.get('/:id', requireAuth, (req, res) => {
   const db = getDb();
