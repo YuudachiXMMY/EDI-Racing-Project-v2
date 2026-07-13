@@ -73,7 +73,8 @@ CheckpointTrigger → LapTracker.OnCarPassedCheckpoint → lap/ranking updates
 
 ### Data Pipeline
 
-- **Import**: `CsvParser.Parse()` — format: `teamName,colorIndex,functionList` (functions slash-separated)
+- **CSV Import**: `CsvParser.Parse()` — format: `teamName,colorIndex,functionList` (functions slash-separated)
+- **JSON Import**: `JsonImporter.Import()` — imports survey export JSON from web-app API (`/api/configs/:id/export`)
 - **Session**: `SessionManager` saves/loads JSON to `Application.persistentDataPath/Sessions/`
 - **Export**: `ResultsExporter` generates CSV with rankings and event log
 - **Color mapping**: 0=green, 1=black, 2=red, 3=blue, 4=white

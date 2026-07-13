@@ -55,25 +55,32 @@ Zoom,2,password
 
 ## Scripts & Commands
 
-<!-- AUTO-GENERATED from scripts/ and Deploy/ -->
+<!-- AUTO-GENERATED from scripts/, Deploy/, Server/, web-app/ -->
 
 | Command | Description |
 |---------|-------------|
 | `./scripts/build-webgl.sh` | Build WebGL from CLI (auto-detects Unity 6 on macOS, or set `UNITY_PATH`) |
 | `./Deploy/fix-webgl.sh` | Validate and patch `index.html` with correct Build artifact filenames |
 | `./Deploy/fix-webgl.sh --serve` | Patch + start local HTTP server on port 8080 for testing |
-| `cd Deploy && docker-compose up --build` | Build Docker image and start nginx + WebSocket server |
+| `cd Deploy && docker-compose up --build` | Build and start all services: nginx + WebSocket + survey web-app |
 | `cd Server && npm start` | Run WebSocket relay server standalone (for local dev) |
+| `cd web-app && npm start` | Run survey web-app API server standalone (port 3001) |
+| `cd web-app && npm run dev` | Run survey web-app API with `--watch` hot reload |
+| `cd web-app/client && npm run dev` | Start Vite dev server for survey React client |
+| `cd web-app/client && npm run build` | Production build of survey React client |
+| `cd web-app/client && npm run lint` | Lint survey client with oxlint |
 
 <!-- /AUTO-GENERATED -->
 
 ## Environment Variables
 
-<!-- AUTO-GENERATED from Server/server.js and Deploy/docker-compose.yml -->
+<!-- AUTO-GENERATED from Server/server.js, web-app/src/, Deploy/docker-compose.yml -->
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `PORT` | No | `8080` (standalone) / `3000` (Docker) | WebSocket server listen port. Set in `docker-compose.yml` as `3000`; nginx proxies `/ws` to this port |
+| `API_PORT` | No | `3001` | Survey web-app API listen port |
+| `DB_PATH` | No | `web-app/data/edi-survey.db` (standalone) / `/app/data/edi-survey.db` (Docker) | SQLite database path for survey data. Docker volume `survey-data` persists this |
 | `UNITY_PATH` | No | Auto-detected | Path to Unity executable; used by `scripts/build-webgl.sh` |
 
 <!-- /AUTO-GENERATED -->
@@ -110,11 +117,9 @@ cd Deploy
 docker-compose up --build
 ```
 
-Open `http://localhost:8080` in a browser. The container runs:
-- **nginx** on port 80 — serves the WebGL build with Brotli support
-- **Node.js WebSocket server** on port 3000 — handles multi-client sync (proxied via nginx at `/ws`)
-
-The `docker-compose.yml` maps container port 80 to host port 8080.
+Open `http://localhost:8080` in a browser. Docker Compose runs two services:
+- **edi-racing** — nginx (port 80→8080) serving the WebGL build with Brotli support, plus a Node.js WebSocket server on port 3000 (proxied at `/ws`)
+- **web-app** — Express API + React SPA for survey management (proxied by nginx at `/survey/` and `/api`). Uses SQLite with a persistent Docker volume (`survey-data`)
 
 ## Architecture
 
@@ -144,9 +149,9 @@ CheckpointTrigger -> LapTracker -> lap/ranking updates
 Assets/
   Scripts/
     Car/          CarController, CarIdentity
-    Data/         CarData, CsvParser, SessionManager, SessionData, ResultsExporter,
-                  AttributeMapping, SurveyConfig, SurveyConfigManager, SurveyQuestion,
-                  SurveyResponseMapper, SurveyTemplates
+    Data/         CarData, CsvParser, JsonImporter, SessionManager, SessionData,
+                  ResultsExporter, AttributeMapping, SurveyConfig, SurveyConfigManager,
+                  SurveyQuestion, SurveyResponseMapper, SurveyTemplates
     Events/       EventManager, EventRule, EventSchedule, RuleEngine,
                   ComparisonOperator, WeatherType, WeatherEffect
     Race/         RaceManager, CarSpawner, LapTracker, ScoreManager, RaceConfig,
@@ -166,7 +171,11 @@ Assets/
 Deploy/
   Dockerfile, docker-compose.yml, nginx/, start.sh, fix-webgl.sh, webgl-build/
 Server/
-  server.js       Node.js WebSocket server (ws library)
+  server.js       Node.js WebSocket relay server (ws library)
+web-app/
+  src/            Express API (index.js, db.js, routes)
+  client/         React SPA (Vite + SurveyJS)
+  Dockerfile      Multi-stage build (client + API)
 scripts/
   build-webgl.sh  CLI WebGL build script
 ```
