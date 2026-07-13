@@ -1,0 +1,90 @@
+import { Router } from 'express';
+import { getDb } from '../db.js';
+import { requireAuth } from '../middleware/auth.js';
+
+const router = Router();
+
+// GET /api/s/:shareCode — get survey for student (no auth)
+router.get('/s/:shareCode', (req, res) => {
+  const db = getDb();
+  const survey = db.prepare(
+    'SELECT id, config_name, description, questions_json, is_active FROM surveys WHERE share_code = ? COLLATE NOCASE'
+  ).get(req.params.shareCode);
+
+  if (!survey) {
+    return res.status(404).json({ success: false, error: 'Survey not found' });
+  }
+  if (!survey.is_active) {
+    return res.status(403).json({ success: false, error: 'This survey is no longer accepting responses' });
+  }
+
+  res.json({
+    success: true,
+    data: {
+      id: survey.id,
+      configName: survey.config_name,
+      description: survey.description,
+      questions: JSON.parse(survey.questions_json),
+    }
+  });
+});
+
+// POST /api/s/:shareCode/respond — submit student response (no auth)
+router.post('/s/:shareCode/respond', (req, res) => {
+  const { email, teamName, answers } = req.body;
+
+  if (!email || !email.trim()) {
+    return res.status(400).json({ success: false, error: 'Email is required' });
+  }
+  if (!teamName || !teamName.trim()) {
+    return res.status(400).json({ success: false, error: 'Team name is required' });
+  }
+
+  const db = getDb();
+  const survey = db.prepare(
+    'SELECT id, is_active FROM surveys WHERE share_code = ? COLLATE NOCASE'
+  ).get(req.params.shareCode);
+
+  if (!survey) {
+    return res.status(404).json({ success: false, error: 'Survey not found' });
+  }
+  if (!survey.is_active) {
+    return res.status(403).json({ success: false, error: 'This survey is no longer accepting responses' });
+  }
+
+  try {
+    const result = db.prepare(
+      'INSERT INTO responses (survey_id, email, team_name, answers_json) VALUES (?, ?, ?, ?)'
+    ).run(survey.id, email.trim(), teamName.trim(), JSON.stringify(answers || {}));
+
+    res.status(201).json({ success: true, data: { id: result.lastInsertRowid } });
+  } catch (err) {
+    if (err.message.includes('UNIQUE constraint failed')) {
+      return res.status(409).json({ success: false, error: 'You have already submitted a response for this survey' });
+    }
+    throw err;
+  }
+});
+
+// GET /api/surveys/:id/responses — list responses (professor, requires auth)
+router.get('/:id/responses', requireAuth, (req, res) => {
+  const db = getDb();
+  const survey = db.prepare('SELECT id FROM surveys WHERE id = ? AND user_id = ?')
+    .get(req.params.id, req.user.userId);
+  if (!survey) {
+    return res.status(404).json({ success: false, error: 'Survey not found' });
+  }
+
+  const responses = db.prepare(
+    'SELECT id, email, team_name, answers_json, submitted_at FROM responses WHERE survey_id = ? ORDER BY submitted_at DESC'
+  ).all(req.params.id);
+
+  const parsed = responses.map(r => ({
+    ...r,
+    answers: JSON.parse(r.answers_json),
+  }));
+
+  res.json({ success: true, data: parsed });
+});
+
+export default router;

@@ -88,3 +88,22 @@ export async function getTemplates() {
 export async function getResponseCount(id) {
   return request(`/surveys/${id}/responses/count`);
 }
+
+export async function getResponses(id) {
+  return request(`/surveys/${id}/responses`);
+}
+
+// Public endpoints (no auth) — use fetch directly to avoid 401 redirect
+export async function getPublicSurvey(shareCode) {
+  const res = await fetch(`/api/s/${shareCode}`);
+  return res.json();
+}
+
+export async function submitResponse(shareCode, { email, teamName, answers }) {
+  const res = await fetch(`/api/s/${shareCode}/respond`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, teamName, answers }),
+  });
+  return res.json();
+}
