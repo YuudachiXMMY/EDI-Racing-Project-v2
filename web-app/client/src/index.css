@@ -1,0 +1,115 @@
+:root {
+  --bg: #14141f;
+  --bg-card: #1e1e2e;
+  --bg-input: #2a2a3a;
+  --text: #e0e0e0;
+  --text-dim: #888;
+  --accent: #4a9eff;
+  --accent-hover: #3a8eef;
+  --danger: #e04040;
+  --success: #40a040;
+  --warning: #e0a020;
+  --border: #333;
+  --sans: system-ui, -apple-system, sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--sans);
+  font-size: 14px;
+  color: var(--text);
+  background: var(--bg);
+  line-height: 1.5;
+}
+
+#root { min-height: 100vh; }
+
+/* --- Buttons --- */
+button { cursor: pointer; border: none; border-radius: 4px; padding: 8px 16px; font-size: 14px; }
+.btn-primary { background: var(--accent); color: #fff; }
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+.btn-secondary { background: var(--bg-input); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { background: var(--border); }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-small { padding: 4px 8px; font-size: 12px; }
+
+/* --- Inputs --- */
+input, select, textarea {
+  background: var(--bg-input); color: var(--text); border: 1px solid var(--border);
+  border-radius: 4px; padding: 6px 10px; font-size: 14px; font-family: var(--sans);
+}
+input:focus, select:focus { outline: none; border-color: var(--accent); }
+input:disabled { opacity: 0.4; }
+label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-dim); }
+
+/* --- Login --- */
+.login-page { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+.login-card { background: var(--bg-card); padding: 40px; border-radius: 8px; width: 360px; text-align: center; }
+.login-card h1 { font-size: 24px; margin-bottom: 4px; }
+.login-card .subtitle { color: var(--text-dim); margin-bottom: 20px; }
+.login-card form { display: flex; flex-direction: column; gap: 12px; }
+.login-card input { width: 100%; }
+.login-card button { width: 100%; padding: 10px; }
+.login-card .error { color: var(--danger); font-size: 13px; }
+.login-card .toggle-link { margin-top: 16px; font-size: 13px; color: var(--text-dim); }
+.login-card .toggle-link a { color: var(--accent); text-decoration: none; }
+
+/* --- App Header --- */
+.app-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 24px; border-bottom: 1px solid var(--border); }
+.app-header h1 { font-size: 20px; }
+
+/* --- Dashboard --- */
+.dashboard-page { max-width: 1000px; margin: 0 auto; padding: 0 24px; }
+.dashboard-actions { display: flex; align-items: center; gap: 12px; padding: 20px 0; flex-wrap: wrap; }
+.template-dropdown { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-dim); }
+.survey-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; padding-bottom: 40px; }
+.survey-card { background: var(--bg-card); padding: 16px; border-radius: 8px; cursor: pointer; border: 1px solid var(--border); transition: border-color 0.15s; }
+.survey-card:hover { border-color: var(--accent); }
+.survey-card h3 { font-size: 16px; margin-bottom: 6px; }
+.survey-card .description { font-size: 13px; color: var(--text-dim); margin-bottom: 8px; }
+.card-meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-dim); margin-bottom: 10px; }
+.loading, .empty { text-align: center; padding: 40px; color: var(--text-dim); }
+.warning { color: var(--warning); font-size: 13px; }
+
+/* --- Editor --- */
+.editor-page { display: flex; flex-direction: column; height: 100vh; }
+.editor-header { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--border); }
+.survey-name-input { flex: 1; font-size: 16px; font-weight: 500; background: transparent; border: 1px solid transparent; color: var(--text); padding: 6px 10px; border-radius: 4px; }
+.survey-name-input:focus { border-color: var(--accent); background: var(--bg-input); }
+.save-status { font-size: 12px; color: var(--text-dim); min-width: 100px; text-align: right; }
+.tab-bar { display: flex; border-bottom: 1px solid var(--border); }
+.tab-btn { background: none; color: var(--text-dim); padding: 10px 24px; border-radius: 0; border-bottom: 2px solid transparent; }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-btn:hover { color: var(--text); }
+.tab-content { flex: 1; overflow: auto; padding: 16px; }
+
+/* --- Tab Toolbars --- */
+.tab-toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+
+/* --- Mapping Rows --- */
+.mapping-row { background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 10px; }
+.mapping-row .row-fields { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.mapping-row .arrow { color: var(--accent); font-weight: bold; }
+.mapping-row input[type="text"] { width: 120px; }
+.mapping-row select { width: 100px; }
+.lookup-section { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); }
+.lookup-section input { width: 100%; }
+
+/* --- Rule Rows --- */
+.rule-row { background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 10px; }
+.rule-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.rule-header input { flex: 1; margin-right: 8px; }
+.rule-condition { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
+.rule-condition .label { color: var(--text-dim); font-size: 13px; }
+.rule-condition input { width: 120px; }
+.rule-condition select { width: 140px; }
+.rule-effect { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.rule-effect input[type="number"] { width: 70px; }
+.rule-effect select { width: 90px; }
+.checkbox-label { display: inline-flex; align-items: center; gap: 4px; }
+.checkbox-label input[type="checkbox"] { width: auto; }
+
+/* --- SurveyJS Creator overrides --- */
+.questions-tab { background: #fff; border-radius: 6px; }
