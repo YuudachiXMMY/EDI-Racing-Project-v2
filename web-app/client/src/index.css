@@ -111,5 +111,24 @@ label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; co
 .checkbox-label { display: inline-flex; align-items: center; gap: 4px; }
 .checkbox-label input[type="checkbox"] { width: auto; }
 
+/* --- Student Survey Page --- */
+.student-page { display: flex; align-items: flex-start; justify-content: center; min-height: 100vh; padding: 24px 16px; }
+.student-card { background: var(--bg-card); padding: 32px; border-radius: 8px; width: 100%; max-width: 640px; }
+.student-card h1 { font-size: 22px; margin-bottom: 4px; }
+.student-card h2 { font-size: 20px; }
+.student-desc { color: var(--text-dim); font-size: 14px; margin-bottom: 16px; }
+.student-form { display: flex; flex-direction: column; gap: 10px; margin: 16px 0; }
+.student-form input { width: 100%; }
+.student-survey { background: #fff; border-radius: 6px; margin-top: 16px; overflow: hidden; }
+.student-confirmation { text-align: center; padding: 40px 0; }
+.student-confirmation h2 { color: var(--success); margin-bottom: 12px; }
+.student-confirmation p { color: var(--text-dim); }
+.student-error { color: var(--danger); margin-top: 16px; }
+
+@media (max-width: 480px) {
+  .student-page { padding: 12px 8px; }
+  .student-card { padding: 20px 16px; }
+}
+
 /* --- SurveyJS Creator overrides --- */
 .questions-tab { background: #fff; border-radius: 6px; }
