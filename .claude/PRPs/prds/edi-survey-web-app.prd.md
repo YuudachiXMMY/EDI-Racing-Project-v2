@@ -208,7 +208,7 @@ Unity 端：
 | 1 | Web App 基础架构 | Express API + SQLite + 教授认证 + Docker 化 | complete | - | - | `.claude/PRPs/reports/web-app-foundation-report.md` |
 | 2 | 问卷创建器 | React + SurveyJS Creator → 题目/Mapping/Rules 编辑 | complete | - | 1 | `.claude/PRPs/reports/survey-creator-report.md` |
 | 3 | 学生答题端 | SurveyJS Runner + 邮箱/team name + 响应式移动端 | complete | with 4 | 2 | `.claude/PRPs/reports/student-survey-page-report.md` |
-| 4 | 数据导出 + Unity 集成 | JSON 导出 API + Unity JsonImporter + SetupScreen 改造 | pending | with 3 | 2 | - |
+| 4 | 数据导出 + Unity 集成 | JSON 导出 API + Unity JsonImporter + SetupScreen 改造 | complete | with 3 | 2 | `.claude/PRPs/reports/data-export-unity-integration-report.md` |
 | 5 | 模板迁移 + Docker 统一部署 | 迁移 SurveyTemplates + docker-compose 统一编排 | pending | - | 3, 4 | - |
 | 6 | Unity 端清理 | 移除 SurveyBuilderPanel/StudentSurveyPanel/SurveyCollector | pending | - | 5 | - |
 

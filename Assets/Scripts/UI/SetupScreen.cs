@@ -32,6 +32,12 @@ public class SetupScreen : MonoBehaviour
     public Button StartWithSurveyButton;
     public Text ActiveConfigText;
 
+    [Header("Web App Import (Optional)")]
+    public Button ImportJsonButton;
+    public InputField JsonInputField;
+    public Button ConfirmImportButton;
+    public GameObject ImportPanel;
+
     [Header("Survey Collection (Optional)")]
     public SurveyCollector SurveyCollector;
     public Button DistributeSurveyButton;
@@ -63,6 +69,14 @@ public class SetupScreen : MonoBehaviour
             TemplateButton.onClick.AddListener(OpenTemplates);
         if (StartWithSurveyButton != null)
             StartWithSurveyButton.onClick.AddListener(StartWithSurveyConfig);
+
+        // Web App import buttons
+        if (ImportJsonButton != null)
+            ImportJsonButton.onClick.AddListener(ShowImportPanel);
+        if (ConfirmImportButton != null)
+            ConfirmImportButton.onClick.AddListener(OnConfirmImport);
+        if (ImportPanel != null)
+            ImportPanel.SetActive(false);
 
         // Hide network UI if no NetworkManager
         bool hasNetwork = NetworkManager != null;
@@ -274,6 +288,45 @@ public class SetupScreen : MonoBehaviour
         var carDataList = SurveyCollector.GetAllCarData();
         RaceManager.LoadAndStartRace(carDataList);
         gameObject.SetActive(false);
+    }
+
+    // --- Web App Import ---
+
+    private void ShowImportPanel()
+    {
+        if (ImportPanel != null) ImportPanel.SetActive(true);
+        if (JsonInputField != null) JsonInputField.text = "";
+    }
+
+    private void OnConfirmImport()
+    {
+        if (JsonInputField == null || RaceManager == null) return;
+
+        string json = JsonInputField.text;
+        if (string.IsNullOrEmpty(json))
+        {
+            if (InfoText != null) InfoText.text = "Paste JSON data first.";
+            return;
+        }
+
+        var result = JsonImporter.Parse(json);
+        if (!result.Success)
+        {
+            if (InfoText != null) InfoText.text = $"Import error: {result.Error}";
+            return;
+        }
+
+        if (result.Cars.Count == 0)
+        {
+            if (InfoText != null) InfoText.text = "No cars found in JSON. Export with student responses first.";
+            return;
+        }
+
+        RaceManager.LoadAndStartRaceWithRules(result.Cars, result.EventRules);
+        if (ImportPanel != null) ImportPanel.SetActive(false);
+        gameObject.SetActive(false);
+
+        Debug.Log($"[SetupScreen] Imported {result.Cars.Count} cars, {result.EventRules.Length} rules from Web App JSON");
     }
 
     // --- Race Start ---

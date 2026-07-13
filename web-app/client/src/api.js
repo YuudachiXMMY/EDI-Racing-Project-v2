@@ -93,6 +93,10 @@ export async function getResponses(id) {
   return request(`/surveys/${id}/responses`);
 }
 
+export async function exportSurvey(id) {
+  return request(`/surveys/${id}/export`);
+}
+
 // Public endpoints (no auth) — use fetch directly to avoid 401 redirect
 export async function getPublicSurvey(shareCode) {
   const res = await fetch(`/api/s/${shareCode}`);
