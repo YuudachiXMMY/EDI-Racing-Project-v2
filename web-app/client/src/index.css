@@ -130,5 +130,14 @@ label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; co
   .student-card { padding: 20px 16px; }
 }
 
+/* --- Export Panel --- */
+.export-panel { background: #f8f9fa; border: 1px solid var(--border); border-radius: 6px; padding: 16px; margin-bottom: 16px; }
+.export-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.export-header h3 { margin: 0; flex: 1; }
+.export-warning { color: var(--warning, #e67e22); font-style: italic; margin-bottom: 12px; }
+.export-actions { display: flex; gap: 8px; margin-bottom: 12px; }
+.export-preview { width: 100%; font-family: monospace; font-size: 12px; resize: vertical; border: 1px solid var(--border); border-radius: 4px; padding: 8px; background: #fff; }
+.response-count { color: var(--text-dim); font-size: 13px; }
+
 /* --- SurveyJS Creator overrides --- */
 .questions-tab { background: #fff; border-radius: 6px; }

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getSurvey, updateSurvey } from '../api.js';
+import { getSurvey, updateSurvey, exportSurvey, getResponseCount } from '../api.js';
 import QuestionsTab from '../components/QuestionsTab.jsx';
 import MappingsTab from '../components/MappingsTab.jsx';
 import RulesTab from '../components/RulesTab.jsx';
@@ -15,6 +15,9 @@ export default function EditorPage() {
   const [activeTab, setActiveTab] = useState(0);
   const [saveStatus, setSaveStatus] = useState('');
   const [loading, setLoading] = useState(true);
+  const [exportData, setExportData] = useState(null);
+  const [exportLoading, setExportLoading] = useState(false);
+  const [responseCount, setResponseCount] = useState(0);
   const saveTimer = useRef(null);
   const latestData = useRef(null);
 
@@ -25,12 +28,40 @@ export default function EditorPage() {
 
   async function loadSurvey() {
     setLoading(true);
-    const result = await getSurvey(id);
-    if (result.success) {
-      setSurvey(result.data);
-      latestData.current = result.data;
+    const [surveyRes, countRes] = await Promise.all([getSurvey(id), getResponseCount(id)]);
+    if (surveyRes.success) {
+      setSurvey(surveyRes.data);
+      latestData.current = surveyRes.data;
     }
+    if (countRes.success) setResponseCount(countRes.data.count);
     setLoading(false);
+  }
+
+  async function handleExport() {
+    setExportLoading(true);
+    const result = await exportSurvey(id);
+    setExportLoading(false);
+    if (result.success) {
+      setExportData(result.data);
+    }
+  }
+
+  function downloadExportJson() {
+    if (!exportData) return;
+    const json = JSON.stringify(exportData, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const safeName = (exportData.configName || 'export').replace(/[^a-zA-Z0-9_-]/g, '_');
+    a.href = url;
+    a.download = `${safeName}-export.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function copyExportJson() {
+    if (!exportData) return;
+    navigator.clipboard.writeText(JSON.stringify(exportData, null, 2));
   }
 
   const handleChange = useCallback((field, value) => {
@@ -79,7 +110,34 @@ export default function EditorPage() {
           placeholder="Survey name"
         />
         <span className="save-status">{saveStatus}</span>
+        <span className="response-count">{responseCount} response(s)</span>
+        <button onClick={handleExport} className="btn-primary" disabled={exportLoading}>
+          {exportLoading ? 'Exporting...' : 'Export for Unity'}
+        </button>
       </header>
+
+      {exportData && (
+        <div className="export-panel">
+          <div className="export-header">
+            <h3>Export: {exportData.configName}</h3>
+            <span>{exportData.carData.length} car(s), {exportData.eventRules.length} rule(s)</span>
+            <button onClick={() => setExportData(null)} className="btn-secondary btn-small">Close</button>
+          </div>
+          {exportData.carData.length === 0 && (
+            <p className="export-warning">No responses yet. Share the survey link with students first.</p>
+          )}
+          <div className="export-actions">
+            <button onClick={downloadExportJson} className="btn-primary">Download JSON</button>
+            <button onClick={copyExportJson} className="btn-secondary">Copy to Clipboard</button>
+          </div>
+          <textarea
+            className="export-preview"
+            readOnly
+            value={JSON.stringify(exportData, null, 2)}
+            rows={12}
+          />
+        </div>
+      )}
 
       <div className="tab-bar">
         {TABS.map((tab, i) => (
