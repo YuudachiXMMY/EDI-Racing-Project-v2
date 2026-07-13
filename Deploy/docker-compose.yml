@@ -8,7 +8,8 @@ services:
     environment:
       - PORT=3000
     depends_on:
-      - web-app
+      web-app:
+        condition: service_healthy
     restart: unless-stopped
 
   web-app:
@@ -20,6 +21,11 @@ services:
     environment:
       - API_PORT=3001
       - DB_PATH=/app/data/edi-survey.db
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     restart: unless-stopped
 
 volumes:
