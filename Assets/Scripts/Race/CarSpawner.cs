@@ -26,6 +26,7 @@ public class CarSpawner : MonoBehaviour
     public float NavMeshSampleRadius = 20f;
 
     private int cachedAgentTypeID = -1;
+    private Material sharedTrailMaterial;
 
     public List<GameObject> SpawnCars(List<CarData> carDataList)
     {
@@ -88,7 +89,7 @@ public class CarSpawner : MonoBehaviour
             agent.agentTypeID = agentTypeID;
             agent.baseOffset = Config.BaseOffset;
             agent.radius = Config.AgentRadius;
-            agent.obstacleAvoidanceType = ObstacleAvoidanceType.HighQualityObstacleAvoidance;
+            agent.obstacleAvoidanceType = Config.AvoidanceQuality;
 
             car.SetActive(true);
             agent.Warp(spawnPos);
@@ -185,16 +186,14 @@ public class CarSpawner : MonoBehaviour
         trail.time = Config.TrailDuration;
         trail.startWidth = Config.TrailStartWidth;
         trail.endWidth = Config.TrailEndWidth;
-        var trailShader = Shader.Find("Universal Render Pipeline/Unlit")
-                         ?? Shader.Find("Sprites/Default")
-                         ?? Shader.Find("UI/Default");
-        if (trailShader != null)
-            trail.material = new Material(trailShader);
+        var mat = GetSharedTrailMaterial();
+        if (mat != null)
+            trail.sharedMaterial = mat;
         else
             Debug.LogWarning("[CarSpawner] No suitable trail shader found; using default material");
         trail.startColor = GetTrailColor(colorIndex);
         trail.endColor = new Color(trail.startColor.r, trail.startColor.g, trail.startColor.b, 0f);
-        trail.minVertexDistance = 0.5f;
+        trail.minVertexDistance = Config.TrailMinVertexDistance;
         trail.shadowCastingMode = ShadowCastingMode.Off;
         trail.receiveShadows = false;
     }
@@ -210,6 +209,17 @@ public class CarSpawner : MonoBehaviour
             case 4: return new Color(0.9f, 0.9f, 0.9f);  // white
             default: return Color.white;
         }
+    }
+
+    private Material GetSharedTrailMaterial()
+    {
+        if (sharedTrailMaterial != null) return sharedTrailMaterial;
+        var shader = Shader.Find("Universal Render Pipeline/Unlit")
+                     ?? Shader.Find("Sprites/Default")
+                     ?? Shader.Find("UI/Default");
+        if (shader != null)
+            sharedTrailMaterial = new Material(shader);
+        return sharedTrailMaterial;
     }
 
     private int FindAgentTypeID(string typeName)

@@ -35,6 +35,7 @@ public class RaceManager : MonoBehaviour
     private bool raceFinished;
     private float raceStartTime;
     private readonly List<EventLogEntry> eventLog = new List<EventLogEntry>();
+    private Keyboard cachedKeyboard;
 
     // --- Phase 4: UI Integration ---
     public GameState CurrentState { get; private set; } = GameState.Setup;
@@ -317,20 +318,21 @@ public class RaceManager : MonoBehaviour
     // Debug keys: T=scoreboard, P=save, L=load, X=export results
     private void Update()
     {
-        if (Keyboard.current == null) return;
+        if (cachedKeyboard == null) cachedKeyboard = Keyboard.current;
+        if (cachedKeyboard == null) return;
 
-        if (raceStarted && Keyboard.current[Key.T].wasPressedThisFrame)
+        if (raceStarted && cachedKeyboard[Key.T].wasPressedThisFrame)
             Debug.Log("[Scoreboard]\n" + ScoreManager.GetScoreboardText());
 
         if (SessionManager == null) return;
 
-        if (raceStarted && Keyboard.current[Key.P].wasPressedThisFrame)
+        if (raceStarted && cachedKeyboard[Key.P].wasPressedThisFrame)
         {
             var session = BuildSessionData();
             SessionManager.SaveSession(session);
         }
 
-        if (Keyboard.current[Key.L].wasPressedThisFrame)
+        if (cachedKeyboard[Key.L].wasPressedThisFrame)
         {
             string path = SessionManager.FindLatestSession();
             if (path != null)
@@ -345,7 +347,7 @@ public class RaceManager : MonoBehaviour
             }
         }
 
-        if (raceStarted && Keyboard.current[Key.X].wasPressedThisFrame)
+        if (raceStarted && cachedKeyboard[Key.X].wasPressedThisFrame)
         {
             var results = ScoreManager.CollectResults(eventLog, Time.time - raceStartTime);
             var config = SurveyConfigManager != null ? SurveyConfigManager.ActiveConfig : null;

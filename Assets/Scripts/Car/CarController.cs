@@ -45,6 +45,10 @@ public class CarController : MonoBehaviour
     private int collisionCount;
     private float collisionSpeedMultiplier = 1f;
 
+    // Frame throttling — stagger expensive operations across cars
+    private int frameCounter;
+    private int staggerOffset;
+
     // Event speed modifier stacking
     private int activeModifierCount;
 
@@ -82,6 +86,8 @@ public class CarController : MonoBehaviour
         // Each car picks a persistent racing line offset — small random per-waypoint
         // variation is added on top, but the base lane stays consistent
         persistentLateralOffset = Random.Range(-lateralOffsetRange, lateralOffsetRange);
+
+        staggerOffset = GetInstanceID() % 5;
 
         currentWaypointIndex = FindClosestWaypointIndex();
         lastCheckedPosition = transform.position;
@@ -131,8 +137,11 @@ public class CarController : MonoBehaviour
             SetNextDestination();
         }
 
-        UpdateCurvatureSpeed();
-        DetectCarsAhead();
+        frameCounter++;
+        if ((frameCounter + staggerOffset) % 5 == 0)
+            UpdateCurvatureSpeed();
+        if ((frameCounter + staggerOffset) % 3 == 0)
+            DetectCarsAhead();
         UpdateCollisionSpeed();
         ApplyCompositSpeed();
 

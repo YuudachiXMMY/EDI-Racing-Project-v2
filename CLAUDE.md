@@ -1,104 +1,54 @@
-# CLAUDE.md
+# Claude Code Game Studios -- Game Studio Agent Architecture
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Indie game development managed through 49 coordinated Claude Code subagents.
+Each agent owns a specific domain, enforcing separation of concerns and quality.
 
-## Project Overview
+## Technology Stack
 
-EDI Racing Game v2 — a Unity 6 WebGL racing game for university EDI (Equity, Diversity & Inclusion) education. Professors import student survey data as CSV, which generates autonomous racing cars. During the race, the professor triggers real-time events (weather, speed penalties/boosts) to demonstrate how different factors create unequal outcomes.
+- **Engine**: [CHOOSE: Godot 4 / Unity / Unreal Engine 5]
+- **Language**: [CHOOSE: GDScript / C# / C++ / Blueprint]
+- **Version Control**: Git with trunk-based development
+- **Build System**: [SPECIFY after choosing engine]
+- **Asset Pipeline**: [SPECIFY after choosing engine]
 
-**Target**: WebGL browser deployment via Docker (nginx + WebSocket server). Both professor and student access via browser.
+> **Note**: Engine-specialist agents exist for Godot, Unity, and Unreal with
+> dedicated sub-specialists. Use the set matching your engine.
 
-## Unity Environment
+## Project Structure
 
-- **Engine**: Unity 6 with URP 17.3.0
-- **Input**: New Input System (`UnityEngine.InputSystem`)
-- **Navigation**: AI Navigation package (NavMeshAgent-driven cars)
-- **Scenes**: `Assets/Scenes/complete_track_demo.unity` (main race scene)
-- **ScriptableObjects**: Created via `Assets > Create > EDI Racing > ...`
-  - `RaceConfig` — car physics, spawn, collision, lap settings
-  - `EventSchedule` — pre-configured race events with keyboard triggers
+@.claude/docs/directory-structure.md
 
-## Build & Development
+## Engine Version Reference
 
-This is a Unity project — there is no CLI build/test pipeline. All operations go through the Unity Editor:
+@docs/engine-reference/godot/VERSION.md
 
-### MCP Tools (ALWAYS use these for Unity development and debugging)
+## Technical Preferences
 
-- **UnityMCP** (`http://127.0.0.1:8080`) — Direct Unity Editor control: inspect/modify GameObjects, components, scene hierarchy, run C# in Editor, enter/exit Play Mode. Docs: https://coplaydev.github.io/unity-mcp/getting-started
-- **UnitySkills** (`http://localhost:8090`) — DOTween animations, advanced Unity patterns, and scripting recipes. Docs: https://deepwiki.com/Besty0728/Unity-Skills/7.25-dotween-skills
-- Prefer MCP tools over manual Editor steps whenever possible
+@.claude/docs/technical-preferences.md
 
-- **Open**: Unity Hub > Open Project (requires Unity 6)
-- **Play**: Enter Play Mode in `complete_track_demo` scene
-- **Track Setup**: Menu `EDI Racing > Setup Track` (requires NavMesh baked first via `Window > AI > Navigation`)
-- **NavMesh Agent Type**: A custom "Car" agent type must exist in Navigation settings; falls back to Humanoid if missing
-- **Editor scripts**: `Assets/Scripts/Editor/` — only compiled in Editor, not in builds
+## Coordination Rules
 
-## Architecture
+@.claude/docs/coordination-rules.md
 
-### Game State Machine
+## Collaboration Protocol
 
-`GameState` enum (`Setup → Racing → Paused → Finished`) drives the entire application. `RaceManager.OnStateChanged` event propagates state to all UI panels and camera systems.
+**User-driven collaboration, not autonomous execution.**
+Every task follows: **Question -> Options -> Decision -> Draft -> Approval**
 
-### Core Loop (RaceManager orchestrates everything)
+- Agents MUST ask "May I write this to [filepath]?" before using Write/Edit tools
+- Agents MUST show drafts or summaries before requesting approval
+- Multi-file changes require explicit approval for the full changeset
+- No commits without user instruction
 
-```
-CSV text → CsvParser → List<CarData> → CarSpawner → List<GameObject>
-                                                         ↓
-RaceManager registers cars with: ScoreManager, LapTracker, EventManager
-                                                         ↓
-Cars drive autonomously via CarController (NavMeshAgent + WaypointPath)
-                                                         ↓
-CheckpointTrigger → LapTracker.OnCarPassedCheckpoint → lap/ranking updates
-```
+See `docs/COLLABORATIVE-DESIGN-PRINCIPLE.md` for full protocol and examples.
 
-### Key Relationships
+> **First session?** If the project has no engine configured and no game concept,
+> run `/start` to begin the guided onboarding flow.
 
-- **CarData** (immutable struct) → parsed from CSV, stored in sessions
-- **CarIdentity** (MonoBehaviour on each car) → runtime state: team name, color, functions, lap progress
-- **CarController** (MonoBehaviour) → NavMeshAgent pathfinding with waypoint following, stuck detection/recovery, collision slowdown, event speed modifiers
-- **RaceManager** → central orchestrator; holds references to CarSpawner, LapTracker, ScoreManager, EventManager, SessionManager
+## Coding Standards
 
-### Event System
+@.claude/docs/coding-standards.md
 
-7 event types matching v1 parity. Events are pre-configured in `EventSchedule` ScriptableObject as `EventRule` structs. Professor triggers via keyboard (1-7) or UI panel. `RuleEngine.Evaluate()` determines which cars are affected based on attribute-based conditions (`ComparisonOperator`). `CarController.ApplySpeedModifier()` applies temporary speed changes via coroutine stacking.
+## Context Management
 
-### UI / Camera (Role-based)
-
-`RaceUI.UserRole` (Professor/Student) controls:
-- **Professor**: Free camera (WASD+mouse), fixed positions (F1-F9), event panel, race controls, setup screen
-- **Student**: Spectator camera (auto-follow leader), leaderboard only
-
-`CameraManager` switches between Free/Fixed/Spectator modes. UI panels subscribe to `RaceManager.OnStateChanged` for visibility.
-
-### Data Pipeline
-
-- **CSV Import**: `CsvParser.Parse()` — format: `teamName,colorIndex,functionList` (functions slash-separated)
-- **JSON Import**: `JsonImporter.Import()` — imports survey export JSON from web-app API (`/api/configs/:id/export`)
-- **Session**: `SessionManager` saves/loads JSON to `Application.persistentDataPath/Sessions/`
-- **Export**: `ResultsExporter` generates CSV with rankings and event log
-- **Color mapping**: 0=green, 1=black, 2=red, 3=blue, 4=white
-
-### Debug Keyboard Shortcuts (during play)
-
-- `T` — print scoreboard to console
-- `P` — save session
-- `L` — load latest session
-- `X` — export results CSV
-- `1-7` — trigger events
-- `F1-F9` — fixed camera positions
-- `Escape` — return to free camera
-
-## Implementation Status
-
-Phases 1-6 complete (core racing, events, data pipeline, UI/camera, WebSocket sync, WebGL/Docker, flexible survey system with integration tests). Phase 7 partially complete (weather VFX with skybox transitions, day/sunset cycle, snow particles). Remaining:
-- **Phase 7 (remaining)**: Browser testing, 50-car performance optimization
-
-## Conventions
-
-- All scripts are plain MonoBehaviours or ScriptableObjects — no third-party frameworks
-- No namespaces used; all classes are in the global namespace
-- ScriptableObjects use `[CreateAssetMenu]` under the "EDI Racing" menu
-- Events use C# `Action<T>` delegates, not UnityEvents
-- Car spawning adds components at runtime (Rigidbody, NavMeshAgent, BoxCollider trigger, CarController)
-- PRD and implementation plans live in `.claude/PRPs/`
+@.claude/docs/context-management.md
