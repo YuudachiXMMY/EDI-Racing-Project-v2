@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.AI;
 
 /// <summary>
 /// Configurable race parameters. All v1 defaults preserved.
@@ -69,4 +70,14 @@ public class RaceConfig : ScriptableObject
 
     [Header("Race Settings")]
     public int TotalLaps = 3;
+
+    [Header("Performance")]
+    [Tooltip("Minimum distance between trail vertices. Higher = fewer vertices, less GPU cost.")]
+    public float TrailMinVertexDistance = 1.5f;
+
+    [Tooltip("Max distance from camera before car labels are hidden.")]
+    public float LabelVisibleDistance = 80f;
+
+    [Tooltip("NavMeshAgent obstacle avoidance quality. Lower = faster with more cars.")]
+    public ObstacleAvoidanceType AvoidanceQuality = ObstacleAvoidanceType.MedQualityObstacleAvoidance;
 }

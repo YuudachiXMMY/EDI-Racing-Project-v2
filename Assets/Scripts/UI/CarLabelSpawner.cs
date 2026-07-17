@@ -18,6 +18,9 @@ public class CarLabelSpawner : MonoBehaviour
     [Tooltip("Height offset above car")]
     public float LabelHeight = 4f;
 
+    [Tooltip("Max distance from camera before labels are hidden. Uses RaceConfig value if RaceManager has one.")]
+    public float MaxVisibleDistance = 80f;
+
     private readonly List<GameObject> spawnedLabels = new List<GameObject>();
 
     private void OnEnable()
@@ -82,6 +85,10 @@ public class CarLabelSpawner : MonoBehaviour
             // Add CarLabel behavior
             CarLabel label = labelObj.AddComponent<CarLabel>();
             label.HeightOffset = LabelHeight;
+            float visDist = (RaceManager != null && RaceManager.Config != null)
+                ? RaceManager.Config.LabelVisibleDistance
+                : MaxVisibleDistance;
+            label.MaxVisibleDistance = visDist;
             label.Initialize(car.transform);
 
             spawnedLabels.Add(labelObj);
