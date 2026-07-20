@@ -180,5 +180,18 @@ label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; co
 .modal-message.error { background: rgba(224,64,64,.15); color: var(--danger); }
 .modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
 
+/* --- Room Status Badge --- */
+.room-status { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; font-size: 13px; margin-bottom: 12px; }
+.room-status .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.room-status .status-detail { font-size: 12px; color: var(--text-dim); }
+.room-status-setup { background: rgba(74,158,255,.12); }
+.room-status-setup .status-dot { background: var(--accent); }
+.room-status-racing { background: rgba(224,160,32,.12); }
+.room-status-racing .status-dot { background: var(--warning); }
+.room-status-finished { background: rgba(136,136,136,.12); }
+.room-status-finished .status-dot { background: var(--text-dim); }
+.room-status-error { background: rgba(224,64,64,.12); color: var(--danger); }
+.room-status-error .status-dot { background: var(--danger); }
+
 /* --- SurveyJS Creator overrides --- */
 .questions-tab { background: #fff; border-radius: 6px; }

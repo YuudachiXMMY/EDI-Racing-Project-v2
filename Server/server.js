@@ -1,9 +1,10 @@
+const http = require('http');
 const { WebSocketServer } = require('ws');
 
 const PORT = parseInt(process.env.PORT || '8080', 10);
 const HEARTBEAT_INTERVAL = 30000;
 
-// Room: { professor: WebSocket, students: Set<WebSocket>, raceStarted: boolean, latestState: string|null }
+// Room: { professor: WebSocket, students: Set<WebSocket>, raceStarted: boolean, latestState: string|null, gamePhase: string }
 const rooms = new Map();
 const clientRooms = new Map(); // WebSocket -> { roomCode, role }
 
@@ -65,7 +66,39 @@ function cleanupClient(ws) {
   }
 }
 
-const wss = new WebSocketServer({ port: PORT });
+// --- HTTP server for room-status API ---
+const server = http.createServer((req, res) => {
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET');
+  res.setHeader('Content-Type', 'application/json');
+
+  const match = req.url.match(/^\/api\/room-status\/([A-Za-z0-9]+)$/);
+  if (req.method === 'GET' && match) {
+    const code = match[1].toUpperCase();
+    const room = rooms.get(code);
+    if (!room) {
+      res.writeHead(200);
+      res.end(JSON.stringify({ exists: false }));
+      return;
+    }
+    res.writeHead(200);
+    res.end(JSON.stringify({
+      exists: true,
+      roomCode: code,
+      studentCount: room.students.size,
+      gamePhase: room.gamePhase || 'Setup',
+      raceStarted: room.raceStarted,
+    }));
+    return;
+  }
+
+  res.writeHead(404);
+  res.end(JSON.stringify({ error: 'Not found' }));
+});
+
+// --- WebSocket server attached to HTTP server ---
+const wss = new WebSocketServer({ server });
 
 // Heartbeat to detect dead connections
 const heartbeat = setInterval(() => {
@@ -102,6 +135,7 @@ wss.on('connection', (ws) => {
           students: new Set(),
           raceStarted: false,
           latestState: null,
+          gamePhase: 'Setup',
         });
         clientRooms.set(ws, { roomCode, role: 'professor' });
         sendJSON(ws, { type: 'room_created', roomCode });
@@ -180,11 +214,16 @@ wss.on('connection', (ws) => {
           // Professor → Students relay
           if (msg.type === 'race_start') {
             room.raceStarted = true;
+            room.gamePhase = 'Racing';
             room.latestState = raw;
           } else if (msg.type === 'state_update') {
             room.latestState = raw;
           } else if (msg.type === 'survey_questions') {
             room.surveyData = raw; // Cache for late-joiners
+          } else if (msg.type === 'game_state') {
+            room.gamePhase = msg.state || 'Setup';
+          } else if (msg.type === 'race_end') {
+            room.gamePhase = 'Finished';
           }
 
           broadcastToStudents(info.roomCode, raw);
@@ -203,4 +242,6 @@ wss.on('connection', (ws) => {
   ws.on('error', () => cleanupClient(ws));
 });
 
-console.log(`WebSocket server listening on port ${PORT}`);
+server.listen(PORT, () => {
+  console.log(`WebSocket + HTTP server listening on port ${PORT}`);
+});

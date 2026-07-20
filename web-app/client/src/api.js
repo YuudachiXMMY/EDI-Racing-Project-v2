@@ -104,6 +104,10 @@ export async function sendToGame(id, roomCode) {
   });
 }
 
+export async function getRoomStatus(roomCode) {
+  return request(`/game/room-status/${roomCode.toUpperCase()}`);
+}
+
 export async function toggleSurveyActive(id, isActive) {
   return request(`/surveys/${id}/active`, {
     method: 'PATCH',

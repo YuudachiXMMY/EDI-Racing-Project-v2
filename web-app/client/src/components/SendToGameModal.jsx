@@ -1,12 +1,71 @@
-import { useState } from 'react';
-import { sendToGame } from '../api.js';
+import { useState, useEffect, useRef } from 'react';
+import { sendToGame, getRoomStatus } from '../api.js';
+import RoomStatusBadge from './RoomStatusBadge.jsx';
 
 const ROOM_CODE_KEY = 'edi-last-room-code';
+const POLL_INTERVAL = 5000;
+const DEBOUNCE_DELAY = 800;
+const MIN_CODE_LENGTH = 4;
 
 export default function SendToGameModal({ surveyId, onClose }) {
   const [roomCode, setRoomCode] = useState(() => localStorage.getItem(ROOM_CODE_KEY) || '');
   const [status, setStatus] = useState('idle'); // idle | sending | success | error
   const [message, setMessage] = useState('');
+  const [roomStatus, setRoomStatus] = useState(null);
+  const [checking, setChecking] = useState(false);
+  const debounceRef = useRef(null);
+  const pollRef = useRef(null);
+  const abortRef = useRef(false);
+
+  // Fetch room status once
+  async function fetchStatus(code) {
+    if (abortRef.current) return;
+    const trimmed = code.trim().toUpperCase();
+    if (trimmed.length < MIN_CODE_LENGTH) {
+      setRoomStatus(null);
+      setChecking(false);
+      return;
+    }
+    setChecking(true);
+    const result = await getRoomStatus(trimmed);
+    if (abortRef.current) return;
+    setRoomStatus(result.success ? result.data : { exists: false, error: 'Failed to check' });
+    setChecking(false);
+  }
+
+  // Debounced check + polling setup when roomCode changes
+  useEffect(() => {
+    abortRef.current = false;
+    clearTimeout(debounceRef.current);
+    clearInterval(pollRef.current);
+    setRoomStatus(null);
+
+    const trimmed = roomCode.trim();
+    if (trimmed.length < MIN_CODE_LENGTH) return;
+
+    debounceRef.current = setTimeout(() => {
+      fetchStatus(trimmed);
+      pollRef.current = setInterval(() => fetchStatus(trimmed), POLL_INTERVAL);
+    }, DEBOUNCE_DELAY);
+
+    return () => {
+      abortRef.current = true;
+      clearTimeout(debounceRef.current);
+      clearInterval(pollRef.current);
+    };
+  }, [roomCode]);
+
+  // Pause polling while sending
+  useEffect(() => {
+    if (status === 'sending') {
+      clearInterval(pollRef.current);
+    }
+  }, [status]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => { abortRef.current = true; };
+  }, []);
 
   async function handleSend() {
     const code = roomCode.trim().toUpperCase();
@@ -31,6 +90,8 @@ export default function SendToGameModal({ surveyId, onClose }) {
     }
   }
 
+  const canSend = status !== 'sending' && !checking && (!roomStatus || roomStatus.exists !== false);
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-content send-to-game-modal" onClick={e => e.stopPropagation()}>
@@ -51,6 +112,8 @@ export default function SendToGameModal({ surveyId, onClose }) {
           />
         </div>
 
+        <RoomStatusBadge status={roomStatus} checking={checking} />
+
         {message && (
           <p className={`modal-message ${status}`}>{message}</p>
         )}
@@ -60,7 +123,7 @@ export default function SendToGameModal({ surveyId, onClose }) {
             <button
               onClick={handleSend}
               className="btn-primary"
-              disabled={status === 'sending'}
+              disabled={!canSend}
             >
               {status === 'sending' ? 'Sending...' : 'Send'}
             </button>
