@@ -9,11 +9,13 @@ function generateShareCode() {
   return randomBytes(4).toString('hex').toUpperCase(); // 8-char code
 }
 
-// GET /api/surveys — list professor's surveys
+// GET /api/surveys — list professor's surveys (includes response count)
 router.get('/', requireAuth, (req, res) => {
   const db = getDb();
   const surveys = db.prepare(
-    'SELECT id, config_name, description, share_code, is_active, created_at, updated_at FROM surveys WHERE user_id = ? ORDER BY updated_at DESC'
+    `SELECT s.id, s.config_name, s.description, s.share_code, s.is_active, s.created_at, s.updated_at,
+       (SELECT COUNT(*) FROM responses r WHERE r.survey_id = s.id) AS response_count
+     FROM surveys s WHERE s.user_id = ? ORDER BY s.updated_at DESC`
   ).all(req.user.userId);
   res.json({ success: true, data: surveys });
 });
@@ -101,6 +103,27 @@ router.put('/:id', requireAuth, (req, res) => {
     req.params.id,
     req.user.userId
   );
+
+  res.json({ success: true });
+});
+
+// PATCH /api/surveys/:id/active — toggle survey active/inactive
+router.patch('/:id/active', requireAuth, (req, res) => {
+  const { isActive } = req.body;
+  if (typeof isActive !== 'boolean') {
+    return res.status(400).json({ success: false, error: 'isActive (boolean) is required' });
+  }
+
+  const db = getDb();
+  const existing = db.prepare('SELECT id FROM surveys WHERE id = ? AND user_id = ?')
+    .get(req.params.id, req.user.userId);
+  if (!existing) {
+    return res.status(404).json({ success: false, error: 'Survey not found' });
+  }
+
+  db.prepare(
+    "UPDATE surveys SET is_active = ?, updated_at = datetime('now') WHERE id = ? AND user_id = ?"
+  ).run(isActive ? 1 : 0, req.params.id, req.user.userId);
 
   res.json({ success: true });
 });

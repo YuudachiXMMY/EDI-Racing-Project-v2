@@ -103,6 +103,7 @@ router.get('/:id/export', requireAuth, (req, res) => {
   const exportData = {
     configName: survey.config_name,
     carData,
+    mappings,
     eventRules,
   };
 
