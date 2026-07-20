@@ -221,6 +221,90 @@ public static class SceneWiring
                 createdCount++;
             }
 
+            // Create Web App Import UI if missing
+            if (setupScreen.ImportJsonButton == null)
+            {
+                setupScreen.ImportJsonButton = CreateButton(
+                    setupScreen.transform, "ImportJsonBtn", "Import JSON",
+                    new Vector2(0.5f, 0), new Vector2(0.5f, 0),
+                    new Vector2(-150, -75), new Vector2(-10, -40));
+                createdCount++;
+            }
+
+            if (setupScreen.ImportPanel == null)
+            {
+                var panelObj = new GameObject("ImportPanel");
+                panelObj.transform.SetParent(setupScreen.transform, false);
+                var panelImg = panelObj.AddComponent<Image>();
+                panelImg.color = new Color(0.1f, 0.1f, 0.1f, 0.95f);
+                var panelRt = panelObj.GetComponent<RectTransform>();
+                panelRt.anchorMin = new Vector2(0.1f, 0.2f);
+                panelRt.anchorMax = new Vector2(0.9f, 0.8f);
+                panelRt.offsetMin = Vector2.zero;
+                panelRt.offsetMax = Vector2.zero;
+                setupScreen.ImportPanel = panelObj;
+                panelObj.SetActive(false);
+                createdCount++;
+
+                // Title text inside panel
+                CreateText(panelObj.transform, "ImportTitle", "Paste Web App JSON Export",
+                    new Vector2(0, 1), new Vector2(1, 1),
+                    new Vector2(10, -40), new Vector2(-10, -10));
+
+                // InputField inside panel
+                var inputObj = new GameObject("JsonInputField");
+                inputObj.transform.SetParent(panelObj.transform, false);
+                var inputImg = inputObj.AddComponent<Image>();
+                inputImg.color = new Color(0.2f, 0.2f, 0.2f, 1f);
+                var inputRt = inputObj.GetComponent<RectTransform>();
+                inputRt.anchorMin = new Vector2(0.05f, 0.25f);
+                inputRt.anchorMax = new Vector2(0.95f, 0.85f);
+                inputRt.offsetMin = Vector2.zero;
+                inputRt.offsetMax = Vector2.zero;
+
+                var placeholderObj = new GameObject("Placeholder");
+                placeholderObj.transform.SetParent(inputObj.transform, false);
+                var placeholder = placeholderObj.AddComponent<Text>();
+                placeholder.text = "Paste JSON here...";
+                placeholder.fontSize = 14;
+                placeholder.fontStyle = FontStyle.Italic;
+                placeholder.color = new Color(0.5f, 0.5f, 0.5f);
+                placeholder.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                var phRt = placeholderObj.GetComponent<RectTransform>();
+                phRt.anchorMin = Vector2.zero;
+                phRt.anchorMax = Vector2.one;
+                phRt.offsetMin = new Vector2(5, 2);
+                phRt.offsetMax = new Vector2(-5, -2);
+
+                var textObj = new GameObject("Text");
+                textObj.transform.SetParent(inputObj.transform, false);
+                var inputText = textObj.AddComponent<Text>();
+                inputText.fontSize = 14;
+                inputText.color = Color.white;
+                inputText.supportRichText = false;
+                inputText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                var txtRt = textObj.GetComponent<RectTransform>();
+                txtRt.anchorMin = Vector2.zero;
+                txtRt.anchorMax = Vector2.one;
+                txtRt.offsetMin = new Vector2(5, 2);
+                txtRt.offsetMax = new Vector2(-5, -2);
+
+                var inputField = inputObj.AddComponent<InputField>();
+                inputField.textComponent = inputText;
+                inputField.placeholder = placeholder;
+                inputField.lineType = InputField.LineType.MultiLineNewline;
+
+                setupScreen.JsonInputField = inputField;
+                createdCount++;
+
+                // Confirm button inside panel
+                setupScreen.ConfirmImportButton = CreateButton(
+                    panelObj.transform, "ConfirmImportBtn", "Confirm Import",
+                    new Vector2(0.5f, 0), new Vector2(0.5f, 0),
+                    new Vector2(-80, 10), new Vector2(80, 45));
+                createdCount++;
+            }
+
             EditorUtility.SetDirty(setupScreen);
         }
 

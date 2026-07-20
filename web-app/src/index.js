@@ -33,11 +33,12 @@ app.get('/api/health', (req, res) => {
   res.json({ success: true, data: { status: 'ok' } });
 });
 
-// Serve client build in production
+// Serve client build in production (base path matches Vite config base: '/survey/')
 const clientDist = join(__dirname, '..', 'client', 'dist');
 if (existsSync(clientDist)) {
-  app.use(express.static(clientDist));
-  app.get('*', (req, res) => {
+  app.use('/survey', express.static(clientDist));
+  app.get('/', (req, res) => res.redirect('/survey/'));
+  app.get('/survey/*', (req, res) => {
     res.sendFile(join(clientDist, 'index.html'));
   });
 }

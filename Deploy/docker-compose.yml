@@ -1,21 +1,38 @@
+# EDI-Racing unified Docker Compose orchestration
+# Ports: Game 3900 | Survey API 3901
+# Domains: edi-racing.localhost | api.edi-racing.localhost
+
+name: edi-racing
+
 services:
   edi-racing:
     build:
       context: ..
       dockerfile: Deploy/Dockerfile
+    container_name: edi-racing-game
     ports:
-      - "8080:80"
+      - "${GAME_PORT:-3900}:80"
     environment:
       - PORT=3000
     depends_on:
       web-app:
         condition: service_healthy
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.edi-racing-game.rule=Host(`${GAME_DOMAIN:-edi-racing.localhost}`)"
+      - "traefik.http.services.edi-racing-game.loadbalancer.server.port=80"
+    networks:
+      - proxy
+      - edi-racing-net
 
   web-app:
     build:
       context: ../web-app
       dockerfile: Dockerfile
+    container_name: edi-racing-api
+    ports:
+      - "${API_PORT:-3901}:3001"
     volumes:
       - survey-data:/app/data
     environment:
@@ -27,6 +44,19 @@ services:
       timeout: 5s
       retries: 3
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.edi-racing-api.rule=Host(`${API_DOMAIN:-api.edi-racing.localhost}`)"
+      - "traefik.http.services.edi-racing-api.loadbalancer.server.port=3001"
+    networks:
+      - proxy
+      - edi-racing-net
 
 volumes:
   survey-data:
+
+networks:
+  proxy:
+    external: true
+  edi-racing-net:
+    driver: bridge
