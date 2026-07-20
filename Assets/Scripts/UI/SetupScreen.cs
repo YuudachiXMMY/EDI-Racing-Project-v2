@@ -119,6 +119,9 @@ public class SetupScreen : MonoBehaviour
             NetworkManager.OnStudentCountChanged += OnStudentCountChanged;
             NetworkManager.OnConnectionError += OnNetworkError;
             NetworkManager.OnMessageReceived += OnNetworkMessage;
+            NetworkManager.OnReconnecting += OnReconnecting;
+            NetworkManager.OnReconnected += OnNetworkReconnected;
+            NetworkManager.OnReconnectFailed += OnReconnectFailed;
         }
     }
 
@@ -130,6 +133,9 @@ public class SetupScreen : MonoBehaviour
             NetworkManager.OnStudentCountChanged -= OnStudentCountChanged;
             NetworkManager.OnConnectionError -= OnNetworkError;
             NetworkManager.OnMessageReceived -= OnNetworkMessage;
+            NetworkManager.OnReconnecting -= OnReconnecting;
+            NetworkManager.OnReconnected -= OnNetworkReconnected;
+            NetworkManager.OnReconnectFailed -= OnReconnectFailed;
         }
     }
 
@@ -237,6 +243,35 @@ public class SetupScreen : MonoBehaviour
     {
         if (InfoText != null) InfoText.text = $"Network error: {error}";
         if (HostButton != null) HostButton.interactable = true;
+    }
+
+    private void OnReconnecting(int attempt, float delay)
+    {
+        if (InfoText != null) InfoText.text = $"Reconnecting... ({attempt}/{NetworkManager.MaxAttempts})";
+        if (HostButton != null) HostButton.interactable = false;
+    }
+
+    private void OnNetworkReconnected()
+    {
+        if (InfoText != null) InfoText.text = "Reconnected! Room restored.";
+        if (RoomCodeText != null && NetworkManager.RoomCode != null)
+        {
+            RoomCodeText.gameObject.SetActive(true);
+            RoomCodeText.text = $"Room: {NetworkManager.RoomCode}";
+        }
+        if (StudentCountText != null)
+        {
+            StudentCountText.gameObject.SetActive(true);
+            StudentCountText.text = $"{NetworkManager.StudentCount} student(s) connected";
+        }
+    }
+
+    private void OnReconnectFailed()
+    {
+        if (InfoText != null) InfoText.text = "Connection lost. Room may have expired.";
+        if (HostButton != null) HostButton.interactable = true;
+        if (RoomCodeText != null) RoomCodeText.gameObject.SetActive(false);
+        if (StudentCountText != null) StudentCountText.gameObject.SetActive(false);
     }
 
     // --- Survey Collection ---
