@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSurveys, createSurvey, deleteSurvey, getTemplates, toggleSurveyActive, logout, clearToken } from '../api.js';
+import SendToGameModal from '../components/SendToGameModal.jsx';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
   const [surveys, setSurveys] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [sendModalSurveyId, setSendModalSurveyId] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -117,16 +119,28 @@ export default function DashboardPage() {
                 <span className="response-count">{s.response_count ?? 0} response(s)</span>
                 <span className="updated">Updated: {new Date(s.updated_at).toLocaleDateString()}</span>
               </div>
-              <button
-                className="btn-danger btn-small"
-                onClick={e => { e.stopPropagation(); handleDelete(s.id, s.config_name); }}
-              >
-                Delete
-              </button>
+              <div className="card-actions">
+                {(s.response_count ?? 0) > 0 && (
+                  <button
+                    className="btn-primary btn-small"
+                    onClick={e => { e.stopPropagation(); setSendModalSurveyId(s.id); }}
+                  >
+                    Send to Game
+                  </button>
+                )}
+                <button
+                  className="btn-danger btn-small"
+                  onClick={e => { e.stopPropagation(); handleDelete(s.id, s.config_name); }}
+                >
+                  Delete
+                </button>
+              </div>
             </div>
           ))}
         </div>
       )}
+
+      {sendModalSurveyId && <SendToGameModal surveyId={sendModalSurveyId} onClose={() => setSendModalSurveyId(null)} />}
     </div>
   );
 }

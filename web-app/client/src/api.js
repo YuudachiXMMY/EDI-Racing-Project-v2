@@ -97,6 +97,13 @@ export async function exportSurvey(id) {
   return request(`/surveys/${id}/export`);
 }
 
+export async function sendToGame(id, roomCode) {
+  return request(`/surveys/${id}/send-to-game`, {
+    method: 'POST',
+    body: JSON.stringify({ roomCode }),
+  });
+}
+
 export async function toggleSurveyActive(id, isActive) {
   return request(`/surveys/${id}/active`, {
     method: 'PATCH',

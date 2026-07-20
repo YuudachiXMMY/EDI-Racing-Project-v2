@@ -118,6 +118,7 @@ public class SetupScreen : MonoBehaviour
             NetworkManager.OnRoomCreated += OnRoomCreated;
             NetworkManager.OnStudentCountChanged += OnStudentCountChanged;
             NetworkManager.OnConnectionError += OnNetworkError;
+            NetworkManager.OnMessageReceived += OnNetworkMessage;
         }
     }
 
@@ -128,6 +129,7 @@ public class SetupScreen : MonoBehaviour
             NetworkManager.OnRoomCreated -= OnRoomCreated;
             NetworkManager.OnStudentCountChanged -= OnStudentCountChanged;
             NetworkManager.OnConnectionError -= OnNetworkError;
+            NetworkManager.OnMessageReceived -= OnNetworkMessage;
         }
     }
 
@@ -287,6 +289,43 @@ public class SetupScreen : MonoBehaviour
         // Start race with collected responses
         var carDataList = SurveyCollector.GetAllCarData();
         RaceManager.LoadAndStartRace(carDataList);
+        gameObject.SetActive(false);
+    }
+
+    // --- Web App Direct Send ---
+
+    private void OnNetworkMessage(string json)
+    {
+        if (NetworkManager == null || !NetworkManager.IsHost) return;
+        if (RaceManager == null || RaceManager.CurrentState != GameState.Setup) return;
+
+        var baseMsg = JsonUtility.FromJson<NetworkMessage>(json);
+        if (baseMsg.type != "survey_import") return;
+
+        var msg = JsonUtility.FromJson<SurveyImportMessage>(json);
+        if (string.IsNullOrEmpty(msg.exportJson))
+        {
+            if (InfoText != null) InfoText.text = "Received empty data from web app.";
+            return;
+        }
+
+        var result = JsonImporter.Parse(msg.exportJson);
+        if (!result.Success)
+        {
+            if (InfoText != null) InfoText.text = $"Web app import error: {result.Error}";
+            return;
+        }
+
+        if (result.Cars.Count == 0)
+        {
+            if (InfoText != null) InfoText.text = "Web app sent 0 cars. Export with responses first.";
+            return;
+        }
+
+        Debug.Log($"[SetupScreen] Received {result.Cars.Count} cars, {result.EventRules.Length} rules from web app direct send");
+        if (InfoText != null) InfoText.text = $"Received from web app: {result.Cars.Count} cars, {result.EventRules.Length} rules. Starting race...";
+
+        RaceManager.LoadAndStartRaceWithRules(result.Cars, result.EventRules);
         gameObject.SetActive(false);
     }
 

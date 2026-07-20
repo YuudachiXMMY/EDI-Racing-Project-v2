@@ -38,6 +38,7 @@ services:
     environment:
       - API_PORT=3001
       - DB_PATH=/app/data/edi-survey.db
+      - WS_GAME_URL=ws://edi-racing-game:3000
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/api/health"]
       interval: 10s

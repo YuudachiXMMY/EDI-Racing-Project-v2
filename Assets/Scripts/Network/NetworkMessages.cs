@@ -229,3 +229,17 @@ public class SurveyAckMessage
     public string type = "survey_ack";
     public string teamName;
 }
+
+// --- Web App → Professor (via server relay) ---
+
+/// <summary>
+/// Web App → Professor: sends pre-mapped survey data directly into the Unity game.
+/// exportJson is a double-serialized WebAppExport (same format as manual JSON import).
+/// </summary>
+[Serializable]
+public class SurveyImportMessage
+{
+    public string type = "survey_import";
+    public string configName;
+    public string exportJson;
+}

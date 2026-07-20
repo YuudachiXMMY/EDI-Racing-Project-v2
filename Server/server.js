@@ -52,6 +52,9 @@ function cleanupClient(ws) {
     }
     rooms.delete(info.roomCode);
     console.log(`[Room ${info.roomCode}] Closed (professor disconnected)`);
+  } else if (info.role === 'webapp') {
+    // Web-app client disconnected — no action needed
+    console.log(`[Room ${info.roomCode}] Web-app client disconnected`);
   } else {
     room.students.delete(ws);
     // Notify professor of updated count
@@ -129,6 +132,39 @@ wss.on('connection', (ws) => {
           ws.send(room.latestState);
         }
         console.log(`[Room ${code}] Student joined (${room.students.size} total)`);
+        break;
+      }
+
+      case 'web_join_room': {
+        // Web-app backend joins a room to send survey data to the professor
+        const webCode = (msg.roomCode || '').toUpperCase();
+        const webRoom = rooms.get(webCode);
+        if (!webRoom) {
+          sendJSON(ws, { type: 'error', message: 'Room not found' });
+          return;
+        }
+        clientRooms.set(ws, { roomCode: webCode, role: 'webapp' });
+        sendJSON(ws, { type: 'room_joined', roomCode: webCode });
+        console.log(`[Room ${webCode}] Web-app client joined`);
+        break;
+      }
+
+      case 'survey_import': {
+        // Web-app sends survey data to the professor's Unity game
+        const webInfo = clientRooms.get(ws);
+        if (!webInfo || webInfo.role !== 'webapp') {
+          sendJSON(ws, { type: 'error', message: 'Not authorized' });
+          return;
+        }
+        const importRoom = rooms.get(webInfo.roomCode);
+        if (!importRoom || !importRoom.professor || importRoom.professor.readyState !== 1) {
+          sendJSON(ws, { type: 'survey_import_ack', success: false, error: 'Professor not connected' });
+          return;
+        }
+        // Relay the full message to the professor
+        importRoom.professor.send(data.toString());
+        sendJSON(ws, { type: 'survey_import_ack', success: true });
+        console.log(`[Room ${webInfo.roomCode}] Survey data sent from web-app to professor`);
         break;
       }
 
