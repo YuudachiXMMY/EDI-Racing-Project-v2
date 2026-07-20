@@ -12,6 +12,9 @@ public class CarIdentity : MonoBehaviour
     public string TeamName;
     public AttributeEntry[] Attributes;
 
+    [Header("Player Ownership")]
+    public bool IsOwnCar;
+
     [Header("Race Progress")]
     public int CurrentCheckpointIndex;
     public int TotalCheckpointsPassed;
@@ -24,6 +27,7 @@ public class CarIdentity : MonoBehaviour
         Attributes = data.Attributes != null
             ? (AttributeEntry[])data.Attributes.Clone()
             : Array.Empty<AttributeEntry>();
+        IsOwnCar = false;
         CurrentCheckpointIndex = 0;
         TotalCheckpointsPassed = 0;
         CurrentLap = 0;

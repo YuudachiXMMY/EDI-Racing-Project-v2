@@ -35,6 +35,7 @@ public class NetworkManager : MonoBehaviour
     public int StudentCount { get; private set; }
     public bool IsReconnecting { get; private set; }
     public int ReconnectAttempt { get; private set; }
+    public string TeamName { get; private set; }
 
     public event Action OnConnected;
     public event Action OnDisconnected;
@@ -123,6 +124,7 @@ public class NetworkManager : MonoBehaviour
         RoomCode = null;
         StudentCount = 0;
         lastRoomCode = null;
+        TeamName = null;
     }
 
     public void Send(string json)
@@ -148,11 +150,12 @@ public class NetworkManager : MonoBehaviour
         }
     }
 
-    public void JoinRoom(string code)
+    public void JoinRoom(string code, string teamName = "")
     {
         manualDisconnect = false;
         Connect();
-        var joinMsg = new JoinRoomMessage { roomCode = code.ToUpper(), sessionId = sessionId };
+        TeamName = teamName;
+        var joinMsg = new JoinRoomMessage { roomCode = code.ToUpper(), sessionId = sessionId, teamName = teamName };
         pendingAction = () =>
         {
             IsHost = false;
@@ -302,7 +305,7 @@ public class NetworkManager : MonoBehaviour
             if (bridge.IsConnected)
             {
                 // Send rejoin request
-                var msg = new RejoinRoomMessage { roomCode = lastRoomCode, sessionId = sessionId };
+                var msg = new RejoinRoomMessage { roomCode = lastRoomCode, sessionId = sessionId, teamName = TeamName ?? "" };
                 Send(JsonUtility.ToJson(msg));
                 IsReconnecting = false;
                 ReconnectAttempt = 0;

@@ -27,6 +27,7 @@ public class JoinRoomMessage
     public string type = "join_room";
     public string roomCode;
     public string sessionId;
+    public string teamName;
 }
 
 [Serializable]
@@ -35,6 +36,7 @@ public class RejoinRoomMessage
     public string type = "rejoin_room";
     public string roomCode;
     public string sessionId;
+    public string teamName;
 }
 
 // --- Server → Client ---
@@ -80,6 +82,7 @@ public class RaceStartMessage
 {
     public string type = "race_start";
     public NetCarData[] cars = Array.Empty<NetCarData>();
+    public int yourCarIndex = -1;
 }
 
 [Serializable]
@@ -298,4 +301,28 @@ public class ReconnectStateMessage
     public string gamePhase;
     public int studentCount;
     public bool raceStarted;
+}
+
+// --- Student Identity Messages ---
+
+/// <summary>
+/// Server → Professor: notifies that a named student joined the room.
+/// </summary>
+[Serializable]
+public class StudentJoinedMessage
+{
+    public string type = "student_joined";
+    public string teamName;
+    public int count;
+}
+
+/// <summary>
+/// Server → Professor: full list of connected student team names.
+/// </summary>
+[Serializable]
+public class StudentListMessage
+{
+    public string type = "student_list";
+    public string[] teamNames;
+    public int count;
 }
