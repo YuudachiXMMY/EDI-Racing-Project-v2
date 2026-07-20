@@ -1,9 +1,10 @@
+const http = require('http');
 const { WebSocketServer } = require('ws');
 
 const PORT = parseInt(process.env.PORT || '8080', 10);
 const HEARTBEAT_INTERVAL = 30000;
 
-// Room: { professor: WebSocket, students: Set<WebSocket>, raceStarted: boolean, latestState: string|null }
+// Room: { professor: WebSocket, students: Set<WebSocket>, raceStarted: boolean, latestState: string|null, gamePhase: string }
 const rooms = new Map();
 const clientRooms = new Map(); // WebSocket -> { roomCode, role }
 
@@ -52,6 +53,9 @@ function cleanupClient(ws) {
     }
     rooms.delete(info.roomCode);
     console.log(`[Room ${info.roomCode}] Closed (professor disconnected)`);
+  } else if (info.role === 'webapp') {
+    room.webapps.delete(ws);
+    console.log(`[Room ${info.roomCode}] Web-app client disconnected`);
   } else {
     room.students.delete(ws);
     // Notify professor of updated count
@@ -62,7 +66,53 @@ function cleanupClient(ws) {
   }
 }
 
-const wss = new WebSocketServer({ port: PORT });
+// --- HTTP server for room-status API ---
+const server = http.createServer((req, res) => {
+  // CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET');
+  res.setHeader('Content-Type', 'application/json');
+
+  const match = req.url.match(/^\/api\/room-status\/([A-Za-z0-9]+)$/);
+  if (req.method === 'GET' && match) {
+    const code = match[1].toUpperCase();
+    const room = rooms.get(code);
+    if (!room) {
+      res.writeHead(200);
+      res.end(JSON.stringify({ exists: false }));
+      return;
+    }
+    res.writeHead(200);
+    res.end(JSON.stringify({
+      exists: true,
+      roomCode: code,
+      studentCount: room.students.size,
+      gamePhase: room.gamePhase || 'Setup',
+      raceStarted: room.raceStarted,
+    }));
+    return;
+  }
+
+  const resultsMatch = req.url.match(/^\/api\/room-results\/([A-Za-z0-9]+)$/);
+  if (req.method === 'GET' && resultsMatch) {
+    const code = resultsMatch[1].toUpperCase();
+    const room = rooms.get(code);
+    if (!room || !room.raceResults) {
+      res.writeHead(200);
+      res.end(JSON.stringify({ exists: false }));
+      return;
+    }
+    res.writeHead(200);
+    res.end(room.raceResults);
+    return;
+  }
+
+  res.writeHead(404);
+  res.end(JSON.stringify({ error: 'Not found' }));
+});
+
+// --- WebSocket server attached to HTTP server ---
+const wss = new WebSocketServer({ server });
 
 // Heartbeat to detect dead connections
 const heartbeat = setInterval(() => {
@@ -97,8 +147,11 @@ wss.on('connection', (ws) => {
         rooms.set(roomCode, {
           professor: ws,
           students: new Set(),
+          webapps: new Set(),
           raceStarted: false,
           latestState: null,
+          gamePhase: 'Setup',
+          raceResults: null,
         });
         clientRooms.set(ws, { roomCode, role: 'professor' });
         sendJSON(ws, { type: 'room_created', roomCode });
@@ -132,6 +185,40 @@ wss.on('connection', (ws) => {
         break;
       }
 
+      case 'web_join_room': {
+        // Web-app backend joins a room to send survey data to the professor
+        const webCode = (msg.roomCode || '').toUpperCase();
+        const webRoom = rooms.get(webCode);
+        if (!webRoom) {
+          sendJSON(ws, { type: 'error', message: 'Room not found' });
+          return;
+        }
+        webRoom.webapps.add(ws);
+        clientRooms.set(ws, { roomCode: webCode, role: 'webapp' });
+        sendJSON(ws, { type: 'room_joined', roomCode: webCode });
+        console.log(`[Room ${webCode}] Web-app client joined`);
+        break;
+      }
+
+      case 'survey_import': {
+        // Web-app sends survey data to the professor's Unity game
+        const webInfo = clientRooms.get(ws);
+        if (!webInfo || webInfo.role !== 'webapp') {
+          sendJSON(ws, { type: 'error', message: 'Not authorized' });
+          return;
+        }
+        const importRoom = rooms.get(webInfo.roomCode);
+        if (!importRoom || !importRoom.professor || importRoom.professor.readyState !== 1) {
+          sendJSON(ws, { type: 'survey_import_ack', success: false, error: 'Professor not connected' });
+          return;
+        }
+        // Relay the full message to the professor
+        importRoom.professor.send(data.toString());
+        sendJSON(ws, { type: 'survey_import_ack', success: true });
+        console.log(`[Room ${webInfo.roomCode}] Survey data sent from web-app to professor`);
+        break;
+      }
+
       default: {
         const info = clientRooms.get(ws);
         if (!info) return;
@@ -144,14 +231,29 @@ wss.on('connection', (ws) => {
           // Professor → Students relay
           if (msg.type === 'race_start') {
             room.raceStarted = true;
+            room.gamePhase = 'Racing';
             room.latestState = raw;
           } else if (msg.type === 'state_update') {
             room.latestState = raw;
           } else if (msg.type === 'survey_questions') {
             room.surveyData = raw; // Cache for late-joiners
+          } else if (msg.type === 'game_state') {
+            room.gamePhase = msg.state || 'Setup';
+          } else if (msg.type === 'race_results') {
+            room.raceResults = raw;
+            room.gamePhase = 'Finished';
+          } else if (msg.type === 'race_end') {
+            room.gamePhase = 'Finished';
           }
 
           broadcastToStudents(info.roomCode, raw);
+
+          // Also relay race_results to web-app clients
+          if (msg.type === 'race_results') {
+            for (const webapp of room.webapps) {
+              if (webapp.readyState === 1) webapp.send(raw);
+            }
+          }
         } else if (info.role === 'student') {
           // Student → Professor relay
           if (room.professor && room.professor.readyState === 1) {
@@ -167,4 +269,6 @@ wss.on('connection', (ws) => {
   ws.on('error', () => cleanupClient(ws));
 });
 
-console.log(`WebSocket server listening on port ${PORT}`);
+server.listen(PORT, () => {
+  console.log(`WebSocket + HTTP server listening on port ${PORT}`);
+});

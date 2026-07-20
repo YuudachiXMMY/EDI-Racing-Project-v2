@@ -229,3 +229,31 @@ public class SurveyAckMessage
     public string type = "survey_ack";
     public string teamName;
 }
+
+// --- Professor → Web App (via server relay) ---
+
+/// <summary>
+/// Professor → Server → Web App: sends race results after race completion.
+/// resultsJson is double-serialized RaceResults (JsonUtility limitation).
+/// </summary>
+[Serializable]
+public class RaceResultsMessage
+{
+    public string type = "race_results";
+    public string configName;
+    public string resultsJson;
+}
+
+// --- Web App → Professor (via server relay) ---
+
+/// <summary>
+/// Web App → Professor: sends pre-mapped survey data directly into the Unity game.
+/// exportJson is a double-serialized WebAppExport (same format as manual JSON import).
+/// </summary>
+[Serializable]
+public class SurveyImportMessage
+{
+    public string type = "survey_import";
+    public string configName;
+    public string exportJson;
+}

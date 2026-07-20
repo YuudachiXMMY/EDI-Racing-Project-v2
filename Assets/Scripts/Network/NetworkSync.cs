@@ -45,6 +45,7 @@ public class NetworkSync : MonoBehaviour
         if (RaceManager != null)
         {
             RaceManager.OnStateChanged += OnStateChanged;
+            RaceManager.OnRaceFinished += OnRaceFinishedHandler;
         }
 
         if (RaceManager != null && RaceManager.EventManager != null)
@@ -59,7 +60,10 @@ public class NetworkSync : MonoBehaviour
             NetworkManager.OnMessageReceived -= HandleGameMessage;
 
         if (RaceManager != null)
+        {
             RaceManager.OnStateChanged -= OnStateChanged;
+            RaceManager.OnRaceFinished -= OnRaceFinishedHandler;
+        }
 
         if (RaceManager != null && RaceManager.EventManager != null)
             RaceManager.EventManager.OnEventTriggered -= OnEventTriggered;
@@ -172,6 +176,32 @@ public class NetworkSync : MonoBehaviour
             total = cars != null ? cars.Count : 0
         };
         NetworkManager.Send(JsonUtility.ToJson(msg));
+    }
+
+    private void OnRaceFinishedHandler(CarIdentity winner)
+    {
+        if (NetworkManager == null || !NetworkManager.IsConnected || !NetworkManager.IsHost) return;
+        if (ScoreManager == null) return;
+
+        var results = ScoreManager.CollectResults(
+            RaceManager.GetEventLog(),
+            Time.time - RaceManager.RaceStartTime
+        );
+
+        string configName = "";
+        if (RaceManager.SurveyConfigManager != null &&
+            RaceManager.SurveyConfigManager.ActiveConfig != null)
+        {
+            configName = RaceManager.SurveyConfigManager.ActiveConfig.ConfigName ?? "";
+        }
+
+        var msg = new RaceResultsMessage
+        {
+            configName = configName,
+            resultsJson = JsonUtility.ToJson(results)
+        };
+        NetworkManager.Send(JsonUtility.ToJson(msg));
+        Debug.Log($"[NetworkSync] Race results sent ({results.Rankings.Length} cars)");
     }
 
     // ── Student ───────────────────────────────────────────

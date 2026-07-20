@@ -167,5 +167,47 @@ label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; co
 .answer-key { color: var(--accent); font-weight: 500; }
 .answer-value { color: var(--text); }
 
+/* --- Results Tab --- */
+.results-tab { padding: 0; }
+.result-session { border: 1px solid var(--border); border-radius: 6px; margin-bottom: 12px; overflow: hidden; }
+.result-session-header { display: flex; align-items: center; gap: 12px; padding: 12px 16px; cursor: pointer; background: var(--bg-card); }
+.result-session-header:hover { background: var(--bg-input); }
+.result-session-title { font-weight: 600; flex: 1; }
+.result-session-meta { font-size: 12px; color: var(--text-dim); }
+.expand-icon { font-size: 11px; color: var(--text-dim); }
+.result-session-body { padding: 16px; border-top: 1px solid var(--border); }
+.rank-1 { color: #ffd700; font-weight: 700; }
+.rank-2 { color: #c0c0c0; font-weight: 600; }
+.rank-3 { color: #cd7f32; font-weight: 600; }
+.event-log { margin-top: 16px; }
+.event-log h4 { font-size: 13px; color: var(--text-dim); margin-bottom: 8px; }
+.result-actions { display: flex; gap: 8px; margin-top: 12px; }
+
+/* --- Modal --- */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); display: flex; align-items: center; justify-content: center; z-index: 100; }
+.modal-content { background: var(--bg-card); border-radius: 8px; padding: 24px; width: 360px; max-width: 90vw; }
+.modal-content h3 { margin-bottom: 8px; }
+.modal-hint { color: var(--text-dim); font-size: 13px; margin-bottom: 16px; }
+.modal-field { margin-bottom: 16px; }
+.modal-field label { display: block; font-size: 13px; color: var(--text-dim); margin-bottom: 4px; }
+.modal-field input { width: 100%; padding: 8px 12px; background: var(--bg-input); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 16px; letter-spacing: 2px; text-transform: uppercase; }
+.modal-message { font-size: 13px; margin-bottom: 12px; padding: 8px; border-radius: 4px; }
+.modal-message.success { background: rgba(64,160,64,.15); color: var(--success); }
+.modal-message.error { background: rgba(224,64,64,.15); color: var(--danger); }
+.modal-actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* --- Room Status Badge --- */
+.room-status { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 6px; font-size: 13px; margin-bottom: 12px; }
+.room-status .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.room-status .status-detail { font-size: 12px; color: var(--text-dim); }
+.room-status-setup { background: rgba(74,158,255,.12); }
+.room-status-setup .status-dot { background: var(--accent); }
+.room-status-racing { background: rgba(224,160,32,.12); }
+.room-status-racing .status-dot { background: var(--warning); }
+.room-status-finished { background: rgba(136,136,136,.12); }
+.room-status-finished .status-dot { background: var(--text-dim); }
+.room-status-error { background: rgba(224,64,64,.12); color: var(--danger); }
+.room-status-error .status-dot { background: var(--danger); }
+
 /* --- SurveyJS Creator overrides --- */
 .questions-tab { background: #fff; border-radius: 6px; }

@@ -97,6 +97,32 @@ export async function exportSurvey(id) {
   return request(`/surveys/${id}/export`);
 }
 
+export async function sendToGame(id, roomCode) {
+  return request(`/surveys/${id}/send-to-game`, {
+    method: 'POST',
+    body: JSON.stringify({ roomCode }),
+  });
+}
+
+export async function getRoomStatus(roomCode) {
+  return request(`/game/room-status/${roomCode.toUpperCase()}`);
+}
+
+export async function getRaceResults(surveyId) {
+  return request(`/surveys/${surveyId}/results`);
+}
+
+export async function saveRaceResults(surveyId, resultsData) {
+  return request(`/surveys/${surveyId}/results`, {
+    method: 'POST',
+    body: JSON.stringify(resultsData),
+  });
+}
+
+export async function getRoomResults(roomCode) {
+  return request(`/game/room-results/${roomCode.toUpperCase()}`);
+}
+
 export async function toggleSurveyActive(id, isActive) {
   return request(`/surveys/${id}/active`, {
     method: 'PATCH',

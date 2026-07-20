@@ -41,6 +41,18 @@ CREATE TABLE IF NOT EXISTS responses (
 CREATE UNIQUE INDEX IF NOT EXISTS idx_responses_unique
   ON responses(survey_id, email);
 
+-- Race results sent from Unity game
+CREATE TABLE IF NOT EXISTS race_results (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  survey_id INTEGER NOT NULL REFERENCES surveys(id),
+  room_code TEXT NOT NULL DEFAULT '',
+  config_name TEXT NOT NULL DEFAULT '',
+  rankings_json TEXT NOT NULL DEFAULT '[]',
+  event_log_json TEXT NOT NULL DEFAULT '[]',
+  total_race_time REAL NOT NULL DEFAULT 0,
+  received_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- Built-in survey templates (seeded on first startup)
 CREATE TABLE IF NOT EXISTS templates (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

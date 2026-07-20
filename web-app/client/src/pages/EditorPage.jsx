@@ -5,9 +5,11 @@ import QuestionsTab from '../components/QuestionsTab.jsx';
 import MappingsTab from '../components/MappingsTab.jsx';
 import RulesTab from '../components/RulesTab.jsx';
 import ResponsesTab from '../components/ResponsesTab.jsx';
+import ResultsTab from '../components/ResultsTab.jsx';
 import SharePanel from '../components/SharePanel.jsx';
+import SendToGameModal from '../components/SendToGameModal.jsx';
 
-const TABS = ['Questions', 'Mappings', 'Rules', 'Responses'];
+const TABS = ['Questions', 'Mappings', 'Rules', 'Responses', 'Results'];
 const SAVE_DELAY = 2000;
 
 export default function EditorPage() {
@@ -20,6 +22,7 @@ export default function EditorPage() {
   const [exportData, setExportData] = useState(null);
   const [exportLoading, setExportLoading] = useState(false);
   const [responseCount, setResponseCount] = useState(0);
+  const [showSendModal, setShowSendModal] = useState(false);
   const saveTimer = useRef(null);
   const latestData = useRef(null);
 
@@ -120,6 +123,9 @@ export default function EditorPage() {
         />
         <span className="save-status">{saveStatus}</span>
         <span className="response-count">{responseCount} response(s)</span>
+        <button onClick={() => setShowSendModal(true)} className="btn-primary" disabled={responseCount === 0}>
+          Send to Game
+        </button>
         <button onClick={handleExport} className="btn-primary" disabled={exportLoading}>
           {exportLoading ? 'Exporting...' : 'Export for Unity'}
         </button>
@@ -189,7 +195,12 @@ export default function EditorPage() {
         {activeTab === 3 && (
           <ResponsesTab surveyId={id} />
         )}
+        {activeTab === 4 && (
+          <ResultsTab surveyId={id} />
+        )}
       </div>
+
+      {showSendModal && <SendToGameModal surveyId={id} onClose={() => setShowSendModal(false)} />}
     </div>
   );
 }
