@@ -18,6 +18,7 @@ public class NetworkMessage
 public class CreateRoomMessage
 {
     public string type = "create_room";
+    public string sessionId;
 }
 
 [Serializable]
@@ -25,6 +26,15 @@ public class JoinRoomMessage
 {
     public string type = "join_room";
     public string roomCode;
+    public string sessionId;
+}
+
+[Serializable]
+public class RejoinRoomMessage
+{
+    public string type = "rejoin_room";
+    public string roomCode;
+    public string sessionId;
 }
 
 // --- Server → Client ---
@@ -256,4 +266,36 @@ public class SurveyImportMessage
     public string type = "survey_import";
     public string configName;
     public string exportJson;
+}
+
+// --- Reconnection Messages ---
+
+/// <summary>
+/// Server → Students: professor connection dropped, room suspended during grace period.
+/// </summary>
+[Serializable]
+public class HostReconnectingMessage
+{
+    public string type = "host_reconnecting";
+}
+
+/// <summary>
+/// Server → Students: professor reconnected, room resumed.
+/// </summary>
+[Serializable]
+public class HostReconnectedMessage
+{
+    public string type = "host_reconnected";
+}
+
+/// <summary>
+/// Server → Client: sent after successful rejoin with cached room state.
+/// </summary>
+[Serializable]
+public class ReconnectStateMessage
+{
+    public string type = "reconnect_state";
+    public string gamePhase;
+    public int studentCount;
+    public bool raceStarted;
 }

@@ -37,10 +37,14 @@ public class NetworkSync : MonoBehaviour
     private Vector3[] targetPositions;
     private float[] targetRotationsY;
 
+    // Reconnection state
+    private bool hostSuspended;
+
     private void Start()
     {
         if (NetworkManager == null) return;
         NetworkManager.OnMessageReceived += HandleGameMessage;
+        NetworkManager.OnReconnected += OnNetworkReconnected;
 
         if (RaceManager != null)
         {
@@ -57,7 +61,10 @@ public class NetworkSync : MonoBehaviour
     private void OnDestroy()
     {
         if (NetworkManager != null)
+        {
             NetworkManager.OnMessageReceived -= HandleGameMessage;
+            NetworkManager.OnReconnected -= OnNetworkReconnected;
+        }
 
         if (RaceManager != null)
         {
@@ -208,7 +215,7 @@ public class NetworkSync : MonoBehaviour
 
     private void UpdateStudent()
     {
-        if (remoteCars == null || targetPositions == null) return;
+        if (hostSuspended || remoteCars == null || targetPositions == null) return;
 
         float t = Time.deltaTime * InterpolationSpeed;
         for (int i = 0; i < remoteCars.Count; i++)
@@ -265,7 +272,35 @@ public class NetworkSync : MonoBehaviour
             case "room_closed":
                 HandleRoomClosed();
                 break;
+            case "host_reconnecting":
+                hostSuspended = true;
+                Debug.Log("[NetworkSync] Host disconnected — waiting for reconnection");
+                break;
+            case "host_reconnected":
+                hostSuspended = false;
+                Debug.Log("[NetworkSync] Host reconnected — resuming");
+                break;
         }
+    }
+
+    private void OnNetworkReconnected()
+    {
+        // On student reconnect, reset interpolation so next state_update reinitializes
+        if (NetworkManager != null && !NetworkManager.IsHost && remoteCars != null)
+        {
+            targetPositions = new Vector3[remoteCars.Count];
+            targetRotationsY = new float[remoteCars.Count];
+            for (int i = 0; i < remoteCars.Count; i++)
+            {
+                if (remoteCars[i] != null)
+                {
+                    targetPositions[i] = remoteCars[i].transform.position;
+                    targetRotationsY[i] = remoteCars[i].transform.eulerAngles.y;
+                }
+            }
+        }
+        hostSuspended = false;
+        Debug.Log("[NetworkSync] Reconnected — state reset");
     }
 
     private void HandleRaceStart(string json)

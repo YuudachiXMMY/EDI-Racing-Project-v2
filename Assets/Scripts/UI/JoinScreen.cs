@@ -34,6 +34,9 @@ public class JoinScreen : MonoBehaviour
             NetworkManager.OnRoomJoined += OnRoomJoined;
             NetworkManager.OnConnectionError += OnError;
             NetworkManager.OnDisconnected += OnDisconnected;
+            NetworkManager.OnReconnecting += OnReconnecting;
+            NetworkManager.OnReconnected += OnReconnected;
+            NetworkManager.OnReconnectFailed += OnReconnectFailed;
         }
     }
 
@@ -44,6 +47,9 @@ public class JoinScreen : MonoBehaviour
             NetworkManager.OnRoomJoined -= OnRoomJoined;
             NetworkManager.OnConnectionError -= OnError;
             NetworkManager.OnDisconnected -= OnDisconnected;
+            NetworkManager.OnReconnecting -= OnReconnecting;
+            NetworkManager.OnReconnected -= OnReconnected;
+            NetworkManager.OnReconnectFailed -= OnReconnectFailed;
         }
     }
 
@@ -82,6 +88,23 @@ public class JoinScreen : MonoBehaviour
     private void OnDisconnected()
     {
         SetStatus("Disconnected from server.");
+        if (JoinButton != null) JoinButton.interactable = true;
+    }
+
+    private void OnReconnecting(int attempt, float delay)
+    {
+        SetStatus($"Reconnecting... ({attempt}/{NetworkManager.MaxAttempts})");
+        if (JoinButton != null) JoinButton.interactable = false;
+    }
+
+    private void OnReconnected()
+    {
+        SetStatus("Reconnected!");
+    }
+
+    private void OnReconnectFailed()
+    {
+        SetStatus("Connection lost. Please re-enter room code.");
         if (JoinButton != null) JoinButton.interactable = true;
     }
 

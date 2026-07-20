@@ -3,10 +3,12 @@ const { WebSocketServer } = require('ws');
 
 const PORT = parseInt(process.env.PORT || '8080', 10);
 const HEARTBEAT_INTERVAL = 30000;
+const PROFESSOR_GRACE_PERIOD = 60000; // 60s before room deletion after professor disconnect
 
-// Room: { professor: WebSocket, students: Set<WebSocket>, raceStarted: boolean, latestState: string|null, gamePhase: string }
+// Room: { professor: WebSocket|null, students: Set<WebSocket>, webapps: Set<WebSocket>, raceStarted: boolean, latestState: string|null, gamePhase: string, raceResults: string|null, surveyData: string|null, professorSessionId: string|null, graceTimer: NodeJS.Timeout|null }
 const rooms = new Map();
-const clientRooms = new Map(); // WebSocket -> { roomCode, role }
+const clientRooms = new Map(); // WebSocket -> { roomCode, role, sessionId }
+const sessions = new Map();   // sessionId -> { roomCode, role }
 
 function generateRoomCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no I/O/0/1 to avoid confusion
@@ -37,6 +39,22 @@ function broadcastToStudents(roomCode, message) {
   }
 }
 
+function destroyRoom(roomCode) {
+  const room = rooms.get(roomCode);
+  if (!room) return;
+  if (room.graceTimer) clearTimeout(room.graceTimer);
+  broadcastToStudents(roomCode, { type: 'room_closed' });
+  for (const student of room.students) {
+    clientRooms.delete(student);
+  }
+  // Clean up session references for this room
+  for (const [sid, info] of sessions) {
+    if (info.roomCode === roomCode) sessions.delete(sid);
+  }
+  rooms.delete(roomCode);
+  console.log(`[Room ${roomCode}] Destroyed`);
+}
+
 function cleanupClient(ws) {
   const info = clientRooms.get(ws);
   if (!info) return;
@@ -46,13 +64,18 @@ function cleanupClient(ws) {
   if (!room) return;
 
   if (info.role === 'professor') {
-    // Professor left — close room, notify students
-    broadcastToStudents(info.roomCode, { type: 'room_closed' });
-    for (const student of room.students) {
-      clientRooms.delete(student);
-    }
-    rooms.delete(info.roomCode);
-    console.log(`[Room ${info.roomCode}] Closed (professor disconnected)`);
+    // Professor left — suspend room with grace period instead of immediate deletion
+    room.professor = null;
+    broadcastToStudents(info.roomCode, { type: 'host_reconnecting' });
+    console.log(`[Room ${info.roomCode}] Professor disconnected — grace period ${PROFESSOR_GRACE_PERIOD / 1000}s`);
+
+    room.graceTimer = setTimeout(() => {
+      room.graceTimer = null;
+      if (!room.professor) {
+        console.log(`[Room ${info.roomCode}] Grace period expired`);
+        destroyRoom(info.roomCode);
+      }
+    }, PROFESSOR_GRACE_PERIOD);
   } else if (info.role === 'webapp') {
     room.webapps.delete(ws);
     console.log(`[Room ${info.roomCode}] Web-app client disconnected`);
@@ -68,7 +91,6 @@ function cleanupClient(ws) {
 
 // --- HTTP server for room-status API ---
 const server = http.createServer((req, res) => {
-  // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET');
   res.setHeader('Content-Type', 'application/json');
@@ -152,10 +174,17 @@ wss.on('connection', (ws) => {
           latestState: null,
           gamePhase: 'Setup',
           raceResults: null,
+          surveyData: null,
+          professorSessionId: msg.sessionId || null,
+          graceTimer: null,
         });
-        clientRooms.set(ws, { roomCode, role: 'professor' });
+        const clientInfo = { roomCode, role: 'professor', sessionId: msg.sessionId || null };
+        clientRooms.set(ws, clientInfo);
+        if (msg.sessionId) {
+          sessions.set(msg.sessionId, { roomCode, role: 'professor' });
+        }
         sendJSON(ws, { type: 'room_created', roomCode });
-        console.log(`[Room ${roomCode}] Created`);
+        console.log(`[Room ${roomCode}] Created${msg.sessionId ? ` (session: ${msg.sessionId})` : ''}`);
         break;
       }
 
@@ -167,7 +196,11 @@ wss.on('connection', (ws) => {
           return;
         }
         room.students.add(ws);
-        clientRooms.set(ws, { roomCode: code, role: 'student' });
+        const clientInfo = { roomCode: code, role: 'student', sessionId: msg.sessionId || null };
+        clientRooms.set(ws, clientInfo);
+        if (msg.sessionId) {
+          sessions.set(msg.sessionId, { roomCode: code, role: 'student' });
+        }
         sendJSON(ws, { type: 'room_joined', roomCode: code });
         // Notify professor
         if (room.professor && room.professor.readyState === 1) {
@@ -185,8 +218,64 @@ wss.on('connection', (ws) => {
         break;
       }
 
+      case 'rejoin_room': {
+        const code = (msg.roomCode || '').toUpperCase();
+        const sid = msg.sessionId || '';
+        const room = rooms.get(code);
+
+        if (!room || !sid) {
+          sendJSON(ws, { type: 'error', message: 'Room not found or invalid session' });
+          return;
+        }
+
+        const sessionInfo = sessions.get(sid);
+        if (!sessionInfo || sessionInfo.roomCode !== code) {
+          sendJSON(ws, { type: 'error', message: 'Session not recognized for this room' });
+          return;
+        }
+
+        if (sessionInfo.role === 'professor') {
+          if (room.graceTimer) {
+            clearTimeout(room.graceTimer);
+            room.graceTimer = null;
+          }
+          room.professor = ws;
+          clientRooms.set(ws, { roomCode: code, role: 'professor', sessionId: sid });
+          broadcastToStudents(code, { type: 'host_reconnected' });
+          sendJSON(ws, {
+            type: 'reconnect_state',
+            gamePhase: room.gamePhase || 'Setup',
+            studentCount: room.students.size,
+            raceStarted: room.raceStarted,
+          });
+          if (room.latestState) {
+            ws.send(room.latestState);
+          }
+          console.log(`[Room ${code}] Professor reconnected (session: ${sid})`);
+        } else {
+          room.students.add(ws);
+          clientRooms.set(ws, { roomCode: code, role: 'student', sessionId: sid });
+          sendJSON(ws, {
+            type: 'reconnect_state',
+            gamePhase: room.gamePhase || 'Setup',
+            studentCount: room.students.size,
+            raceStarted: room.raceStarted,
+          });
+          if (room.surveyData && !room.raceStarted) {
+            ws.send(room.surveyData);
+          }
+          if (room.latestState) {
+            ws.send(room.latestState);
+          }
+          if (room.professor && room.professor.readyState === 1) {
+            sendJSON(room.professor, { type: 'student_count', count: room.students.size });
+          }
+          console.log(`[Room ${code}] Student reconnected (${room.students.size} total)`);
+        }
+        break;
+      }
+
       case 'web_join_room': {
-        // Web-app backend joins a room to send survey data to the professor
         const webCode = (msg.roomCode || '').toUpperCase();
         const webRoom = rooms.get(webCode);
         if (!webRoom) {
@@ -201,7 +290,6 @@ wss.on('connection', (ws) => {
       }
 
       case 'survey_import': {
-        // Web-app sends survey data to the professor's Unity game
         const webInfo = clientRooms.get(ws);
         if (!webInfo || webInfo.role !== 'webapp') {
           sendJSON(ws, { type: 'error', message: 'Not authorized' });
@@ -212,7 +300,6 @@ wss.on('connection', (ws) => {
           sendJSON(ws, { type: 'survey_import_ack', success: false, error: 'Professor not connected' });
           return;
         }
-        // Relay the full message to the professor
         importRoom.professor.send(data.toString());
         sendJSON(ws, { type: 'survey_import_ack', success: true });
         console.log(`[Room ${webInfo.roomCode}] Survey data sent from web-app to professor`);
@@ -236,7 +323,7 @@ wss.on('connection', (ws) => {
           } else if (msg.type === 'state_update') {
             room.latestState = raw;
           } else if (msg.type === 'survey_questions') {
-            room.surveyData = raw; // Cache for late-joiners
+            room.surveyData = raw;
           } else if (msg.type === 'game_state') {
             room.gamePhase = msg.state || 'Setup';
           } else if (msg.type === 'race_results') {
