@@ -174,6 +174,7 @@ wss.on('connection', (ws) => {
           latestState: null,
           gamePhase: 'Setup',
           raceResults: null,
+          latestLeaderboard: null,
           surveyData: null,
           professorSessionId: msg.sessionId || null,
           graceTimer: null,
@@ -285,6 +286,9 @@ wss.on('connection', (ws) => {
         webRoom.webapps.add(ws);
         clientRooms.set(ws, { roomCode: webCode, role: 'webapp' });
         sendJSON(ws, { type: 'room_joined', roomCode: webCode });
+        // Send cached state to late-joining web viewer
+        if (webRoom.latestState) ws.send(webRoom.latestState);
+        if (webRoom.latestLeaderboard) ws.send(webRoom.latestLeaderboard);
         console.log(`[Room ${webCode}] Web-app client joined`);
         break;
       }
@@ -322,6 +326,8 @@ wss.on('connection', (ws) => {
             room.latestState = raw;
           } else if (msg.type === 'state_update') {
             room.latestState = raw;
+          } else if (msg.type === 'leaderboard') {
+            room.latestLeaderboard = raw;
           } else if (msg.type === 'survey_questions') {
             room.surveyData = raw;
           } else if (msg.type === 'game_state') {
@@ -335,8 +341,10 @@ wss.on('connection', (ws) => {
 
           broadcastToStudents(info.roomCode, raw);
 
-          // Also relay race_results to web-app clients
-          if (msg.type === 'race_results') {
+          // Relay game messages to web-app live viewers
+          const WEBAPP_RELAY_TYPES = ['state_update', 'leaderboard', 'game_state',
+            'event_triggered', 'race_start', 'race_end', 'race_results'];
+          if (WEBAPP_RELAY_TYPES.includes(msg.type)) {
             for (const webapp of room.webapps) {
               if (webapp.readyState === 1) webapp.send(raw);
             }

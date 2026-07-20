@@ -136,6 +136,17 @@ export default function SendToGameModal({ surveyId, onClose }) {
 
         <RoomStatusBadge status={roomStatus} checking={checking} />
 
+        {roomStatus && roomStatus.exists && (
+          <a
+            href={`#/live/${roomCode.trim().toUpperCase()}`}
+            target="_blank"
+            rel="noopener"
+            className="live-link"
+          >
+            Watch Live Race
+          </a>
+        )}
+
         {message && (
           <p className={`modal-message ${status}`}>{message}</p>
         )}
