@@ -1,11 +1,13 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getSurvey, updateSurvey, exportSurvey, getResponseCount } from '../api.js';
+import { getSurvey, updateSurvey, exportSurvey, getResponseCount, toggleSurveyActive } from '../api.js';
 import QuestionsTab from '../components/QuestionsTab.jsx';
 import MappingsTab from '../components/MappingsTab.jsx';
 import RulesTab from '../components/RulesTab.jsx';
+import ResponsesTab from '../components/ResponsesTab.jsx';
+import SharePanel from '../components/SharePanel.jsx';
 
-const TABS = ['Questions', 'Mappings', 'Rules'];
+const TABS = ['Questions', 'Mappings', 'Rules', 'Responses'];
 const SAVE_DELAY = 2000;
 
 export default function EditorPage() {
@@ -91,6 +93,13 @@ export default function EditorPage() {
     setSaveStatus(result.success ? 'Saved' : 'Error saving');
   }
 
+  async function handleToggleActive(isActive) {
+    const result = await toggleSurveyActive(id, isActive);
+    if (result.success) {
+      setSurvey(prev => ({ ...prev, is_active: isActive ? 1 : 0 }));
+    }
+  }
+
   function handleNameChange(e) {
     handleChange('config_name', e.target.value);
   }
@@ -115,6 +124,12 @@ export default function EditorPage() {
           {exportLoading ? 'Exporting...' : 'Export for Unity'}
         </button>
       </header>
+
+      <SharePanel
+        shareCode={survey.share_code}
+        isActive={!!survey.is_active}
+        onToggleActive={handleToggleActive}
+      />
 
       {exportData && (
         <div className="export-panel">
@@ -170,6 +185,9 @@ export default function EditorPage() {
             rules={survey.rules || []}
             onChange={rs => handleChange('rules', rs)}
           />
+        )}
+        {activeTab === 3 && (
+          <ResponsesTab surveyId={id} />
         )}
       </div>
     </div>

@@ -97,6 +97,13 @@ export async function exportSurvey(id) {
   return request(`/surveys/${id}/export`);
 }
 
+export async function toggleSurveyActive(id, isActive) {
+  return request(`/surveys/${id}/active`, {
+    method: 'PATCH',
+    body: JSON.stringify({ isActive })
+  });
+}
+
 // Public endpoints (no auth) — use fetch directly to avoid 401 redirect
 export async function getPublicSurvey(shareCode) {
   const res = await fetch(`/api/s/${shareCode}`);

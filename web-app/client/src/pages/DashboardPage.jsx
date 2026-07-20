@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getSurveys, createSurvey, deleteSurvey, getTemplates, logout, clearToken } from '../api.js';
+import { getSurveys, createSurvey, deleteSurvey, getTemplates, toggleSurveyActive, logout, clearToken } from '../api.js';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
@@ -34,6 +34,19 @@ export default function DashboardPage() {
       rules: template.config.rules,
     });
     if (result.success) navigate(`/surveys/${result.data.id}`);
+  }
+
+  async function handleToggleActive(id, isActive) {
+    const result = await toggleSurveyActive(id, isActive);
+    if (result.success) {
+      setSurveys(prev => prev.map(s => s.id === id ? { ...s, is_active: isActive ? 1 : 0 } : s));
+    }
+  }
+
+  function copyShareLink(shareCode, e) {
+    e.stopPropagation();
+    const url = `${window.location.origin}/survey/#/s/${shareCode}`;
+    navigator.clipboard.writeText(url).catch(() => {});
   }
 
   async function handleDelete(id, name) {
@@ -78,10 +91,30 @@ export default function DashboardPage() {
         <div className="survey-grid">
           {surveys.map(s => (
             <div key={s.id} className="survey-card" onClick={() => navigate(`/surveys/${s.id}`)}>
-              <h3>{s.config_name}</h3>
+              <div className="card-title-row">
+                <h3>{s.config_name}</h3>
+                <button
+                  className={`btn-small active-toggle ${s.is_active ? 'active' : 'inactive'}`}
+                  onClick={e => { e.stopPropagation(); handleToggleActive(s.id, !s.is_active); }}
+                >
+                  {s.is_active ? 'Active' : 'Inactive'}
+                </button>
+              </div>
               {s.description && <p className="description">{s.description}</p>}
+              <div className="card-share-row" onClick={e => e.stopPropagation()}>
+                <input
+                  type="text"
+                  className="share-url-mini"
+                  value={`${window.location.origin}/survey/#/s/${s.share_code}`}
+                  readOnly
+                  onClick={e => e.target.select()}
+                />
+                <button className="btn-secondary btn-small" onClick={e => copyShareLink(s.share_code, e)}>
+                  Copy
+                </button>
+              </div>
               <div className="card-meta">
-                <span className="share-code">Code: {s.share_code}</span>
+                <span className="response-count">{s.response_count ?? 0} response(s)</span>
                 <span className="updated">Updated: {new Date(s.updated_at).toLocaleDateString()}</span>
               </div>
               <button

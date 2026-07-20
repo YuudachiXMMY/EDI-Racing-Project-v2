@@ -15,6 +15,8 @@ export default function StudentSurveyPage() {
   const [teamName, setTeamName] = useState('');
   const [formError, setFormError] = useState('');
   const modelRef = useRef(null);
+  const emailRef = useRef('');
+  const teamNameRef = useRef('');
 
   useEffect(() => {
     loadSurvey();
@@ -43,12 +45,14 @@ export default function StudentSurveyPage() {
 
   async function handleSubmit(answers) {
     setFormError('');
-    if (!email.trim()) {
+    const currentEmail = emailRef.current;
+    const currentTeamName = teamNameRef.current;
+    if (!currentEmail.trim()) {
       setFormError('Please enter your email');
       modelRef.current?.clear(false, true);
       return;
     }
-    if (!teamName.trim()) {
+    if (!currentTeamName.trim()) {
       setFormError('Please enter your team name');
       modelRef.current?.clear(false, true);
       return;
@@ -56,8 +60,8 @@ export default function StudentSurveyPage() {
 
     setStatus('submitting');
     const result = await submitResponse(shareCode, {
-      email: email.trim(),
-      teamName: teamName.trim(),
+      email: currentEmail.trim(),
+      teamName: currentTeamName.trim(),
       answers,
     });
 
@@ -110,14 +114,14 @@ export default function StudentSurveyPage() {
             type="email"
             placeholder="Your email"
             value={email}
-            onChange={e => setEmail(e.target.value)}
+            onChange={e => { setEmail(e.target.value); emailRef.current = e.target.value; }}
             required
           />
           <input
             type="text"
             placeholder="Team name"
             value={teamName}
-            onChange={e => setTeamName(e.target.value)}
+            onChange={e => { setTeamName(e.target.value); teamNameRef.current = e.target.value; }}
             required
           />
         </div>
