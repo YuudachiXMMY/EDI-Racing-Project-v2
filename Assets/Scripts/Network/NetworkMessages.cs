@@ -230,6 +230,20 @@ public class SurveyAckMessage
     public string teamName;
 }
 
+// --- Professor → Web App (via server relay) ---
+
+/// <summary>
+/// Professor → Server → Web App: sends race results after race completion.
+/// resultsJson is double-serialized RaceResults (JsonUtility limitation).
+/// </summary>
+[Serializable]
+public class RaceResultsMessage
+{
+    public string type = "race_results";
+    public string configName;
+    public string resultsJson;
+}
+
 // --- Web App → Professor (via server relay) ---
 
 /// <summary>

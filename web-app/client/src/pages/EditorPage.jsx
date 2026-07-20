@@ -5,10 +5,11 @@ import QuestionsTab from '../components/QuestionsTab.jsx';
 import MappingsTab from '../components/MappingsTab.jsx';
 import RulesTab from '../components/RulesTab.jsx';
 import ResponsesTab from '../components/ResponsesTab.jsx';
+import ResultsTab from '../components/ResultsTab.jsx';
 import SharePanel from '../components/SharePanel.jsx';
 import SendToGameModal from '../components/SendToGameModal.jsx';
 
-const TABS = ['Questions', 'Mappings', 'Rules', 'Responses'];
+const TABS = ['Questions', 'Mappings', 'Rules', 'Responses', 'Results'];
 const SAVE_DELAY = 2000;
 
 export default function EditorPage() {
@@ -193,6 +194,9 @@ export default function EditorPage() {
         )}
         {activeTab === 3 && (
           <ResponsesTab surveyId={id} />
+        )}
+        {activeTab === 4 && (
+          <ResultsTab surveyId={id} />
         )}
       </div>
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { sendToGame, getRoomStatus } from '../api.js';
+import { sendToGame, getRoomStatus, getRoomResults, saveRaceResults } from '../api.js';
 import RoomStatusBadge from './RoomStatusBadge.jsx';
 
 const ROOM_CODE_KEY = 'edi-last-room-code';
@@ -13,6 +13,7 @@ export default function SendToGameModal({ surveyId, onClose }) {
   const [message, setMessage] = useState('');
   const [roomStatus, setRoomStatus] = useState(null);
   const [checking, setChecking] = useState(false);
+  const [resultsSaved, setResultsSaved] = useState(false);
   const debounceRef = useRef(null);
   const pollRef = useRef(null);
   const abortRef = useRef(false);
@@ -29,8 +30,29 @@ export default function SendToGameModal({ surveyId, onClose }) {
     setChecking(true);
     const result = await getRoomStatus(trimmed);
     if (abortRef.current) return;
-    setRoomStatus(result.success ? result.data : { exists: false, error: 'Failed to check' });
+    const data = result.success ? result.data : { exists: false, error: 'Failed to check' };
+    setRoomStatus(data);
     setChecking(false);
+
+    // Auto-save race results when race finishes
+    if (data && data.gamePhase === 'Finished' && !resultsSaved) {
+      try {
+        const roomRes = await getRoomResults(trimmed);
+        if (roomRes.success && roomRes.data && roomRes.data.type === 'race_results') {
+          const parsed = JSON.parse(roomRes.data.resultsJson);
+          await saveRaceResults(surveyId, {
+            roomCode: trimmed,
+            configName: roomRes.data.configName || '',
+            rankings: parsed.Rankings || [],
+            eventLog: parsed.EventLog || [],
+            totalRaceTime: parsed.TotalRaceTime || 0,
+          });
+          setResultsSaved(true);
+        }
+      } catch {
+        // Results fetch failed — professor can still view via Results tab later
+      }
+    }
   }
 
   // Debounced check + polling setup when roomCode changes

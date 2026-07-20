@@ -54,7 +54,7 @@ function cleanupClient(ws) {
     rooms.delete(info.roomCode);
     console.log(`[Room ${info.roomCode}] Closed (professor disconnected)`);
   } else if (info.role === 'webapp') {
-    // Web-app client disconnected — no action needed
+    room.webapps.delete(ws);
     console.log(`[Room ${info.roomCode}] Web-app client disconnected`);
   } else {
     room.students.delete(ws);
@@ -90,6 +90,20 @@ const server = http.createServer((req, res) => {
       gamePhase: room.gamePhase || 'Setup',
       raceStarted: room.raceStarted,
     }));
+    return;
+  }
+
+  const resultsMatch = req.url.match(/^\/api\/room-results\/([A-Za-z0-9]+)$/);
+  if (req.method === 'GET' && resultsMatch) {
+    const code = resultsMatch[1].toUpperCase();
+    const room = rooms.get(code);
+    if (!room || !room.raceResults) {
+      res.writeHead(200);
+      res.end(JSON.stringify({ exists: false }));
+      return;
+    }
+    res.writeHead(200);
+    res.end(room.raceResults);
     return;
   }
 
@@ -133,9 +147,11 @@ wss.on('connection', (ws) => {
         rooms.set(roomCode, {
           professor: ws,
           students: new Set(),
+          webapps: new Set(),
           raceStarted: false,
           latestState: null,
           gamePhase: 'Setup',
+          raceResults: null,
         });
         clientRooms.set(ws, { roomCode, role: 'professor' });
         sendJSON(ws, { type: 'room_created', roomCode });
@@ -177,6 +193,7 @@ wss.on('connection', (ws) => {
           sendJSON(ws, { type: 'error', message: 'Room not found' });
           return;
         }
+        webRoom.webapps.add(ws);
         clientRooms.set(ws, { roomCode: webCode, role: 'webapp' });
         sendJSON(ws, { type: 'room_joined', roomCode: webCode });
         console.log(`[Room ${webCode}] Web-app client joined`);
@@ -222,11 +239,21 @@ wss.on('connection', (ws) => {
             room.surveyData = raw; // Cache for late-joiners
           } else if (msg.type === 'game_state') {
             room.gamePhase = msg.state || 'Setup';
+          } else if (msg.type === 'race_results') {
+            room.raceResults = raw;
+            room.gamePhase = 'Finished';
           } else if (msg.type === 'race_end') {
             room.gamePhase = 'Finished';
           }
 
           broadcastToStudents(info.roomCode, raw);
+
+          // Also relay race_results to web-app clients
+          if (msg.type === 'race_results') {
+            for (const webapp of room.webapps) {
+              if (webapp.readyState === 1) webapp.send(raw);
+            }
+          }
         } else if (info.role === 'student') {
           // Student → Professor relay
           if (room.professor && room.professor.readyState === 1) {

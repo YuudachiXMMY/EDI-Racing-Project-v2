@@ -10,6 +10,7 @@ import exportRoutes from './routes/export.js';
 import templateRoutes from './routes/templates.js';
 import responseRoutes from './routes/responses.js';
 import gameStatusRoutes from './routes/game-status.js';
+import resultsRoutes from './routes/results.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.API_PORT || '3001', 10);
@@ -28,6 +29,7 @@ app.use('/api/surveys', exportRoutes);
 app.use('/api/templates', templateRoutes);
 app.use('/api', responseRoutes);
 app.use('/api/surveys', responseRoutes);
+app.use('/api/surveys', resultsRoutes);
 app.use('/api/game', gameStatusRoutes);
 
 // Health check

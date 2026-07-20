@@ -17,4 +17,16 @@ router.get('/room-status/:code', async (req, res) => {
   }
 });
 
+// GET /api/game/room-results/:code — proxy race results from WS server
+router.get('/room-results/:code', async (req, res) => {
+  const code = req.params.code.toUpperCase();
+  try {
+    const response = await fetch(`${GAME_HTTP_URL}/api/room-results/${code}`);
+    const data = await response.json();
+    res.json({ success: true, data });
+  } catch {
+    res.json({ success: true, data: { exists: false, error: 'Game server unreachable' } });
+  }
+});
+
 export default router;

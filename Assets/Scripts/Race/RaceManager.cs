@@ -42,6 +42,8 @@ public class RaceManager : MonoBehaviour
     public event Action<GameState> OnStateChanged;
     public event Action<CarIdentity> OnRaceFinished;
     public List<GameObject> SpawnedCars => spawnedCars;
+    public float RaceStartTime => raceStartTime;
+    public List<EventLogEntry> GetEventLog() => new List<EventLogEntry>(eventLog);
 
     private void SetState(GameState state)
     {
