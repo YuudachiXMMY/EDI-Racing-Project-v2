@@ -335,6 +335,29 @@ public class SetupScreen : MonoBehaviour
         if (RaceManager == null || RaceManager.CurrentState != GameState.Setup) return;
 
         var baseMsg = JsonUtility.FromJson<NetworkMessage>(json);
+
+        if (baseMsg.type == "student_joined")
+        {
+            var joinMsg = JsonUtility.FromJson<StudentJoinedMessage>(json);
+            if (InfoText != null)
+                InfoText.text = $"'{joinMsg.teamName}' joined ({joinMsg.count} student(s))";
+            return;
+        }
+
+        if (baseMsg.type == "student_list")
+        {
+            var listMsg = JsonUtility.FromJson<StudentListMessage>(json);
+            if (StudentCountText != null)
+            {
+                StudentCountText.gameObject.SetActive(true);
+                string names = listMsg.teamNames != null && listMsg.teamNames.Length > 0
+                    ? string.Join(", ", listMsg.teamNames)
+                    : "(none named)";
+                StudentCountText.text = $"{listMsg.count} student(s): {names}";
+            }
+            return;
+        }
+
         if (baseMsg.type != "survey_import") return;
 
         var msg = JsonUtility.FromJson<SurveyImportMessage>(json);

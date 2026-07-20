@@ -70,11 +70,22 @@ public class CarLabelSpawner : MonoBehaviour
             GameObject textObj = new GameObject("Text");
             textObj.transform.SetParent(labelObj.transform, false);
             Text text = textObj.AddComponent<Text>();
-            text.text = identity.TeamName;
             text.fontSize = FontSize;
             text.alignment = TextAnchor.MiddleCenter;
-            text.color = Color.white;
             text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+
+            // Highlight own car with distinct label
+            if (identity.IsOwnCar)
+            {
+                text.text = $">> {identity.TeamName} <<";
+                text.color = new Color(1f, 0.84f, 0f); // gold
+                text.fontStyle = FontStyle.Bold;
+            }
+            else
+            {
+                text.text = identity.TeamName;
+                text.color = Color.white;
+            }
 
             RectTransform textRect = textObj.GetComponent<RectTransform>();
             textRect.anchorMin = Vector2.zero;

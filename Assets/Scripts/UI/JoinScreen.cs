@@ -12,6 +12,7 @@ public class JoinScreen : MonoBehaviour
 
     [Header("UI Elements")]
     public InputField RoomCodeInput;
+    public InputField TeamNameInput;
     public Button JoinButton;
     public Text StatusText;
 
@@ -23,8 +24,11 @@ public class JoinScreen : MonoBehaviour
         if (RoomCodeInput != null)
             RoomCodeInput.characterLimit = 6;
 
+        if (TeamNameInput != null)
+            TeamNameInput.characterLimit = 30;
+
         if (StatusText != null)
-            StatusText.text = "Enter room code to join.";
+            StatusText.text = "Enter room code and team name to join.";
     }
 
     private void OnEnable()
@@ -68,9 +72,16 @@ public class JoinScreen : MonoBehaviour
             return;
         }
 
+        string teamName = TeamNameInput != null ? TeamNameInput.text.Trim() : "";
+        if (string.IsNullOrEmpty(teamName))
+        {
+            SetStatus("Please enter your team name.");
+            return;
+        }
+
         SetStatus("Connecting...");
         if (JoinButton != null) JoinButton.interactable = false;
-        NetworkManager.JoinRoom(code);
+        NetworkManager.JoinRoom(code, teamName);
     }
 
     private void OnRoomJoined(string roomCode)

@@ -36,6 +36,7 @@ public class NetworkSync : MonoBehaviour
     private List<GameObject> remoteCars;
     private Vector3[] targetPositions;
     private float[] targetRotationsY;
+    private int ownCarIndex = -1;
 
     // Reconnection state
     private bool hostSuspended;
@@ -306,6 +307,8 @@ public class NetworkSync : MonoBehaviour
     private void HandleRaceStart(string json)
     {
         var msg = JsonUtility.FromJson<RaceStartMessage>(json);
+        ownCarIndex = msg.yourCarIndex;
+
         var carDataList = new List<CarData>();
         foreach (var nc in msg.cars)
             carDataList.Add(nc.ToCarData());
@@ -327,9 +330,28 @@ public class NetworkSync : MonoBehaviour
                     targetRotationsY[i] = remoteCars[i].transform.eulerAngles.y;
                 }
             }
+
+            // Mark and highlight own car
+            if (ownCarIndex >= 0 && ownCarIndex < remoteCars.Count && remoteCars[ownCarIndex] != null)
+            {
+                var identity = remoteCars[ownCarIndex].GetComponent<CarIdentity>();
+                if (identity != null)
+                    identity.IsOwnCar = true;
+
+                // Apply emissive glow to own car
+                var renderers = remoteCars[ownCarIndex].GetComponentsInChildren<Renderer>();
+                foreach (var r in renderers)
+                {
+                    foreach (var mat in r.materials)
+                    {
+                        mat.EnableKeyword("_EMISSION");
+                        mat.SetColor("_EmissionColor", new Color(1f, 0.84f, 0f) * 0.3f);
+                    }
+                }
+            }
         }
 
-        Debug.Log($"[NetworkSync] Race started with {carDataList.Count} cars (visual-only)");
+        Debug.Log($"[NetworkSync] Race started with {carDataList.Count} cars (visual-only, ownCarIndex={ownCarIndex})");
     }
 
     private void HandleStateUpdate(string json)

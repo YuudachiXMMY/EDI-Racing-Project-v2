@@ -81,9 +81,15 @@ function cleanupClient(ws) {
     console.log(`[Room ${info.roomCode}] Web-app client disconnected`);
   } else {
     room.students.delete(ws);
-    // Notify professor of updated count
+    room.studentTeamNames.delete(ws);
+    // Notify professor of updated count and list
     if (room.professor && room.professor.readyState === 1) {
       sendJSON(room.professor, { type: 'student_count', count: room.students.size });
+      sendJSON(room.professor, {
+        type: 'student_list',
+        teamNames: [...room.studentTeamNames.values()],
+        count: room.students.size,
+      });
     }
     console.log(`[Room ${info.roomCode}] Student left (${room.students.size} remaining)`);
   }
@@ -170,6 +176,7 @@ wss.on('connection', (ws) => {
           professor: ws,
           students: new Set(),
           webapps: new Set(),
+          studentTeamNames: new Map(),
           raceStarted: false,
           latestState: null,
           gamePhase: 'Setup',
@@ -197,15 +204,27 @@ wss.on('connection', (ws) => {
           return;
         }
         room.students.add(ws);
-        const clientInfo = { roomCode: code, role: 'student', sessionId: msg.sessionId || null };
+        const teamName = (msg.teamName || '').trim();
+        const clientInfo = { roomCode: code, role: 'student', sessionId: msg.sessionId || null, teamName };
         clientRooms.set(ws, clientInfo);
+        if (teamName) room.studentTeamNames.set(ws, teamName);
         if (msg.sessionId) {
-          sessions.set(msg.sessionId, { roomCode: code, role: 'student' });
+          sessions.set(msg.sessionId, { roomCode: code, role: 'student', teamName });
         }
         sendJSON(ws, { type: 'room_joined', roomCode: code });
-        // Notify professor
+        // Notify professor with identity
         if (room.professor && room.professor.readyState === 1) {
           sendJSON(room.professor, { type: 'student_count', count: room.students.size });
+          sendJSON(room.professor, {
+            type: 'student_joined',
+            teamName: teamName || '(anonymous)',
+            count: room.students.size,
+          });
+          sendJSON(room.professor, {
+            type: 'student_list',
+            teamNames: [...room.studentTeamNames.values()],
+            count: room.students.size,
+          });
         }
         // Send cached survey to late-joiner (if survey distributed but race not started)
         if (room.surveyData && !room.raceStarted) {
@@ -215,7 +234,7 @@ wss.on('connection', (ws) => {
         if (room.latestState) {
           ws.send(room.latestState);
         }
-        console.log(`[Room ${code}] Student joined (${room.students.size} total)`);
+        console.log(`[Room ${code}] Student '${teamName || 'anonymous'}' joined (${room.students.size} total)`);
         break;
       }
 
@@ -255,7 +274,9 @@ wss.on('connection', (ws) => {
           console.log(`[Room ${code}] Professor reconnected (session: ${sid})`);
         } else {
           room.students.add(ws);
-          clientRooms.set(ws, { roomCode: code, role: 'student', sessionId: sid });
+          const teamName = (msg.teamName || (sessionInfo && sessionInfo.teamName) || '').trim();
+          clientRooms.set(ws, { roomCode: code, role: 'student', sessionId: sid, teamName });
+          if (teamName) room.studentTeamNames.set(ws, teamName);
           sendJSON(ws, {
             type: 'reconnect_state',
             gamePhase: room.gamePhase || 'Setup',
@@ -324,6 +345,29 @@ wss.on('connection', (ws) => {
             room.raceStarted = true;
             room.gamePhase = 'Racing';
             room.latestState = raw;
+
+            // Send personalized race_start to each student with yourCarIndex
+            const cars = msg.cars || [];
+            for (const student of room.students) {
+              if (student.readyState !== 1) continue;
+              const studentInfo = clientRooms.get(student);
+              const studentTeam = (studentInfo && studentInfo.teamName) || '';
+              let yourIndex = -1;
+              if (studentTeam) {
+                yourIndex = cars.findIndex(c =>
+                  c.teamName && c.teamName.toLowerCase() === studentTeam.toLowerCase()
+                );
+              }
+              const personalizedMsg = { ...msg, yourCarIndex: yourIndex };
+              student.send(JSON.stringify(personalizedMsg));
+            }
+
+            // Relay to web-app viewers (no personalization)
+            for (const webapp of room.webapps) {
+              if (webapp.readyState === 1) webapp.send(raw);
+            }
+            // Skip normal broadcastToStudents — already sent individually
+            break;
           } else if (msg.type === 'state_update') {
             room.latestState = raw;
           } else if (msg.type === 'leaderboard') {
