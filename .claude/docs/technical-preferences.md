@@ -14,41 +14,41 @@
 
 - **Engine**: Unity
 - **Language**: C#
-- **Rendering**: [TO BE CONFIGURED]
-- **Physics**: [TO BE CONFIGURED]
+- **Rendering**: URP (Universal Render Pipeline) 17.3.0
+- **Physics**: Unity Built-in Physics (PhysX) + AI Navigation 2.0.13
 
 ## Input & Platform
 
 <!-- Written by /setup-engine. Read by /ux-design, /ux-review, /test-setup, /team-ui, and /dev-story -->
 <!-- to scope interaction specs, test helpers, and implementation to the correct input methods. -->
 
-- **Target Platforms**: [TO BE CONFIGURED — e.g., PC, Console, Mobile, Web]
-- **Input Methods**: [TO BE CONFIGURED — e.g., Keyboard/Mouse, Gamepad, Touch, Mixed]
-- **Primary Input**: [TO BE CONFIGURED — the dominant input for this game]
-- **Gamepad Support**: [TO BE CONFIGURED — Full / Partial / None]
-- **Touch Support**: [TO BE CONFIGURED — Full / Partial / None]
-- **Platform Notes**: [TO BE CONFIGURED — any platform-specific UX constraints]
+- **Target Platforms**: WebGL (primary), Editor (development)
+- **Input Methods**: Keyboard
+- **Primary Input**: Keyboard — teacher-operated; students observe or join via web browser
+- **Gamepad Support**: None
+- **Touch Support**: None
+- **Platform Notes**: WebGL build target (BuildScript.cs). Custom WebGL template (EDIRacing). WebSocket-based real-time networking for student participation via web browser. Memory limit: 2048 MB max (webGLMaximumMemorySize).
 
 ## Naming Conventions
 
-- **Classes**: [TO BE CONFIGURED]
-- **Variables**: [TO BE CONFIGURED]
-- **Signals/Events**: [TO BE CONFIGURED]
-- **Files**: [TO BE CONFIGURED]
-- **Scenes/Prefabs**: [TO BE CONFIGURED]
-- **Constants**: [TO BE CONFIGURED]
+- **Classes**: PascalCase (e.g., CarController, EventManager, RaceConfig)
+- **Variables**: camelCase for private fields, PascalCase for public fields/properties
+- **Signals/Events**: C# events with `Action<T>` delegate, `On` prefix (e.g., OnEventTriggered, OnStateChanged)
+- **Files**: PascalCase matching class name (e.g., CarController.cs, RaceManager.cs)
+- **Scenes/Prefabs**: Scenes: snake_case (complete_track_demo.unity); Prefabs: PascalCase (Car1.prefab, Car_Red.prefab)
+- **Constants**: PascalCase (e.g., MaxRecoveryAttempts)
 
 ## Performance Budgets
 
-- **Target Framerate**: [TO BE CONFIGURED]
-- **Frame Budget**: [TO BE CONFIGURED]
-- **Draw Calls**: [TO BE CONFIGURED]
-- **Memory Ceiling**: [TO BE CONFIGURED]
+- **Target Framerate**: 60 FPS (WebGL standard)
+- **Frame Budget**: 16.67 ms
+- **Draw Calls**: Not specified — optimize as needed for WebGL
+- **Memory Ceiling**: 2048 MB (webGLMaximumMemorySize in ProjectSettings)
 
 ## Testing
 
-- **Framework**: [TO BE CONFIGURED]
-- **Minimum Coverage**: [TO BE CONFIGURED]
+- **Framework**: Unity Test Framework 1.6.0 + NUnit (EditMode tests)
+- **Minimum Coverage**: 80% (per coding-standards.md)
 - **Required Tests**: Balance formulas, gameplay systems, networking (if applicable)
 
 ## Forbidden Patterns
@@ -72,12 +72,12 @@
 <!-- Read by /code-review, /architecture-decision, /architecture-review, and team skills -->
 <!-- to know which specialist to spawn for engine-specific validation. -->
 
-- **Primary**: [TO BE CONFIGURED — run /setup-engine]
-- **Language/Code Specialist**: [TO BE CONFIGURED]
-- **Shader Specialist**: [TO BE CONFIGURED]
-- **UI Specialist**: [TO BE CONFIGURED]
-- **Additional Specialists**: [TO BE CONFIGURED]
-- **Routing Notes**: [TO BE CONFIGURED]
+- **Primary**: unity-specialist
+- **Language/Code Specialist**: unity-specialist (C# is the only language)
+- **Shader Specialist**: unity-shader-specialist
+- **UI Specialist**: unity-ui-specialist
+- **Additional Specialists**: unity-addressables-specialist (if Addressables adopted), unity-dots-specialist (if DOTS adopted)
+- **Routing Notes**: Project uses URP + UGUI + NavMesh. No DOTS/ECS. Shader work is minimal (asset store materials). UI is legacy UGUI (Text, Button, InputField).
 
 ### File Extension Routing
 
@@ -86,9 +86,9 @@
 
 | File Extension / Type | Specialist to Spawn |
 |-----------------------|---------------------|
-| Game code (primary language) | [TO BE CONFIGURED] |
-| Shader / material files | [TO BE CONFIGURED] |
-| UI / screen files | [TO BE CONFIGURED] |
-| Scene / prefab / level files | [TO BE CONFIGURED] |
-| Native extension / plugin files | [TO BE CONFIGURED] |
+| Game code (`*.cs`) | unity-specialist |
+| Shader / material files (`*.shader`, `*.shadergraph`, `*.mat`) | unity-shader-specialist |
+| UI / screen files (UI-related `*.cs`, `*.uxml`, `*.uss`) | unity-ui-specialist |
+| Scene / prefab / level files (`*.unity`, `*.prefab`) | unity-specialist |
+| Native extension / plugin files (`*.jslib`) | unity-specialist |
 | General architecture review | Primary |
