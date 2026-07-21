@@ -873,6 +873,7 @@ MonoBehaviour:
     - line: '|   platformArchitecture: {}'
     - line: '|   scriptingBackend:'
     - line: '|     Android: 1'
+    - line: '|     WebGL: 1'
     - line: '|   il2cppCompilerConfiguration:'
     - line: '|     WebGL: 0'
     - line: '|   il2cppCodeGeneration:'

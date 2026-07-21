@@ -663,11 +663,17 @@ public class TrackSetupEditor : EditorWindow
     private SetupScreen WireOrCreateSetupScreen(Transform canvasRoot, RaceManager rm, NetworkManager nm)
     {
         var existing = Object.FindFirstObjectByType<SetupScreen>();
-        if (existing != null) return existing;
+        if (existing != null)
+        {
+            if (existing.NetworkManager == null)
+                existing.NetworkManager = nm;
+            PatchSetupScreenUI(existing, existing.transform);
+            return existing;
+        }
 
         var panel = CreateUIPanel(canvasRoot, "SetupScreen",
             new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-            new Vector2(-200, -120), new Vector2(200, 120));
+            new Vector2(-200, -150), new Vector2(200, 150));
 
         var setup = panel.AddComponent<SetupScreen>();
         setup.RaceManager = rm;
@@ -678,37 +684,112 @@ public class TrackSetupEditor : EditorWindow
             new Vector2(0, 1), new Vector2(1, 1),
             new Vector2(10, -50), new Vector2(-10, -10));
 
-        // Info text
-        setup.InfoText = CreateLabel(panel.transform, "InfoText", "Ready to start race.", 16, TextAnchor.MiddleCenter,
-            new Vector2(0, 0.5f), new Vector2(1, 0.5f),
-            new Vector2(10, -10), new Vector2(-10, 10));
-
-        // Start Default button
-        setup.StartDefaultButton = CreateUIButton(panel.transform, "StartDefaultBtn", "Start Race (Default CSV)",
-            new Vector2(0.5f, 0), new Vector2(0.5f, 0),
-            new Vector2(-150, 60), new Vector2(150, 95));
-
-        // Load Session button
-        setup.LoadSessionButton = CreateUIButton(panel.transform, "LoadSessionBtn", "Load Session",
-            new Vector2(0.5f, 0), new Vector2(0.5f, 0),
-            new Vector2(-150, 15), new Vector2(150, 50));
-
-        // Host Room button (network)
-        setup.HostButton = CreateUIButton(panel.transform, "HostBtn", "Host Room",
-            new Vector2(0.5f, 0), new Vector2(0.5f, 0),
-            new Vector2(-150, -30), new Vector2(-10, 5));
-
-        // Room Code text
-        setup.RoomCodeText = CreateLabel(panel.transform, "RoomCodeText", "", 16, TextAnchor.MiddleCenter,
-            new Vector2(0.5f, 0), new Vector2(0.5f, 0),
-            new Vector2(0, -30), new Vector2(150, 5));
-
-        // Student Count text
-        setup.StudentCountText = CreateLabel(panel.transform, "StudentCountText", "", 14, TextAnchor.MiddleCenter,
-            new Vector2(0.5f, 0), new Vector2(0.5f, 0),
-            new Vector2(-150, -60), new Vector2(150, -35));
-
+        PatchSetupScreenUI(setup, panel.transform);
         return setup;
+    }
+
+    /// <summary>
+    /// Creates any missing UI children on an existing SetupScreen.
+    /// Uses FindOrCreateButton/Label to avoid duplicates: first searches
+    /// for an existing child by name, only creates if not found.
+    /// </summary>
+    private void PatchSetupScreenUI(SetupScreen setup, Transform panel)
+    {
+        // --- Core UI ---
+        if (setup.InfoText == null)
+            setup.InfoText = FindOrCreateLabel(panel, "InfoText", "Ready to start race.", 16, TextAnchor.MiddleCenter,
+                new Vector2(0, 0.5f), new Vector2(1, 0.5f),
+                new Vector2(10, -10), new Vector2(-10, 10));
+
+        if (setup.StartDefaultButton == null)
+            setup.StartDefaultButton = FindOrCreateButton(panel, "StartDefaultBtn", "Start Race (Default CSV)",
+                new Vector2(0.5f, 0), new Vector2(0.5f, 0),
+                new Vector2(-150, 60), new Vector2(150, 95));
+
+        if (setup.LoadSessionButton == null)
+            setup.LoadSessionButton = FindOrCreateButton(panel, "LoadSessionBtn", "Load Session",
+                new Vector2(0.5f, 0), new Vector2(0.5f, 0),
+                new Vector2(-150, 15), new Vector2(150, 50));
+
+        // --- Network UI ---
+        if (setup.HostButton == null)
+            setup.HostButton = FindOrCreateButton(panel, "HostBtn", "Host Room",
+                new Vector2(0.5f, 0), new Vector2(0.5f, 0),
+                new Vector2(-150, -30), new Vector2(-10, 5));
+
+        if (setup.RoomCodeText == null)
+            setup.RoomCodeText = FindOrCreateLabel(panel, "RoomCodeText", "", 16, TextAnchor.MiddleCenter,
+                new Vector2(0.5f, 0), new Vector2(0.5f, 0),
+                new Vector2(0, -30), new Vector2(150, 5));
+
+        if (setup.StudentCountText == null)
+            setup.StudentCountText = FindOrCreateLabel(panel, "StudentCountText", "", 14, TextAnchor.MiddleCenter,
+                new Vector2(0.5f, 0), new Vector2(0.5f, 0),
+                new Vector2(-150, -60), new Vector2(150, -35));
+
+        // --- Survey Builder UI ---
+        if (setup.NewSurveyButton == null)
+            setup.NewSurveyButton = FindOrCreateButton(panel, "NewSurveyBtn", "New Survey",
+                new Vector2(0.5f, 0), new Vector2(0.5f, 0),
+                new Vector2(-150, -105), new Vector2(-55, -70));
+
+        if (setup.LoadConfigButton == null)
+            setup.LoadConfigButton = FindOrCreateButton(panel, "LoadConfigBtn", "Load Config",
+                new Vector2(0.5f, 0), new Vector2(0.5f, 0),
+                new Vector2(-45, -105), new Vector2(45, -70));
+
+        if (setup.TemplateButton == null)
+            setup.TemplateButton = FindOrCreateButton(panel, "TemplateBtn", "Templates",
+                new Vector2(0.5f, 0), new Vector2(0.5f, 0),
+                new Vector2(55, -105), new Vector2(150, -70));
+
+        if (setup.StartWithSurveyButton == null)
+            setup.StartWithSurveyButton = FindOrCreateButton(panel, "StartWithSurveyBtn", "Start (Survey)",
+                new Vector2(0.5f, 0), new Vector2(0.5f, 0),
+                new Vector2(-150, -145), new Vector2(-10, -110));
+
+        if (setup.ActiveConfigText == null)
+            setup.ActiveConfigText = FindOrCreateLabel(panel, "ActiveConfigText", "No active config", 13, TextAnchor.MiddleLeft,
+                new Vector2(0.5f, 0), new Vector2(0.5f, 0),
+                new Vector2(0, -145), new Vector2(150, -110));
+
+        // --- Config Sync UI ---
+        if (setup.PushConfigButton == null)
+            setup.PushConfigButton = FindOrCreateButton(panel, "PushConfigBtn", "Push to Web",
+                new Vector2(0.5f, 0), new Vector2(0.5f, 0),
+                new Vector2(-150, -180), new Vector2(-10, -150));
+
+        if (setup.WebResponseCountText == null)
+            setup.WebResponseCountText = FindOrCreateLabel(panel, "WebResponseCountText", "", 13, TextAnchor.MiddleLeft,
+                new Vector2(0.5f, 0), new Vector2(0.5f, 0),
+                new Vector2(0, -180), new Vector2(150, -150));
+
+        EditorUtility.SetDirty(setup);
+    }
+
+    private Button FindOrCreateButton(Transform parent, string name, string label,
+        Vector2 anchorMin, Vector2 anchorMax, Vector2 offsetMin, Vector2 offsetMax)
+    {
+        var existing = parent.Find(name);
+        if (existing != null)
+        {
+            var btn = existing.GetComponent<Button>();
+            if (btn != null) return btn;
+        }
+        return CreateUIButton(parent, name, label, anchorMin, anchorMax, offsetMin, offsetMax);
+    }
+
+    private Text FindOrCreateLabel(Transform parent, string name, string content,
+        int fontSize, TextAnchor alignment,
+        Vector2 anchorMin, Vector2 anchorMax, Vector2 offsetMin, Vector2 offsetMax)
+    {
+        var existing = parent.Find(name);
+        if (existing != null)
+        {
+            var text = existing.GetComponent<Text>();
+            if (text != null) return text;
+        }
+        return CreateLabel(parent, name, content, fontSize, alignment, anchorMin, anchorMax, offsetMin, offsetMax);
     }
 
     private LeaderboardPanel WireOrCreateLeaderboard(Transform canvasRoot, ScoreManager sm)
