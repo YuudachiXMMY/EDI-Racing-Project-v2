@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { randomBytes } from 'crypto';
 import WebSocket from 'ws';
+import XLSX from 'xlsx';
 import { getDb } from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
 
@@ -81,6 +82,88 @@ function mapResponsesToCarData(teamName, answers, mappings) {
   return { teamName, attributes };
 }
 
+/**
+ * Apply aggregate post-processing rules across all car data.
+ * Implements the DataTool.py average-threshold algorithm:
+ *   - average_threshold: compare each car's attribute against the mean of all cars
+ *   - fixed_threshold: compare against a fixed value
+ * Tags are combined into a slash-separated string (e.g., "facerecog/glasses/male").
+ */
+function applyPostProcessing(carDataArray, postProcessing) {
+  if (!postProcessing || postProcessing.length === 0) return carDataArray;
+
+  // Step 1: Compute averages for average_threshold rules
+  const averages = {};
+  for (const rule of postProcessing) {
+    if (rule.type !== 'average_threshold') continue;
+    const values = carDataArray.map(car => {
+      const attr = car.attributes.find(a => a.key === rule.sourceAttribute);
+      return attr ? parseFloat(attr.value) : 0;
+    }).filter(v => !isNaN(v));
+    averages[rule.sourceAttribute] = values.length > 0
+      ? values.reduce((a, b) => a + b, 0) / values.length
+      : 0;
+  }
+
+  // Step 2: Apply threshold rules to each car
+  return carDataArray.map(car => {
+    const tags = {}; // targetAttribute -> tag[]
+
+    for (const rule of postProcessing) {
+      const attr = car.attributes.find(a => a.key === rule.sourceAttribute);
+      const value = attr ? parseFloat(attr.value) : 0;
+      let passes = false;
+
+      if (rule.type === 'average_threshold') {
+        const avg = averages[rule.sourceAttribute] || 0;
+        if (rule.direction === 'gte') passes = value >= avg;
+        else if (rule.direction === 'lte') passes = value <= avg;
+      } else if (rule.type === 'fixed_threshold') {
+        const threshold = parseFloat(rule.threshold) || 0;
+        if (rule.direction === 'gt') passes = value > threshold;
+        else if (rule.direction === 'gte') passes = value >= threshold;
+        else if (rule.direction === 'lt') passes = value < threshold;
+        else if (rule.direction === 'lte') passes = value <= threshold;
+      }
+
+      if (passes) {
+        if (!tags[rule.targetAttribute]) tags[rule.targetAttribute] = [];
+        tags[rule.targetAttribute].push(rule.tagName);
+      }
+    }
+
+    // Merge tag arrays into attributes
+    const newAttributes = [...car.attributes];
+    for (const [attrName, tagArray] of Object.entries(tags)) {
+      newAttributes.push({ key: attrName, value: tagArray.join('/') });
+    }
+
+    return { ...car, attributes: newAttributes };
+  });
+}
+
+/**
+ * Shared helper: build processed carData array for a survey.
+ * Applies per-response mappings then aggregate post-processing.
+ */
+function buildCarData(survey) {
+  const db = getDb();
+  const mappings = JSON.parse(survey.mappings_json);
+  const postProcessing = JSON.parse(survey.post_processing_json || '[]');
+
+  const responses = db.prepare(
+    'SELECT team_name, answers_json FROM responses WHERE survey_id = ? ORDER BY submitted_at ASC'
+  ).all(survey.id);
+
+  let carData = responses.map(r => {
+    const answers = JSON.parse(r.answers_json);
+    return mapResponsesToCarData(r.team_name, answers, mappings);
+  });
+
+  carData = applyPostProcessing(carData, postProcessing);
+  return carData;
+}
+
 // GET /api/surveys/:id/export — export survey data for Unity
 router.get('/:id/export', requireAuth, (req, res) => {
   const db = getDb();
@@ -90,28 +173,81 @@ router.get('/:id/export', requireAuth, (req, res) => {
     return res.status(404).json({ success: false, error: 'Survey not found' });
   }
 
-  const mappings = JSON.parse(survey.mappings_json);
+  const carData = buildCarData(survey);
   const eventRules = JSON.parse(survey.rules_json);
+  const mappings = JSON.parse(survey.mappings_json);
 
-  // Fetch all responses for this survey
+  res.json({ success: true, data: { configName: survey.config_name, carData, mappings, eventRules } });
+});
+
+// GET /api/surveys/:id/export-csv — export as vehicleGroupData.csv format
+router.get('/:id/export-csv', requireAuth, (req, res) => {
+  const db = getDb();
+  const survey = db.prepare('SELECT * FROM surveys WHERE id = ? AND user_id = ?')
+    .get(req.params.id, req.user.userId);
+  if (!survey) {
+    return res.status(404).json({ success: false, error: 'Survey not found' });
+  }
+
+  const carData = buildCarData(survey);
+  const csv = carData.map(car => {
+    const colorIndex = car.attributes.find(a => a.key === 'colorIndex')?.value || '0';
+    const functions = car.attributes.find(a => a.key === 'functions')?.value || '';
+    return `${car.teamName},${colorIndex},${functions}`;
+  }).join('\n');
+
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="vehicleGroupData.csv"');
+  res.send(csv);
+});
+
+// GET /api/surveys/:id/export-excel — export as xlsx matching input.xlsx format
+router.get('/:id/export-excel', requireAuth, (req, res) => {
+  const db = getDb();
+  const survey = db.prepare('SELECT * FROM surveys WHERE id = ? AND user_id = ?')
+    .get(req.params.id, req.user.userId);
+  if (!survey) {
+    return res.status(404).json({ success: false, error: 'Survey not found' });
+  }
+
+  const questions = JSON.parse(survey.questions_json);
   const responses = db.prepare(
-    'SELECT team_name, answers_json FROM responses WHERE survey_id = ? ORDER BY submitted_at ASC'
+    'SELECT id, email, team_name, answers_json, submitted_at FROM responses WHERE survey_id = ? ORDER BY submitted_at ASC'
   ).all(survey.id);
 
-  // Map each response to CarData using attribute mappings
-  const carData = responses.map(r => {
+  // Build rows matching input.xlsx column structure
+  const rows = responses.map((r, idx) => {
     const answers = JSON.parse(r.answers_json);
-    return mapResponsesToCarData(r.team_name, answers, mappings);
+    const row = {
+      'ID': idx + 1,
+      'Start time': r.submitted_at,
+      'Completion time': r.submitted_at,
+      'Email': r.email,
+      'Name': '',
+      'Last modified time': '',
+    };
+
+    for (const q of questions) {
+      let answer = answers[q.Id];
+      // Multi-select answers stored as arrays — join with semicolons
+      if (Array.isArray(answer)) {
+        answer = answer.join(';');
+      }
+      row[q.Text] = answer ?? '';
+    }
+
+    return row;
   });
 
-  const exportData = {
-    configName: survey.config_name,
-    carData,
-    mappings,
-    eventRules,
-  };
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+  const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 
-  res.json({ success: true, data: exportData });
+  const safeName = (survey.config_name || 'export').replace(/[^a-zA-Z0-9_-]/g, '_');
+  res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.setHeader('Content-Disposition', `attachment; filename="${safeName}.xlsx"`);
+  res.send(Buffer.from(buf));
 });
 
 // POST /api/surveys/:id/send-to-game — send survey data directly to Unity via WebSocket
@@ -128,17 +264,9 @@ router.post('/:id/send-to-game', requireAuth, (req, res) => {
     return res.status(404).json({ success: false, error: 'Survey not found' });
   }
 
+  const carData = buildCarData(survey);
   const mappings = JSON.parse(survey.mappings_json);
   const eventRules = JSON.parse(survey.rules_json);
-
-  const responses = db.prepare(
-    'SELECT team_name, answers_json FROM responses WHERE survey_id = ? ORDER BY submitted_at ASC'
-  ).all(survey.id);
-
-  const carData = responses.map(r => {
-    const answers = JSON.parse(r.answers_json);
-    return mapResponsesToCarData(r.team_name, answers, mappings);
-  });
 
   if (carData.length === 0) {
     return res.status(400).json({ success: false, error: 'No responses to send. Share the survey with students first.' });
@@ -225,13 +353,14 @@ router.post('/import-config', requireAuth, (req, res) => {
   const questions = config.Questions || [];
   const mappings = config.Mappings || [];
   const rules = config.Rules || [];
+  const postProcessing = config.PostProcessing || [];
 
   const db = getDb();
   const shareCode = randomBytes(4).toString('hex').toUpperCase();
 
   const result = db.prepare(
-    `INSERT INTO surveys (user_id, config_name, description, questions_json, mappings_json, rules_json, share_code)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO surveys (user_id, config_name, description, questions_json, mappings_json, rules_json, post_processing_json, share_code)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     req.user.userId,
     name,
@@ -239,6 +368,7 @@ router.post('/import-config', requireAuth, (req, res) => {
     JSON.stringify(questions),
     JSON.stringify(mappings),
     JSON.stringify(rules),
+    JSON.stringify(postProcessing),
     shareCode
   );
 

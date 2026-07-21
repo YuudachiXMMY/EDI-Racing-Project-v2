@@ -1,6 +1,6 @@
 // Must match Unity C# enum values exactly
 
-export const QuestionType = { Text: 0, MultipleChoice: 1, Numeric: 2 };
+export const QuestionType = { Text: 0, MultipleChoice: 1, Numeric: 2, MultiSelect: 3 };
 
 export const ComparisonOperator = {
   Equals: 0,

@@ -48,13 +48,14 @@ router.get('/:id', requireAuth, (req, res) => {
       questions: JSON.parse(survey.questions_json),
       mappings: JSON.parse(survey.mappings_json),
       rules: JSON.parse(survey.rules_json),
+      postProcessing: JSON.parse(survey.post_processing_json || '[]'),
     }
   });
 });
 
 // POST /api/surveys — create new survey
 router.post('/', requireAuth, (req, res) => {
-  const { configName, description, questions, mappings, rules } = req.body;
+  const { configName, description, questions, mappings, rules, postProcessing } = req.body;
   if (!configName) {
     return res.status(400).json({ success: false, error: 'configName is required' });
   }
@@ -62,8 +63,8 @@ router.post('/', requireAuth, (req, res) => {
   const db = getDb();
   const shareCode = generateShareCode();
   const result = db.prepare(
-    `INSERT INTO surveys (user_id, config_name, description, questions_json, mappings_json, rules_json, share_code)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO surveys (user_id, config_name, description, questions_json, mappings_json, rules_json, post_processing_json, share_code)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     req.user.userId,
     configName,
@@ -71,6 +72,7 @@ router.post('/', requireAuth, (req, res) => {
     JSON.stringify(questions || []),
     JSON.stringify(mappings || []),
     JSON.stringify(rules || []),
+    JSON.stringify(postProcessing || []),
     shareCode
   );
 
@@ -82,7 +84,7 @@ router.post('/', requireAuth, (req, res) => {
 
 // PUT /api/surveys/:id — update survey
 router.put('/:id', requireAuth, (req, res) => {
-  const { configName, description, questions, mappings, rules } = req.body;
+  const { configName, description, questions, mappings, rules, postProcessing } = req.body;
   const db = getDb();
 
   const existing = db.prepare('SELECT id FROM surveys WHERE id = ? AND user_id = ?')
@@ -92,7 +94,7 @@ router.put('/:id', requireAuth, (req, res) => {
   }
 
   db.prepare(
-    `UPDATE surveys SET config_name = ?, description = ?, questions_json = ?, mappings_json = ?, rules_json = ?, updated_at = datetime('now')
+    `UPDATE surveys SET config_name = ?, description = ?, questions_json = ?, mappings_json = ?, rules_json = ?, post_processing_json = ?, updated_at = datetime('now')
      WHERE id = ? AND user_id = ?`
   ).run(
     configName,
@@ -100,6 +102,7 @@ router.put('/:id', requireAuth, (req, res) => {
     JSON.stringify(questions || []),
     JSON.stringify(mappings || []),
     JSON.stringify(rules || []),
+    JSON.stringify(postProcessing || []),
     req.params.id,
     req.user.userId
   );

@@ -34,6 +34,7 @@ export default function DashboardPage() {
       questions: template.config.questions,
       mappings: template.config.mappings,
       rules: template.config.rules,
+      postProcessing: template.config.postProcessing || [],
     });
     if (result.success) navigate(`/surveys/${result.data.id}`);
   }
