@@ -44,6 +44,9 @@ public class SetupScreen : MonoBehaviour
     public Button StartWithResponsesButton;
     public Text ResponseCountText;
 
+    [Header("Web Response Sync (Optional)")]
+    public Text WebResponseCountText;
+
     private void Start()
     {
         if (RaceManager == null)
@@ -354,6 +357,17 @@ public class SetupScreen : MonoBehaviour
                     ? string.Join(", ", listMsg.teamNames)
                     : "(none named)";
                 StudentCountText.text = $"{listMsg.count} student(s): {names}";
+            }
+            return;
+        }
+
+        if (baseMsg.type == "new_web_response")
+        {
+            var webMsg = JsonUtility.FromJson<NewWebResponseMessage>(json);
+            if (WebResponseCountText != null)
+            {
+                WebResponseCountText.gameObject.SetActive(true);
+                WebResponseCountText.text = $"Web responses: {webMsg.responseCount} (latest: {webMsg.teamName})";
             }
             return;
         }

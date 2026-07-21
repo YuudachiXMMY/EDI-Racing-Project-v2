@@ -271,6 +271,18 @@ public class SurveyImportMessage
     public string exportJson;
 }
 
+/// <summary>
+/// Server → Professor: a new survey response was submitted on the web app.
+/// </summary>
+[Serializable]
+public class NewWebResponseMessage
+{
+    public string type = "new_web_response";
+    public int responseCount;
+    public string teamName;
+    public int surveyId;
+}
+
 // --- Reconnection Messages ---
 
 /// <summary>

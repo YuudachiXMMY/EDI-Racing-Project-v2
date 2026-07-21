@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getSurvey, updateSurvey, exportSurvey, getResponseCount, toggleSurveyActive } from '../api.js';
+import { getSurvey, updateSurvey, exportSurvey, getResponseCount, toggleSurveyActive, linkRoom, unlinkRoom } from '../api.js';
 import QuestionsTab from '../components/QuestionsTab.jsx';
 import MappingsTab from '../components/MappingsTab.jsx';
 import RulesTab from '../components/RulesTab.jsx';
@@ -23,6 +23,9 @@ export default function EditorPage() {
   const [exportLoading, setExportLoading] = useState(false);
   const [responseCount, setResponseCount] = useState(0);
   const [showSendModal, setShowSendModal] = useState(false);
+  const [linkedRoom, setLinkedRoom] = useState(null);
+  const [linkInput, setLinkInput] = useState('');
+  const [linkStatus, setLinkStatus] = useState('');
   const saveTimer = useRef(null);
   const latestData = useRef(null);
 
@@ -39,7 +42,41 @@ export default function EditorPage() {
       latestData.current = surveyRes.data;
     }
     if (countRes.success) setResponseCount(countRes.data.count);
+    if (surveyRes.success && surveyRes.data.linked_room_code) {
+      setLinkedRoom(surveyRes.data.linked_room_code);
+    }
     setLoading(false);
+  }
+
+  // Poll response count every 10s
+  useEffect(() => {
+    const timer = setInterval(async () => {
+      const countRes = await getResponseCount(id);
+      if (countRes.success) setResponseCount(countRes.data.count);
+    }, 10000);
+    return () => clearInterval(timer);
+  }, [id]);
+
+  async function handleLinkRoom() {
+    const code = linkInput.trim().toUpperCase();
+    if (!code) return;
+    setLinkStatus('Linking...');
+    const result = await linkRoom(id, code);
+    if (result.success) {
+      setLinkedRoom(result.data.linkedRoomCode);
+      setLinkInput('');
+      setLinkStatus('');
+    } else {
+      setLinkStatus(result.error || 'Failed to link');
+    }
+  }
+
+  async function handleUnlinkRoom() {
+    const result = await unlinkRoom(id);
+    if (result.success) {
+      setLinkedRoom(null);
+      setLinkStatus('');
+    }
   }
 
   async function handleExport() {
@@ -123,6 +160,29 @@ export default function EditorPage() {
         />
         <span className="save-status">{saveStatus}</span>
         <span className="response-count">{responseCount} response(s)</span>
+
+        {linkedRoom ? (
+          <span className="room-link-badge">
+            Linked: {linkedRoom}
+            <button onClick={handleUnlinkRoom} className="btn-secondary btn-small">Unlink</button>
+          </span>
+        ) : (
+          <span className="room-link-inline">
+            <input
+              type="text"
+              value={linkInput}
+              onChange={e => setLinkInput(e.target.value.toUpperCase())}
+              placeholder="Room code"
+              maxLength={8}
+              className="room-link-input"
+            />
+            <button onClick={handleLinkRoom} className="btn-secondary btn-small" disabled={!linkInput.trim()}>
+              Link
+            </button>
+            {linkStatus && <span className="link-status">{linkStatus}</span>}
+          </span>
+        )}
+
         <button onClick={() => setShowSendModal(true)} className="btn-primary" disabled={responseCount === 0}>
           Send to Game
         </button>

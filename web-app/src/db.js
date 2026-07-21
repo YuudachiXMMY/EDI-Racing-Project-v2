@@ -20,6 +20,13 @@ export function getDb() {
     const schema = readFileSync(join(__dirname, 'schema.sql'), 'utf-8');
     db.exec(schema);
 
+    // Migration: add linked_room_code to existing surveys table
+    try {
+      db.exec('ALTER TABLE surveys ADD COLUMN linked_room_code TEXT DEFAULT NULL');
+    } catch {
+      // Column already exists — ignore
+    }
+
     // Seed default templates if table is empty
     const count = db.prepare('SELECT COUNT(*) as c FROM templates').get().c;
     if (count === 0) {

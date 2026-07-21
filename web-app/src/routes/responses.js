@@ -2,6 +2,9 @@ import { Router } from 'express';
 import { getDb } from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
 
+const WS_GAME_URL = process.env.WS_GAME_URL || 'ws://localhost:8080';
+const GAME_HTTP_URL = WS_GAME_URL.replace(/^ws/, 'http');
+
 const router = Router();
 
 // GET /api/s/:shareCode — get survey for student (no auth)
@@ -56,6 +59,22 @@ router.post('/s/:shareCode/respond', (req, res) => {
     const result = db.prepare(
       'INSERT INTO responses (survey_id, email, team_name, answers_json) VALUES (?, ?, ?, ?)'
     ).run(survey.id, email.trim(), teamName.trim(), JSON.stringify(answers || {}));
+
+    // Notify WS server if survey is linked to a room (fire-and-forget)
+    const linked = db.prepare('SELECT linked_room_code FROM surveys WHERE id = ?').get(survey.id);
+    if (linked && linked.linked_room_code) {
+      const count = db.prepare('SELECT COUNT(*) as c FROM responses WHERE survey_id = ?').get(survey.id).c;
+      fetch(`${GAME_HTTP_URL}/api/notify-response`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          roomCode: linked.linked_room_code,
+          responseCount: count,
+          teamName: teamName.trim(),
+          surveyId: survey.id,
+        }),
+      }).catch(() => {}); // Silently ignore if WS server unreachable
+    }
 
     res.status(201).json({ success: true, data: { id: result.lastInsertRowid } });
   } catch (err) {

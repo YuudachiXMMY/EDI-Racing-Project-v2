@@ -22,6 +22,8 @@ CREATE TABLE IF NOT EXISTS surveys (
   -- Share code for student access
   share_code TEXT UNIQUE,
   is_active INTEGER NOT NULL DEFAULT 1,
+  -- Room code linked for real-time response notifications
+  linked_room_code TEXT DEFAULT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
