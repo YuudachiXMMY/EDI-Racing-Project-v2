@@ -87,7 +87,7 @@ public static class CreateImportUI
         titleRt.offsetMin = new Vector2(10, 0);
         titleRt.offsetMax = new Vector2(-10, -5);
 
-        // --- InputField (using same pattern as BuilderUIFactory) ---
+        // --- InputField ---
         var inputObj = new GameObject("JsonInputField");
         inputObj.transform.SetParent(panelObj.transform, false);
         var inputBg = inputObj.AddComponent<Image>();

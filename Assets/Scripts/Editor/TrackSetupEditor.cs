@@ -478,18 +478,10 @@ public class TrackSetupEditor : EditorWindow
         networkSync.ScoreManager = scoreManager;
         raceManager.NetworkSync = networkSync;
 
-        // --- Survey (on child GameObject) ---
-        var surveyObj = new GameObject("Survey");
+        // --- Survey Config (on child GameObject) ---
+        var surveyObj = new GameObject("SurveyConfig");
         surveyObj.transform.parent = rmObj.transform;
-        var surveyCollector = surveyObj.AddComponent<SurveyCollector>();
         var surveyConfigManager = surveyObj.AddComponent<SurveyConfigManager>();
-        var studentSurveyPanel = surveyObj.AddComponent<StudentSurveyPanel>();
-
-        surveyCollector.NetworkManager = networkManager;
-        surveyCollector.ConfigManager = surveyConfigManager;
-        studentSurveyPanel.NetworkManager = networkManager;
-        networkSync.SurveyCollector = surveyCollector;
-        networkSync.StudentSurveyPanel = studentSurveyPanel;
         raceManager.SurveyConfigManager = surveyConfigManager;
 
         // --- Camera (on child GameObject) ---

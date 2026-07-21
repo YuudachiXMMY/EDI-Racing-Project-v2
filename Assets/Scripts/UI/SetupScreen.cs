@@ -3,8 +3,8 @@ using UnityEngine.UI;
 
 /// <summary>
 /// Pre-race setup overlay. Shown during GameState.Setup.
-/// Allows starting race with default CSV data or loading a saved session.
-/// Integrates with SurveyBuilderPanel for config creation (Phase 4).
+/// Allows starting race with default CSV data, loading a saved session,
+/// or importing data from the Web App.
 /// </summary>
 public class SetupScreen : MonoBehaviour
 {
@@ -22,14 +22,8 @@ public class SetupScreen : MonoBehaviour
     public Text RoomCodeText;
     public Text StudentCountText;
 
-    [Header("Survey Builder (Optional)")]
+    [Header("Survey Config (Optional)")]
     public SurveyConfigManager SurveyConfigManager;
-    public SurveyBuilderPanel BuilderPanel;
-    public ConfigManagerPanel ConfigPanel;
-    public Button NewSurveyButton;
-    public Button LoadConfigButton;
-    public Button TemplateButton;
-    public Button StartWithSurveyButton;
     public Text ActiveConfigText;
 
     [Header("Web App Import (Optional)")]
@@ -37,12 +31,6 @@ public class SetupScreen : MonoBehaviour
     public InputField JsonInputField;
     public Button ConfirmImportButton;
     public GameObject ImportPanel;
-
-    [Header("Survey Collection (Optional)")]
-    public SurveyCollector SurveyCollector;
-    public Button DistributeSurveyButton;
-    public Button StartWithResponsesButton;
-    public Text ResponseCountText;
 
     [Header("Config Sync (Optional)")]
     public Button PushConfigButton;
@@ -66,16 +54,6 @@ public class SetupScreen : MonoBehaviour
         if (HostButton != null)
             HostButton.onClick.AddListener(HostRoom);
 
-        // Survey builder buttons
-        if (NewSurveyButton != null)
-            NewSurveyButton.onClick.AddListener(OpenNewSurvey);
-        if (LoadConfigButton != null)
-            LoadConfigButton.onClick.AddListener(OpenLoadConfig);
-        if (TemplateButton != null)
-            TemplateButton.onClick.AddListener(OpenTemplates);
-        if (StartWithSurveyButton != null)
-            StartWithSurveyButton.onClick.AddListener(StartWithSurveyConfig);
-
         // Web App import buttons
         if (ImportJsonButton != null)
             ImportJsonButton.onClick.AddListener(ShowImportPanel);
@@ -89,27 +67,6 @@ public class SetupScreen : MonoBehaviour
         if (HostButton != null) HostButton.gameObject.SetActive(hasNetwork);
         if (RoomCodeText != null) RoomCodeText.gameObject.SetActive(false);
         if (StudentCountText != null) StudentCountText.gameObject.SetActive(false);
-
-        // Hide survey UI if no ConfigManager
-        bool hasSurvey = SurveyConfigManager != null;
-        if (NewSurveyButton != null) NewSurveyButton.gameObject.SetActive(hasSurvey);
-        if (LoadConfigButton != null) LoadConfigButton.gameObject.SetActive(hasSurvey);
-        if (TemplateButton != null) TemplateButton.gameObject.SetActive(hasSurvey);
-        if (StartWithSurveyButton != null) StartWithSurveyButton.gameObject.SetActive(hasSurvey);
-        if (ActiveConfigText != null) ActiveConfigText.gameObject.SetActive(hasSurvey);
-
-        // Survey collection buttons
-        if (DistributeSurveyButton != null)
-        {
-            DistributeSurveyButton.gameObject.SetActive(false);
-            DistributeSurveyButton.onClick.AddListener(OnDistributeSurvey);
-        }
-        if (StartWithResponsesButton != null)
-        {
-            StartWithResponsesButton.gameObject.SetActive(false);
-            StartWithResponsesButton.onClick.AddListener(OnStartWithResponses);
-        }
-        if (ResponseCountText != null) ResponseCountText.gameObject.SetActive(false);
 
         // Config sync button
         if (PushConfigButton != null)
@@ -152,56 +109,6 @@ public class SetupScreen : MonoBehaviour
         }
     }
 
-    // --- Survey Builder Integration ---
-
-    private void OpenNewSurvey()
-    {
-        if (BuilderPanel == null) return;
-        gameObject.SetActive(false);
-        BuilderPanel.Show(null);
-    }
-
-    private void OpenLoadConfig()
-    {
-        if (ConfigPanel == null) return;
-        ConfigPanel.ShowLoadPanel();
-    }
-
-    private void OpenTemplates()
-    {
-        if (ConfigPanel == null) return;
-        ConfigPanel.ShowTemplatePanel();
-    }
-
-    private void StartWithSurveyConfig()
-    {
-        if (SurveyConfigManager == null || SurveyConfigManager.ActiveConfig == null)
-        {
-            if (InfoText != null) InfoText.text = "No active config. Load or create one first.";
-            return;
-        }
-
-        if (RaceManager == null || RaceManager.EventManager == null)
-        {
-            if (InfoText != null) InfoText.text = "Error: RaceManager not ready.";
-            return;
-        }
-
-        // Apply rules from config to EventSchedule
-        SurveyConfigManager.ApplyRulesToSchedule(RaceManager.EventManager.Schedule);
-
-        // Start with default CSV data but using custom rules
-        if (RaceManager.DefaultCsvData != null)
-        {
-            RaceManager.LoadAndStartRace(RaceManager.DefaultCsvData.text);
-            gameObject.SetActive(false);
-        }
-        else
-        {
-            if (InfoText != null) InfoText.text = "No CSV data. Import CSV or wait for survey responses.";
-        }
-    }
-
     public void RefreshActiveConfigDisplay()
     {
         if (ActiveConfigText == null) return;
@@ -236,11 +143,6 @@ public class SetupScreen : MonoBehaviour
             RoomCodeText.text = $"Room: {roomCode}";
         }
         if (InfoText != null) InfoText.text = "Room created. Start when ready.";
-
-        // Show distribute button if we have an active config
-        bool canDistribute = SurveyConfigManager != null && SurveyConfigManager.ActiveConfig != null
-            && SurveyCollector != null;
-        if (DistributeSurveyButton != null) DistributeSurveyButton.gameObject.SetActive(canDistribute);
 
         // Show push-config button if we have an active config
         bool canPush = SurveyConfigManager != null && SurveyConfigManager.ActiveConfig != null;
@@ -289,59 +191,6 @@ public class SetupScreen : MonoBehaviour
         if (HostButton != null) HostButton.interactable = true;
         if (RoomCodeText != null) RoomCodeText.gameObject.SetActive(false);
         if (StudentCountText != null) StudentCountText.gameObject.SetActive(false);
-    }
-
-    // --- Survey Collection ---
-
-    private void OnDistributeSurvey()
-    {
-        if (SurveyCollector == null || SurveyConfigManager == null) return;
-        if (SurveyConfigManager.ActiveConfig == null)
-        {
-            if (InfoText != null) InfoText.text = "No active config. Load or create one first.";
-            return;
-        }
-
-        SurveyCollector.DistributeSurvey(SurveyConfigManager.ActiveConfig);
-        SurveyCollector.OnResponseReceived += OnSurveyResponseReceived;
-
-        if (DistributeSurveyButton != null) DistributeSurveyButton.interactable = false;
-        if (ResponseCountText != null)
-        {
-            ResponseCountText.gameObject.SetActive(true);
-            ResponseCountText.text = "Responses: 0";
-        }
-        if (StartWithResponsesButton != null) StartWithResponsesButton.gameObject.SetActive(true);
-        if (InfoText != null) InfoText.text = "Survey distributed. Waiting for responses...";
-    }
-
-    private void OnSurveyResponseReceived(int count)
-    {
-        if (ResponseCountText != null)
-            ResponseCountText.text = $"Responses: {count}";
-        if (StartWithResponsesButton != null)
-            StartWithResponsesButton.interactable = count > 0;
-    }
-
-    private void OnStartWithResponses()
-    {
-        if (SurveyCollector == null || !SurveyCollector.HasResponses) return;
-        if (RaceManager == null) return;
-
-        // Close survey for students
-        SurveyCollector.CloseSurvey();
-
-        // Apply rules from config to EventSchedule
-        if (SurveyConfigManager != null && SurveyConfigManager.ActiveConfig != null
-            && RaceManager.EventManager != null)
-        {
-            SurveyConfigManager.ApplyRulesToSchedule(RaceManager.EventManager.Schedule);
-        }
-
-        // Start race with collected responses
-        var carDataList = SurveyCollector.GetAllCarData();
-        RaceManager.LoadAndStartRace(carDataList);
-        gameObject.SetActive(false);
     }
 
     // --- Web App Direct Send ---
@@ -420,10 +269,6 @@ public class SetupScreen : MonoBehaviour
             Debug.Log($"[SetupScreen] Imported config from web app: {config.ConfigName} ({qCount}Q, {mCount}M, {rCount}R)");
             if (InfoText != null) InfoText.text = $"Config imported: {config.ConfigName} ({qCount} questions, {mCount} mappings, {rCount} rules)";
 
-            // Show distribute button if in a room
-            bool canDistribute = SurveyConfigManager != null && SurveyConfigManager.ActiveConfig != null
-                && SurveyCollector != null && NetworkManager != null && NetworkManager.RoomCode != null;
-            if (DistributeSurveyButton != null) DistributeSurveyButton.gameObject.SetActive(canDistribute);
             return;
         }
 

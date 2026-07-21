@@ -210,7 +210,7 @@ Unity 端：
 | 3 | 学生答题端 | SurveyJS Runner + 邮箱/team name + 响应式移动端 | complete | with 4 | 2 | `.claude/PRPs/reports/student-survey-page-report.md` |
 | 4 | 数据导出 + Unity 集成 | JSON 导出 API + Unity JsonImporter + SetupScreen 改造 | complete | with 3 | 2 | `.claude/PRPs/reports/data-export-unity-integration-report.md` |
 | 5 | 模板迁移 + Docker 统一部署 | 迁移 SurveyTemplates + docker-compose 统一编排 | complete | - | 3, 4 | `.claude/PRPs/reports/template-migration-docker-unified-deploy-report.md` |
-| 6 | Unity 端清理 | 移除 SurveyBuilderPanel/StudentSurveyPanel/SurveyCollector | pending | - | 5 | - |
+| 6 | Unity 端清理 | 移除 SurveyBuilderPanel/StudentSurveyPanel/SurveyCollector | complete | - | 5 | `.claude/PRPs/reports/unity-survey-cleanup-report.md` |
 
 ### Phase Details
 

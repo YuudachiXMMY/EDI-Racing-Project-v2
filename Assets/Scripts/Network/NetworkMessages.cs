@@ -202,47 +202,6 @@ public class RaceEndMessage
 
 // --- Survey Messages ---
 
-/// <summary>
-/// Professor → Students: distributes survey questions to all connected students.
-/// configJson is a double-serialized SurveyConfig (JsonUtility cannot nest complex types).
-/// </summary>
-[Serializable]
-public class SurveyQuestionsMessage
-{
-    public string type = "survey_questions";
-    public string configJson;
-}
-
-/// <summary>
-/// Student → Professor: submits survey responses for one team.
-/// </summary>
-[Serializable]
-public class SurveyResponseMessage
-{
-    public string type = "survey_response";
-    public string teamName;
-    public NetAttribute[] responses = Array.Empty<NetAttribute>();
-}
-
-/// <summary>
-/// Professor → Students: survey is closed, race is about to start.
-/// </summary>
-[Serializable]
-public class SurveyClosedMessage
-{
-    public string type = "survey_closed";
-}
-
-/// <summary>
-/// Professor → Student: acknowledges a response was received.
-/// </summary>
-[Serializable]
-public class SurveyAckMessage
-{
-    public string type = "survey_ack";
-    public string teamName;
-}
-
 // --- Professor → Web App (via server relay) ---
 
 /// <summary>

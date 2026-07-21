@@ -14,10 +14,6 @@ public class NetworkSync : MonoBehaviour
     public NetworkManager NetworkManager;
     public ScoreManager ScoreManager;
 
-    [Header("Survey (Optional)")]
-    public SurveyCollector SurveyCollector;
-    public StudentSurveyPanel StudentSurveyPanel;
-
     [Header("Sync Settings")]
     [Tooltip("How often to broadcast car positions (seconds)")]
     public float StateUpdateInterval = 0.1f;
@@ -253,22 +249,6 @@ public class NetworkSync : MonoBehaviour
                 break;
             case "race_end":
                 HandleRaceEnd();
-                break;
-            case "survey_questions":
-                if (StudentSurveyPanel != null)
-                    StudentSurveyPanel.ShowSurvey(json);
-                break;
-            case "survey_response":
-                if (SurveyCollector != null)
-                    SurveyCollector.ProcessResponse(json);
-                break;
-            case "survey_closed":
-                if (StudentSurveyPanel != null)
-                    StudentSurveyPanel.OnSurveyClosed();
-                break;
-            case "survey_ack":
-                if (StudentSurveyPanel != null)
-                    StudentSurveyPanel.OnAckReceived(json);
                 break;
             case "room_closed":
                 HandleRoomClosed();
