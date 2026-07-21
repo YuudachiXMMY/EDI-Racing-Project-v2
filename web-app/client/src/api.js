@@ -148,6 +148,10 @@ export async function importConfigFromGame(configData) {
   });
 }
 
+export async function getSessionHistory() {
+  return request('/sessions');
+}
+
 export async function toggleSurveyActive(id, isActive) {
   return request(`/surveys/${id}/active`, {
     method: 'PATCH',

@@ -67,6 +67,7 @@ export default function DashboardPage() {
     <div className="dashboard-page">
       <header className="app-header">
         <h1>EDI Survey Dashboard</h1>
+        <button onClick={() => navigate('/history')} className="btn-secondary">Session History</button>
         <button onClick={handleLogout} className="btn-secondary">Logout</button>
       </header>
 

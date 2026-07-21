@@ -55,6 +55,24 @@ CREATE TABLE IF NOT EXISTS race_results (
   received_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Game session history (archived when room closes)
+CREATE TABLE IF NOT EXISTS game_sessions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER REFERENCES users(id),
+  survey_id INTEGER REFERENCES surveys(id),
+  room_code TEXT NOT NULL DEFAULT '',
+  config_name TEXT NOT NULL DEFAULT '',
+  student_count INTEGER NOT NULL DEFAULT 0,
+  student_names_json TEXT NOT NULL DEFAULT '[]',
+  game_phase TEXT NOT NULL DEFAULT 'Setup',
+  race_started INTEGER NOT NULL DEFAULT 0,
+  rankings_json TEXT NOT NULL DEFAULT '[]',
+  event_log_json TEXT NOT NULL DEFAULT '[]',
+  total_race_time REAL NOT NULL DEFAULT 0,
+  started_at TEXT NOT NULL DEFAULT (datetime('now')),
+  ended_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+
 -- Built-in survey templates (seeded on first startup)
 CREATE TABLE IF NOT EXISTS templates (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

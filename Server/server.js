@@ -39,10 +39,43 @@ function broadcastToStudents(roomCode, message) {
   }
 }
 
+const API_URL = process.env.API_URL || 'http://localhost:3001';
+
 function destroyRoom(roomCode) {
   const room = rooms.get(roomCode);
   if (!room) return;
   if (room.graceTimer) clearTimeout(room.graceTimer);
+
+  // Archive session to web app DB (fire-and-forget)
+  const archivePayload = {
+    roomCode,
+    configName: '',
+    studentCount: room.students.size,
+    studentNames: [...room.studentTeamNames.values()],
+    gamePhase: room.gamePhase || 'Setup',
+    raceStarted: room.raceStarted,
+    rankings: [],
+    eventLog: [],
+    totalRaceTime: 0,
+  };
+  if (room.raceResults) {
+    try {
+      const parsed = JSON.parse(room.raceResults);
+      archivePayload.configName = parsed.configName || '';
+      if (parsed.resultsJson) {
+        const results = JSON.parse(parsed.resultsJson);
+        archivePayload.rankings = results.Rankings || [];
+        archivePayload.eventLog = results.EventLog || [];
+        archivePayload.totalRaceTime = results.TotalRaceTime || 0;
+      }
+    } catch { /* ignore parse errors */ }
+  }
+  fetch(`${API_URL}/api/sessions/archive`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(archivePayload),
+  }).catch(() => {});
+
   broadcastToStudents(roomCode, { type: 'room_closed' });
   for (const student of room.students) {
     clientRooms.delete(student);
@@ -52,7 +85,7 @@ function destroyRoom(roomCode) {
     if (info.roomCode === roomCode) sessions.delete(sid);
   }
   rooms.delete(roomCode);
-  console.log(`[Room ${roomCode}] Destroyed`);
+  console.log(`[Room ${roomCode}] Destroyed (archived)`);
 }
 
 function cleanupClient(ws) {

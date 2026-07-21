@@ -30,6 +30,7 @@ app.use('/api/templates', templateRoutes);
 app.use('/api', responseRoutes);
 app.use('/api/surveys', responseRoutes);
 app.use('/api/surveys', resultsRoutes);
+app.use('/api', resultsRoutes);
 app.use('/api/game', gameStatusRoutes);
 
 // Health check
