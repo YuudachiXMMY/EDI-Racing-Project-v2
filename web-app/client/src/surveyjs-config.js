@@ -19,6 +19,8 @@ export function unityQuestionsToSurveyJS(questions) {
     switch (q.Type) {
       case QuestionType.MultipleChoice:
         return { ...base, type: 'radiogroup', choices: q.Options || [] };
+      case QuestionType.MultiSelect:
+        return { ...base, type: 'checkbox', choices: q.Options || [], maxSelectedChoices: q.MaxValue || undefined };
       case QuestionType.Numeric:
         return { ...base, type: 'text', inputType: 'number', min: q.MinValue ?? 0, max: q.MaxValue ?? 10 };
       case QuestionType.Text:
@@ -51,7 +53,13 @@ export function surveyJSToUnityQuestions(surveyJSON) {
       Required: !!el.isRequired
     };
 
-    if (el.type === 'radiogroup' || el.type === 'checkbox' || el.type === 'dropdown') {
+    if (el.type === 'checkbox') {
+      question.Type = QuestionType.MultiSelect;
+      question.Options = (el.choices || []).map(c =>
+        typeof c === 'string' ? c : (c.text || c.value || '')
+      );
+      if (el.maxSelectedChoices) question.MaxValue = el.maxSelectedChoices;
+    } else if (el.type === 'radiogroup' || el.type === 'dropdown') {
       question.Type = QuestionType.MultipleChoice;
       question.Options = (el.choices || []).map(c =>
         typeof c === 'string' ? c : (c.text || c.value || '')

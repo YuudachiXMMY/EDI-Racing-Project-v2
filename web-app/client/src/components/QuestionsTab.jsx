@@ -5,7 +5,7 @@ import 'survey-creator-core/survey-creator-core.css';
 import { unityQuestionsToSurveyJS, surveyJSToUnityQuestions } from '../surveyjs-config.js';
 
 const creatorOptions = {
-  questionTypes: ['text', 'radiogroup'],
+  questionTypes: ['text', 'radiogroup', 'checkbox'],
   showThemeTab: false,
   showLogicTab: false,
   showTranslationTab: false,

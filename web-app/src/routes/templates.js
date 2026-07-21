@@ -14,6 +14,7 @@ router.get('/', (req, res) => {
       questions: JSON.parse(r.questions_json),
       mappings: JSON.parse(r.mappings_json),
       rules: JSON.parse(r.rules_json),
+      postProcessing: JSON.parse(r.post_processing_json || '[]'),
     }
   }));
   res.json({ success: true, data: templates });

@@ -97,6 +97,24 @@ export async function exportSurvey(id) {
   return request(`/surveys/${id}/export`);
 }
 
+export async function exportExcel(id) {
+  const token = getToken();
+  const res = await fetch(`/api/surveys/${id}/export-excel`, {
+    headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+  });
+  if (!res.ok) return { success: false, error: 'Export failed' };
+  return { success: true, blob: await res.blob(), filename: res.headers.get('Content-Disposition')?.split('filename=')[1]?.replace(/"/g, '') || 'export.xlsx' };
+}
+
+export async function exportCsv(id) {
+  const token = getToken();
+  const res = await fetch(`/api/surveys/${id}/export-csv`, {
+    headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+  });
+  if (!res.ok) return { success: false, error: 'Export failed' };
+  return { success: true, blob: await res.blob(), filename: 'vehicleGroupData.csv' };
+}
+
 export async function sendToGame(id, roomCode) {
   return request(`/surveys/${id}/send-to-game`, {
     method: 'POST',

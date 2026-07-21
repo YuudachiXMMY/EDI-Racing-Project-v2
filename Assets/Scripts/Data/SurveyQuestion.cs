@@ -7,7 +7,8 @@ public enum QuestionType
 {
     Text,            // Free-form text input
     MultipleChoice,  // Select from predefined options
-    Numeric          // Number within a range (slider or input)
+    Numeric,         // Number within a range (slider or input)
+    MultiSelect      // Select multiple from predefined options
 }
 
 /// <summary>

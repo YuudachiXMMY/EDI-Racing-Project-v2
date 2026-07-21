@@ -19,6 +19,8 @@ CREATE TABLE IF NOT EXISTS surveys (
   mappings_json TEXT NOT NULL DEFAULT '[]',
   -- SavedEventRule[] stored as JSON
   rules_json TEXT NOT NULL DEFAULT '[]',
+  -- Post-processing rules (aggregate transforms) stored as JSON
+  post_processing_json TEXT NOT NULL DEFAULT '[]',
   -- Share code for student access
   share_code TEXT UNIQUE,
   is_active INTEGER NOT NULL DEFAULT 1,
@@ -81,5 +83,6 @@ CREATE TABLE IF NOT EXISTS templates (
   questions_json TEXT NOT NULL DEFAULT '[]',
   mappings_json TEXT NOT NULL DEFAULT '[]',
   rules_json TEXT NOT NULL DEFAULT '[]',
+  post_processing_json TEXT NOT NULL DEFAULT '[]',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );

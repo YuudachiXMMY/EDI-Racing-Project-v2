@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getSurvey, updateSurvey, exportSurvey, getResponseCount, toggleSurveyActive, linkRoom, unlinkRoom } from '../api.js';
+import { getSurvey, updateSurvey, exportSurvey, exportExcel, exportCsv, getResponseCount, toggleSurveyActive, linkRoom, unlinkRoom } from '../api.js';
 import QuestionsTab from '../components/QuestionsTab.jsx';
 import MappingsTab from '../components/MappingsTab.jsx';
 import RulesTab from '../components/RulesTab.jsx';
@@ -90,6 +90,25 @@ export default function EditorPage() {
     }
   }
 
+  function downloadBlob(blob, filename) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function handleExportExcel() {
+    const result = await exportExcel(id);
+    if (result.success) downloadBlob(result.blob, result.filename);
+  }
+
+  async function handleExportCsv() {
+    const result = await exportCsv(id);
+    if (result.success) downloadBlob(result.blob, result.filename);
+  }
+
   function downloadExportJson() {
     if (!exportData) return;
     const json = JSON.stringify(exportData, null, 2);
@@ -131,6 +150,7 @@ export default function EditorPage() {
       questions: data.questions,
       mappings: data.mappings,
       rules: data.rules,
+      postProcessing: data.postProcessing || [],
     });
     setSaveStatus(result.success ? 'Saved' : 'Error saving');
   }
@@ -190,6 +210,12 @@ export default function EditorPage() {
         </button>
         <button onClick={() => setShowSendModal(true)} className="btn-primary" disabled={responseCount === 0}>
           Send to Game
+        </button>
+        <button onClick={handleExportExcel} className="btn-secondary" disabled={responseCount === 0}>
+          Export Excel
+        </button>
+        <button onClick={handleExportCsv} className="btn-secondary" disabled={responseCount === 0}>
+          Export CSV
         </button>
         <button onClick={handleExport} className="btn-primary" disabled={exportLoading}>
           {exportLoading ? 'Exporting...' : 'Export for Unity'}

@@ -27,6 +27,20 @@ export function getDb() {
       // Column already exists — ignore
     }
 
+    // Migration: add post_processing_json to existing surveys table
+    try {
+      db.exec("ALTER TABLE surveys ADD COLUMN post_processing_json TEXT NOT NULL DEFAULT '[]'");
+    } catch {
+      // Column already exists — ignore
+    }
+
+    // Migration: add post_processing_json to existing templates table
+    try {
+      db.exec("ALTER TABLE templates ADD COLUMN post_processing_json TEXT NOT NULL DEFAULT '[]'");
+    } catch {
+      // Column already exists — ignore
+    }
+
     // Migration: create game_sessions table for existing DBs
     db.exec(`CREATE TABLE IF NOT EXISTS game_sessions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -45,12 +59,8 @@ export function getDb() {
       ended_at TEXT NOT NULL DEFAULT (datetime('now'))
     )`);
 
-    // Seed default templates if table is empty
-    const count = db.prepare('SELECT COUNT(*) as c FROM templates').get().c;
-    if (count === 0) {
-      seedTemplates(db);
-      console.log('[DB] Seeded default templates');
-    }
+    // Seed default templates (inserts missing ones via INSERT OR IGNORE)
+    seedTemplates(db);
 
     console.log('[DB] Initialized:', DB_PATH);
   }
