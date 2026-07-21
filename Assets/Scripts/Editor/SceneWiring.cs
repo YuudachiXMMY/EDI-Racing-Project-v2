@@ -42,8 +42,6 @@ public static class SceneWiring
         var cameraManager = Object.FindFirstObjectByType<CameraManager>();
         var waypointPath = Object.FindFirstObjectByType<WaypointPath>();
         var configManager = FindOrCreate<SurveyConfigManager>(raceManager.gameObject, "SurveyConfigManager");
-        var collector = FindOrCreate<SurveyCollector>(
-            networkSync != null ? networkSync.gameObject : raceManager.gameObject, "SurveyCollector");
 
         // UI singletons
         var raceUI = Object.FindFirstObjectByType<RaceUI>();
@@ -52,32 +50,6 @@ public static class SceneWiring
         var leaderboard = Object.FindFirstObjectByType<LeaderboardPanel>();
         var eventPanel = Object.FindFirstObjectByType<EventPanel>();
         var controlPanel = Object.FindFirstObjectByType<RaceControlPanel>();
-        var builderPanel = Object.FindFirstObjectByType<SurveyBuilderPanel>();
-        var configPanel = Object.FindFirstObjectByType<ConfigManagerPanel>();
-
-        // StudentSurveyPanel — needs Canvas
-        var surveyPanel = Object.FindFirstObjectByType<StudentSurveyPanel>();
-        if (surveyPanel == null)
-        {
-            Canvas canvas = Object.FindFirstObjectByType<Canvas>();
-            if (canvas != null)
-            {
-                var panelObj = new GameObject("StudentSurveyPanel");
-                panelObj.transform.SetParent(canvas.transform, false);
-                var rt = panelObj.AddComponent<RectTransform>();
-                rt.anchorMin = Vector2.zero;
-                rt.anchorMax = Vector2.one;
-                rt.offsetMin = Vector2.zero;
-                rt.offsetMax = Vector2.zero;
-                surveyPanel = panelObj.AddComponent<StudentSurveyPanel>();
-                createdCount++;
-                Debug.Log("[WireAll] Created StudentSurveyPanel on Canvas");
-            }
-            else
-            {
-                Warn("No Canvas found — cannot create StudentSurveyPanel");
-            }
-        }
 
         // ═══════════════════════════════════════════════════════
         // WIRE: RaceManager
@@ -137,28 +109,7 @@ public static class SceneWiring
             Wire(ref networkSync.RaceManager, raceManager, "NetworkSync.RaceManager");
             Wire(ref networkSync.NetworkManager, networkManager, "NetworkSync.NetworkManager");
             Wire(ref networkSync.ScoreManager, scoreManager, "NetworkSync.ScoreManager");
-            Wire(ref networkSync.SurveyCollector, collector, "NetworkSync.SurveyCollector");
-            Wire(ref networkSync.StudentSurveyPanel, surveyPanel, "NetworkSync.StudentSurveyPanel");
             EditorUtility.SetDirty(networkSync);
-        }
-
-        // ═══════════════════════════════════════════════════════
-        // WIRE: SurveyCollector
-        // ═══════════════════════════════════════════════════════
-        if (collector != null)
-        {
-            Wire(ref collector.NetworkManager, networkManager, "SurveyCollector.NetworkManager");
-            Wire(ref collector.ConfigManager, configManager, "SurveyCollector.ConfigManager");
-            EditorUtility.SetDirty(collector);
-        }
-
-        // ═══════════════════════════════════════════════════════
-        // WIRE: StudentSurveyPanel
-        // ═══════════════════════════════════════════════════════
-        if (surveyPanel != null)
-        {
-            Wire(ref surveyPanel.NetworkManager, networkManager, "StudentSurveyPanel.NetworkManager");
-            EditorUtility.SetDirty(surveyPanel);
         }
 
         // ═══════════════════════════════════════════════════════
@@ -173,7 +124,6 @@ public static class SceneWiring
             Wire(ref raceUI.Controls, controlPanel, "RaceUI.Controls");
             Wire(ref raceUI.Setup, setupScreen, "RaceUI.Setup");
             Wire(ref raceUI.JoinScreen, joinScreen, "RaceUI.JoinScreen");
-            Wire(ref raceUI.StudentSurvey, surveyPanel, "RaceUI.StudentSurvey");
             EditorUtility.SetDirty(raceUI);
         }
 
@@ -185,41 +135,6 @@ public static class SceneWiring
             Wire(ref setupScreen.RaceManager, raceManager, "SetupScreen.RaceManager");
             Wire(ref setupScreen.NetworkManager, networkManager, "SetupScreen.NetworkManager");
             Wire(ref setupScreen.SurveyConfigManager, configManager, "SetupScreen.SurveyConfigManager");
-            Wire(ref setupScreen.BuilderPanel, builderPanel, "SetupScreen.BuilderPanel");
-            Wire(ref setupScreen.ConfigPanel, configPanel, "SetupScreen.ConfigPanel");
-            Wire(ref setupScreen.SurveyCollector, collector, "SetupScreen.SurveyCollector");
-
-            // Create survey distribution UI if missing
-            if (setupScreen.DistributeSurveyButton == null)
-            {
-                setupScreen.DistributeSurveyButton = CreateButton(
-                    setupScreen.transform, "DistributeSurveyBtn", "Distribute Survey",
-                    new Vector2(0.5f, 0), new Vector2(0.5f, 0),
-                    new Vector2(-150, -110), new Vector2(-10, -75));
-                setupScreen.DistributeSurveyButton.gameObject.SetActive(false);
-                createdCount++;
-            }
-
-            if (setupScreen.StartWithResponsesButton == null)
-            {
-                setupScreen.StartWithResponsesButton = CreateButton(
-                    setupScreen.transform, "StartWithResponsesBtn", "Start Race (Responses)",
-                    new Vector2(0.5f, 0), new Vector2(0.5f, 0),
-                    new Vector2(10, -110), new Vector2(150, -75));
-                setupScreen.StartWithResponsesButton.interactable = false;
-                setupScreen.StartWithResponsesButton.gameObject.SetActive(false);
-                createdCount++;
-            }
-
-            if (setupScreen.ResponseCountText == null)
-            {
-                setupScreen.ResponseCountText = CreateText(
-                    setupScreen.transform, "ResponseCountText", "",
-                    new Vector2(0.5f, 0), new Vector2(0.5f, 0),
-                    new Vector2(-150, -135), new Vector2(150, -115));
-                setupScreen.ResponseCountText.gameObject.SetActive(false);
-                createdCount++;
-            }
 
             // Create Web App Import UI if missing
             if (setupScreen.ImportJsonButton == null)
