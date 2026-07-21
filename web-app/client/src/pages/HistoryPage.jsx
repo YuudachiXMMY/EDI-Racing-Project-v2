@@ -7,13 +7,19 @@ export default function HistoryPage() {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
+  const [error, setError] = useState(null);
 
   useEffect(() => { loadSessions(); }, []);
 
   async function loadSessions() {
     setLoading(true);
+    setError(null);
     const result = await getSessionHistory();
-    if (result.success) setSessions(result.data);
+    if (result.success) {
+      setSessions(result.data);
+    } else {
+      setError(result.error || 'Failed to load session history');
+    }
     setLoading(false);
   }
 
@@ -64,6 +70,8 @@ export default function HistoryPage() {
 
       {loading ? (
         <p className="loading">Loading sessions...</p>
+      ) : error ? (
+        <p className="error">{error}</p>
       ) : sessions.length === 0 ? (
         <p className="empty">No game sessions recorded yet. Sessions are archived automatically when a game room closes.</p>
       ) : (
@@ -171,7 +179,8 @@ export default function HistoryPage() {
 function escapeCsv(value) {
   if (!value) return '';
   const str = String(value);
-  if (str.includes(',') || str.includes('"')) return '"' + str.replace(/"/g, '""') + '"';
+  if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r'))
+    return '"' + str.replace(/"/g, '""') + '"';
   return str;
 }
 

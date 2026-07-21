@@ -171,7 +171,12 @@ router.post('/:id/send-to-game', requireAuth, (req, res) => {
 
   ws.on('message', (data) => {
     if (responded) return;
-    const msg = JSON.parse(data.toString());
+    let msg;
+    try {
+      msg = JSON.parse(data.toString());
+    } catch {
+      return;
+    }
 
     if (msg.type === 'error') {
       responded = true;
@@ -286,7 +291,12 @@ router.post('/:id/send-config-to-game', requireAuth, (req, res) => {
 
   ws.on('message', (data) => {
     if (responded) return;
-    const msg = JSON.parse(data.toString());
+    let msg;
+    try {
+      msg = JSON.parse(data.toString());
+    } catch {
+      return;
+    }
 
     if (msg.type === 'error') {
       responded = true;

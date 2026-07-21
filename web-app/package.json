@@ -5,8 +5,8 @@
   "description": "Survey management web app for EDI Racing Game",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "node --watch src/index.js"
+    "start": "node --env-file=.env src/index.js",
+    "dev": "node --env-file=.env --watch src/index.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

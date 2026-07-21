@@ -57,6 +57,7 @@ function destroyRoom(roomCode) {
     rankings: [],
     eventLog: [],
     totalRaceTime: 0,
+    startedAt: room.createdAt || new Date().toISOString(),
   };
   if (room.raceResults) {
     try {
@@ -70,9 +71,13 @@ function destroyRoom(roomCode) {
       }
     } catch { /* ignore parse errors */ }
   }
+  const INTERNAL_SECRET = process.env.INTERNAL_SECRET || 'edi-internal-default';
   fetch(`${API_URL}/api/sessions/archive`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-internal-secret': INTERNAL_SECRET,
+    },
     body: JSON.stringify(archivePayload),
   }).catch(() => {});
 
@@ -261,6 +266,7 @@ wss.on('connection', (ws) => {
           latestConfig: null,
           professorSessionId: msg.sessionId || null,
           graceTimer: null,
+          createdAt: new Date().toISOString(),
         });
         const clientInfo = { roomCode, role: 'professor', sessionId: msg.sessionId || null };
         clientRooms.set(ws, clientInfo);

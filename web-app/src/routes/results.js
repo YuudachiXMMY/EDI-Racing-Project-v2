@@ -59,8 +59,12 @@ router.get('/:id/results', requireAuth, (req, res) => {
   res.json({ success: true, data: parsed });
 });
 
-// POST /api/sessions/archive — store archived session (called by WS server, no auth)
+// POST /api/sessions/archive — store archived session (called by WS server, shared-secret auth)
+const INTERNAL_SECRET = process.env.INTERNAL_SECRET || 'edi-internal-default';
 router.post('/sessions/archive', (req, res) => {
+  if (req.headers['x-internal-secret'] !== INTERNAL_SECRET) {
+    return res.status(403).json({ success: false, error: 'Forbidden' });
+  }
   const { roomCode, configName, studentCount, studentNames, gamePhase,
           raceStarted, rankings, eventLog, totalRaceTime } = req.body;
 
@@ -78,8 +82,8 @@ router.post('/sessions/archive', (req, res) => {
   const result = db.prepare(
     `INSERT INTO game_sessions
      (user_id, survey_id, room_code, config_name, student_count, student_names_json,
-      game_phase, race_started, rankings_json, event_log_json, total_race_time)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      game_phase, race_started, rankings_json, event_log_json, total_race_time, started_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     linked ? linked.user_id : null,
     linked ? linked.id : null,
@@ -91,7 +95,8 @@ router.post('/sessions/archive', (req, res) => {
     raceStarted ? 1 : 0,
     JSON.stringify(rankings || []),
     JSON.stringify(eventLog || []),
-    totalRaceTime || 0
+    totalRaceTime || 0,
+    req.body.startedAt || new Date().toISOString()
   );
 
   res.json({ success: true, data: { id: Number(result.lastInsertRowid) } });
