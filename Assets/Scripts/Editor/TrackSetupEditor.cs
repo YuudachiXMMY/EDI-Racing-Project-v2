@@ -448,6 +448,25 @@ public class TrackSetupEditor : EditorWindow
         }
         carSpawner.SpawnPoint = spawnPoint.transform;
 
+        // --- Starting Grid Positions under SpawnPoint ---
+        int gridCount = 27;
+        var gridPositions = new Transform[gridCount];
+        float spacing = 3.5f;
+        int cols = 2;
+        for (int i = 0; i < gridCount; i++)
+        {
+            var gridObj = new GameObject($"GridPos_{i + 1}");
+            gridObj.transform.parent = spawnPoint.transform;
+            int row = i / cols;
+            int col = i % cols;
+            float xOff = (col - (cols - 1) * 0.5f) * spacing;
+            float zOff = -row * spacing;
+            gridObj.transform.localPosition = new Vector3(xOff, 0, zOff);
+            gridObj.transform.localRotation = Quaternion.identity;
+            gridPositions[i] = gridObj.transform;
+        }
+        carSpawner.StartingGridPositions = gridPositions;
+
         // --- Network (on child GameObject) ---
         var netObj = new GameObject("Network");
         netObj.transform.parent = rmObj.transform;
@@ -459,19 +478,71 @@ public class TrackSetupEditor : EditorWindow
         networkSync.ScoreManager = scoreManager;
         raceManager.NetworkSync = networkSync;
 
+        // --- Survey (on child GameObject) ---
+        var surveyObj = new GameObject("Survey");
+        surveyObj.transform.parent = rmObj.transform;
+        var surveyCollector = surveyObj.AddComponent<SurveyCollector>();
+        var surveyConfigManager = surveyObj.AddComponent<SurveyConfigManager>();
+        var studentSurveyPanel = surveyObj.AddComponent<StudentSurveyPanel>();
+
+        surveyCollector.NetworkManager = networkManager;
+        surveyCollector.ConfigManager = surveyConfigManager;
+        studentSurveyPanel.NetworkManager = networkManager;
+        networkSync.SurveyCollector = surveyCollector;
+        networkSync.StudentSurveyPanel = studentSurveyPanel;
+        raceManager.SurveyConfigManager = surveyConfigManager;
+
         // --- Camera (on child GameObject) ---
         var camObj = new GameObject("CameraManager");
         camObj.transform.parent = rmObj.transform;
         var cameraManager = camObj.AddComponent<CameraManager>();
 
-        // Wire existing cameras if already in scene
-        var existingFreeCamera = Object.FindFirstObjectByType<RaceCameraController>();
-        if (existingFreeCamera != null)
-            cameraManager.FreeCamera = existingFreeCamera;
+        // Wire or create main camera components
+        var mainCam = Object.FindFirstObjectByType<Camera>();
+        GameObject mainCamObj = mainCam != null ? mainCam.gameObject : null;
 
-        var existingSpectator = Object.FindFirstObjectByType<SpectatorCamera>();
-        if (existingSpectator != null)
-            cameraManager.SpectatorCam = existingSpectator;
+        if (mainCamObj == null)
+        {
+            mainCamObj = new GameObject("Main Camera");
+            mainCamObj.tag = "MainCamera";
+            mainCamObj.AddComponent<Camera>();
+            mainCamObj.AddComponent<AudioListener>();
+        }
+
+        var freeCam = mainCamObj.GetComponent<RaceCameraController>();
+        if (freeCam == null) freeCam = mainCamObj.AddComponent<RaceCameraController>();
+        cameraManager.FreeCamera = freeCam;
+
+        var spectatorCam = mainCamObj.GetComponent<SpectatorCamera>();
+        if (spectatorCam == null) spectatorCam = mainCamObj.AddComponent<SpectatorCamera>();
+        spectatorCam.enabled = false;
+        spectatorCam.ScoreManager = scoreManager;
+        cameraManager.SpectatorCam = spectatorCam;
+
+        // Fixed cameras
+        var fixedPoints = new FixedCameraPoint[9];
+        for (int i = 0; i < 9; i++)
+        {
+            string camName = $"FixedCam_F{i + 1}";
+            var existing = GameObject.Find(camName);
+            if (existing != null)
+            {
+                fixedPoints[i] = existing.GetComponent<FixedCameraPoint>();
+                if (fixedPoints[i] == null) fixedPoints[i] = existing.AddComponent<FixedCameraPoint>();
+            }
+            else
+            {
+                var fcObj = new GameObject(camName);
+                fixedPoints[i] = fcObj.AddComponent<FixedCameraPoint>();
+            }
+            fixedPoints[i].PointIndex = i;
+        }
+        cameraManager.FixedPoints = fixedPoints;
+
+        // --- CarLabelSpawner ---
+        var labelSpawnerObj = new GameObject("CarLabelSpawner");
+        var carLabelSpawner = labelSpawnerObj.AddComponent<CarLabelSpawner>();
+        carLabelSpawner.RaceManager = raceManager;
 
         // --- EventSystem ---
         if (Object.FindFirstObjectByType<EventSystem>() == null)
@@ -809,6 +880,32 @@ public class TrackSetupEditor : EditorWindow
         inputField.placeholder = placeholder;
         inputField.characterLimit = 6;
         js.RoomCodeInput = inputField;
+
+        // Team name input field
+        var teamInputObj = new GameObject("TeamNameInput");
+        teamInputObj.transform.SetParent(panel.transform, false);
+        var teamInputImg = teamInputObj.AddComponent<Image>();
+        teamInputImg.color = new Color(0.15f, 0.15f, 0.15f, 0.95f);
+        var teamInputRT = teamInputObj.GetComponent<RectTransform>();
+        teamInputRT.anchorMin = new Vector2(0.5f, 0.5f);
+        teamInputRT.anchorMax = new Vector2(0.5f, 0.5f);
+        teamInputRT.pivot = new Vector2(0.5f, 0.5f);
+        teamInputRT.sizeDelta = new Vector2(200, 35);
+        teamInputRT.anchoredPosition = new Vector2(0, -30);
+
+        var teamText = CreateLabel(teamInputObj.transform, "Text", "", 18, TextAnchor.MiddleCenter,
+            Vector2.zero, Vector2.one, new Vector2(5, 2), new Vector2(-5, -2));
+
+        var teamPlaceholder = CreateLabel(teamInputObj.transform, "Placeholder", "TEAM NAME", 18, TextAnchor.MiddleCenter,
+            Vector2.zero, Vector2.one, new Vector2(5, 2), new Vector2(-5, -2));
+        teamPlaceholder.fontStyle = FontStyle.Italic;
+        teamPlaceholder.color = new Color(1, 1, 1, 0.3f);
+
+        var teamInputField = teamInputObj.AddComponent<InputField>();
+        teamInputField.textComponent = teamText;
+        teamInputField.placeholder = teamPlaceholder;
+        teamInputField.characterLimit = 30;
+        js.TeamNameInput = teamInputField;
 
         // Join button
         js.JoinButton = CreateUIButton(panel.transform, "JoinBtn", "Join",

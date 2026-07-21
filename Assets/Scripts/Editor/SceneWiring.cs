@@ -314,11 +314,65 @@ public static class SceneWiring
         if (joinScreen != null)
         {
             Wire(ref joinScreen.NetworkManager, networkManager, "JoinScreen.NetworkManager");
+
+            // Create TeamNameInput if missing
+            if (joinScreen.TeamNameInput == null)
+            {
+                Font font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+
+                var teamObj = new GameObject("TeamNameInput");
+                teamObj.transform.SetParent(joinScreen.transform, false);
+                var teamImg = teamObj.AddComponent<Image>();
+                teamImg.color = new Color(0.15f, 0.15f, 0.15f, 0.95f);
+                var teamRt = teamObj.GetComponent<RectTransform>();
+                teamRt.anchorMin = new Vector2(0.5f, 0.5f);
+                teamRt.anchorMax = new Vector2(0.5f, 0.5f);
+                teamRt.pivot = new Vector2(0.5f, 0.5f);
+                teamRt.sizeDelta = new Vector2(200, 35);
+                teamRt.anchoredPosition = new Vector2(0, -30);
+
+                var textObj = new GameObject("Text");
+                textObj.transform.SetParent(teamObj.transform, false);
+                var textComp = textObj.AddComponent<Text>();
+                textComp.font = font;
+                textComp.fontSize = 18;
+                textComp.alignment = TextAnchor.MiddleCenter;
+                textComp.color = Color.white;
+                var txtRt = textObj.GetComponent<RectTransform>();
+                txtRt.anchorMin = Vector2.zero;
+                txtRt.anchorMax = Vector2.one;
+                txtRt.offsetMin = new Vector2(5, 2);
+                txtRt.offsetMax = new Vector2(-5, -2);
+
+                var phObj = new GameObject("Placeholder");
+                phObj.transform.SetParent(teamObj.transform, false);
+                var phText = phObj.AddComponent<Text>();
+                phText.font = font;
+                phText.fontSize = 18;
+                phText.fontStyle = FontStyle.Italic;
+                phText.color = new Color(1, 1, 1, 0.3f);
+                phText.alignment = TextAnchor.MiddleCenter;
+                phText.text = "TEAM NAME";
+                var phRt = phObj.GetComponent<RectTransform>();
+                phRt.anchorMin = Vector2.zero;
+                phRt.anchorMax = Vector2.one;
+                phRt.offsetMin = new Vector2(5, 2);
+                phRt.offsetMax = new Vector2(-5, -2);
+
+                var inputField = teamObj.AddComponent<InputField>();
+                inputField.textComponent = textComp;
+                inputField.placeholder = phText;
+                inputField.characterLimit = 30;
+                joinScreen.TeamNameInput = inputField;
+                createdCount++;
+                Debug.Log("[WireAll] Created TeamNameInput on JoinScreen");
+            }
+
             EditorUtility.SetDirty(joinScreen);
         }
 
         // ═══════════════════════════════════════════════════════
-        // WIRE: CameraManager
+        // WIRE: CameraManager + SpectatorCamera + CarLabelSpawner
         // ═══════════════════════════════════════════════════════
         if (cameraManager != null)
         {
@@ -334,7 +388,21 @@ public static class SceneWiring
                 cameraManager.SpectatorCam = spectatorCam;
                 wiredCount++;
             }
+            // Wire SpectatorCamera.ScoreManager
+            if (spectatorCam != null)
+            {
+                Wire(ref spectatorCam.ScoreManager, scoreManager, "SpectatorCamera.ScoreManager");
+                EditorUtility.SetDirty(spectatorCam);
+            }
             EditorUtility.SetDirty(cameraManager);
+        }
+
+        // CarLabelSpawner
+        var carLabelSpawner = Object.FindFirstObjectByType<CarLabelSpawner>();
+        if (carLabelSpawner != null)
+        {
+            Wire(ref carLabelSpawner.RaceManager, raceManager, "CarLabelSpawner.RaceManager");
+            EditorUtility.SetDirty(carLabelSpawner);
         }
 
         // ═══════════════════════════════════════════════════════

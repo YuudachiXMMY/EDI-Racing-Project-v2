@@ -3,10 +3,17 @@
 <!-- Populated by /setup-engine. Updated as the user makes decisions throughout development. -->
 <!-- All agents reference this file for project-specific standards and conventions. -->
 
+## Unity Editor Automation
+
+- **UnitySkills API**: `http://localhost:8090` — 所有 Unity 编辑器操作**必须优先**通过此 REST API 执行
+- **优先级**: UnitySkills API > 直接文件编辑 > 手动操作
+- **回退条件**: 仅当 API 不可用或不支持该操作时，才回退到直接编辑 .unity/.prefab/.cs 文件
+- **Skill 入口**: `/unity-skills` skill，详见 `.claude/skills/unity-skills/SKILL.md`
+
 ## Engine & Language
 
-- **Engine**: [TO BE CONFIGURED — run /setup-engine]
-- **Language**: [TO BE CONFIGURED]
+- **Engine**: Unity
+- **Language**: C#
 - **Rendering**: [TO BE CONFIGURED]
 - **Physics**: [TO BE CONFIGURED]
 

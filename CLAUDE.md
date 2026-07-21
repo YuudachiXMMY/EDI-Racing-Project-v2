@@ -5,14 +5,17 @@ Each agent owns a specific domain, enforcing separation of concerns and quality.
 
 ## Technology Stack
 
-- **Engine**: [CHOOSE: Godot 4 / Unity / Unreal Engine 5]
-- **Language**: [CHOOSE: GDScript / C# / C++ / Blueprint]
+- **Engine**: Unity (通过 UnitySkills API `http://localhost:8090` 自动化)
+- **Language**: C#
 - **Version Control**: Git with trunk-based development
-- **Build System**: [SPECIFY after choosing engine]
-- **Asset Pipeline**: [SPECIFY after choosing engine]
+- **Build System**: [SPECIFY]
+- **Asset Pipeline**: [SPECIFY]
+
+> **UnitySkills API 优先**: 所有 Unity 编辑器操作**必须优先**通过 `http://localhost:8090` UnitySkills REST API 执行。
+> 仅当 API 不可用或不支持时才回退到直接文件编辑。详见 `.claude/docs/technical-preferences.md`。
 
 > **Note**: Engine-specialist agents exist for Godot, Unity, and Unreal with
-> dedicated sub-specialists. Use the set matching your engine.
+> dedicated sub-specialists. Use the Unity set.
 
 ## Project Structure
 
