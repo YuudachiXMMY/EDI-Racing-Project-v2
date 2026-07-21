@@ -8,6 +8,7 @@ import ResponsesTab from '../components/ResponsesTab.jsx';
 import ResultsTab from '../components/ResultsTab.jsx';
 import SharePanel from '../components/SharePanel.jsx';
 import SendToGameModal from '../components/SendToGameModal.jsx';
+import SendConfigModal from '../components/SendConfigModal.jsx';
 
 const TABS = ['Questions', 'Mappings', 'Rules', 'Responses', 'Results'];
 const SAVE_DELAY = 2000;
@@ -23,6 +24,7 @@ export default function EditorPage() {
   const [exportLoading, setExportLoading] = useState(false);
   const [responseCount, setResponseCount] = useState(0);
   const [showSendModal, setShowSendModal] = useState(false);
+  const [showConfigModal, setShowConfigModal] = useState(false);
   const [linkedRoom, setLinkedRoom] = useState(null);
   const [linkInput, setLinkInput] = useState('');
   const [linkStatus, setLinkStatus] = useState('');
@@ -183,6 +185,9 @@ export default function EditorPage() {
           </span>
         )}
 
+        <button onClick={() => setShowConfigModal(true)} className="btn-secondary">
+          Send Config to Game
+        </button>
         <button onClick={() => setShowSendModal(true)} className="btn-primary" disabled={responseCount === 0}>
           Send to Game
         </button>
@@ -261,6 +266,7 @@ export default function EditorPage() {
       </div>
 
       {showSendModal && <SendToGameModal surveyId={id} onClose={() => setShowSendModal(false)} />}
+      {showConfigModal && <SendConfigModal surveyId={id} onClose={() => setShowConfigModal(false)} />}
     </div>
   );
 }

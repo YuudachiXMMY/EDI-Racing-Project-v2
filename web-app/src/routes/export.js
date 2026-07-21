@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { randomBytes } from 'crypto';
 import WebSocket from 'ws';
 import { getDb } from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -188,6 +189,128 @@ router.post('/:id/send-to-game', requireAuth, (req, res) => {
       clearTimeout(timeout);
       ws.close();
       return res.json({ success: true, data: { carsCount: carData.length, rulesCount: eventRules.length } });
+    }
+  });
+
+  ws.on('error', () => {
+    if (!responded) {
+      responded = true;
+      clearTimeout(timeout);
+      res.status(502).json({ success: false, error: 'Cannot connect to game server' });
+    }
+  });
+});
+
+// POST /api/surveys/import-config — import a SurveyConfig from Unity format
+router.post('/import-config', requireAuth, (req, res) => {
+  const { configName, configJson } = req.body;
+  if (!configJson) {
+    return res.status(400).json({ success: false, error: 'configJson is required' });
+  }
+
+  let config;
+  try {
+    config = JSON.parse(configJson);
+  } catch {
+    return res.status(400).json({ success: false, error: 'Invalid config JSON' });
+  }
+
+  const name = configName || config.ConfigName || 'Imported Config';
+  const description = config.Description || '';
+  const questions = config.Questions || [];
+  const mappings = config.Mappings || [];
+  const rules = config.Rules || [];
+
+  const db = getDb();
+  const shareCode = randomBytes(4).toString('hex').toUpperCase();
+
+  const result = db.prepare(
+    `INSERT INTO surveys (user_id, config_name, description, questions_json, mappings_json, rules_json, share_code)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    req.user.userId,
+    name,
+    description,
+    JSON.stringify(questions),
+    JSON.stringify(mappings),
+    JSON.stringify(rules),
+    shareCode
+  );
+
+  res.status(201).json({
+    success: true,
+    data: { id: result.lastInsertRowid, configName: name, shareCode }
+  });
+});
+
+// POST /api/surveys/:id/send-config-to-game — send raw survey config to Unity
+router.post('/:id/send-config-to-game', requireAuth, (req, res) => {
+  const { roomCode } = req.body;
+  if (!roomCode || !roomCode.trim()) {
+    return res.status(400).json({ success: false, error: 'roomCode is required' });
+  }
+
+  const db = getDb();
+  const survey = db.prepare('SELECT * FROM surveys WHERE id = ? AND user_id = ?')
+    .get(req.params.id, req.user.userId);
+  if (!survey) {
+    return res.status(404).json({ success: false, error: 'Survey not found' });
+  }
+
+  // Build Unity-compatible SurveyConfig (PascalCase fields for JsonUtility)
+  const configPayload = {
+    ConfigName: survey.config_name,
+    Description: survey.description || '',
+    CreatedAt: survey.created_at,
+    Version: '1.0',
+    Questions: JSON.parse(survey.questions_json),
+    Mappings: JSON.parse(survey.mappings_json),
+    Rules: JSON.parse(survey.rules_json),
+  };
+
+  const code = roomCode.trim().toUpperCase();
+  const ws = new WebSocket(WS_GAME_URL);
+  let responded = false;
+
+  const timeout = setTimeout(() => {
+    if (!responded) {
+      responded = true;
+      ws.close();
+      res.status(504).json({ success: false, error: 'Game server did not respond in time' });
+    }
+  }, 5000);
+
+  ws.on('open', () => {
+    ws.send(JSON.stringify({ type: 'web_join_room', roomCode: code }));
+  });
+
+  ws.on('message', (data) => {
+    if (responded) return;
+    const msg = JSON.parse(data.toString());
+
+    if (msg.type === 'error') {
+      responded = true;
+      clearTimeout(timeout);
+      ws.close();
+      return res.status(400).json({ success: false, error: msg.message || 'Room not found' });
+    }
+
+    if (msg.type === 'room_joined') {
+      ws.send(JSON.stringify({
+        type: 'config_import',
+        configName: survey.config_name,
+        configJson: JSON.stringify(configPayload),
+      }));
+    }
+
+    if (msg.type === 'config_sync_ack') {
+      responded = true;
+      clearTimeout(timeout);
+      ws.close();
+      if (msg.success) {
+        return res.json({ success: true, data: { configName: survey.config_name } });
+      }
+      return res.status(400).json({ success: false, error: msg.error || 'Config sync failed' });
     }
   });
 

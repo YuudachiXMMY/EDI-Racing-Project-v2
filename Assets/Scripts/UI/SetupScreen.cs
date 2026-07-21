@@ -44,6 +44,9 @@ public class SetupScreen : MonoBehaviour
     public Button StartWithResponsesButton;
     public Text ResponseCountText;
 
+    [Header("Config Sync (Optional)")]
+    public Button PushConfigButton;
+
     [Header("Web Response Sync (Optional)")]
     public Text WebResponseCountText;
 
@@ -107,6 +110,13 @@ public class SetupScreen : MonoBehaviour
             StartWithResponsesButton.onClick.AddListener(OnStartWithResponses);
         }
         if (ResponseCountText != null) ResponseCountText.gameObject.SetActive(false);
+
+        // Config sync button
+        if (PushConfigButton != null)
+        {
+            PushConfigButton.gameObject.SetActive(false);
+            PushConfigButton.onClick.AddListener(OnPushConfig);
+        }
 
         if (InfoText != null)
             InfoText.text = "Ready to start race.";
@@ -231,6 +241,10 @@ public class SetupScreen : MonoBehaviour
         bool canDistribute = SurveyConfigManager != null && SurveyConfigManager.ActiveConfig != null
             && SurveyCollector != null;
         if (DistributeSurveyButton != null) DistributeSurveyButton.gameObject.SetActive(canDistribute);
+
+        // Show push-config button if we have an active config
+        bool canPush = SurveyConfigManager != null && SurveyConfigManager.ActiveConfig != null;
+        if (PushConfigButton != null) PushConfigButton.gameObject.SetActive(canPush);
     }
 
     private void OnStudentCountChanged(int count)
@@ -372,6 +386,62 @@ public class SetupScreen : MonoBehaviour
             return;
         }
 
+        if (baseMsg.type == "config_import")
+        {
+            var configMsg = JsonUtility.FromJson<ConfigImportMessage>(json);
+            if (string.IsNullOrEmpty(configMsg.configJson))
+            {
+                if (InfoText != null) InfoText.text = "Received empty config from web app.";
+                return;
+            }
+
+            SurveyConfig config;
+            try
+            {
+                config = JsonUtility.FromJson<SurveyConfig>(configMsg.configJson);
+            }
+            catch (System.Exception e)
+            {
+                if (InfoText != null) InfoText.text = $"Config import error: {e.Message}";
+                return;
+            }
+
+            if (SurveyConfigManager != null)
+            {
+                SurveyConfigManager.SetActiveConfig(config);
+                SurveyConfigManager.SaveConfig(config);
+                RefreshActiveConfigDisplay();
+            }
+
+            int qCount = config.Questions != null ? config.Questions.Length : 0;
+            int mCount = config.Mappings != null ? config.Mappings.Length : 0;
+            int rCount = config.Rules != null ? config.Rules.Length : 0;
+
+            Debug.Log($"[SetupScreen] Imported config from web app: {config.ConfigName} ({qCount}Q, {mCount}M, {rCount}R)");
+            if (InfoText != null) InfoText.text = $"Config imported: {config.ConfigName} ({qCount} questions, {mCount} mappings, {rCount} rules)";
+
+            // Show distribute button if in a room
+            bool canDistribute = SurveyConfigManager != null && SurveyConfigManager.ActiveConfig != null
+                && SurveyCollector != null && NetworkManager != null && NetworkManager.RoomCode != null;
+            if (DistributeSurveyButton != null) DistributeSurveyButton.gameObject.SetActive(canDistribute);
+            return;
+        }
+
+        if (baseMsg.type == "config_sync_ack")
+        {
+            var ackMsg = JsonUtility.FromJson<ConfigSyncAckMessage>(json);
+            if (ackMsg.success)
+            {
+                if (InfoText != null && ackMsg.direction == "export")
+                    InfoText.text = "Config sent to web app successfully.";
+            }
+            else
+            {
+                if (InfoText != null) InfoText.text = $"Config sync error: {ackMsg.error}";
+            }
+            return;
+        }
+
         if (baseMsg.type != "survey_import") return;
 
         var msg = JsonUtility.FromJson<SurveyImportMessage>(json);
@@ -399,6 +469,31 @@ public class SetupScreen : MonoBehaviour
 
         RaceManager.LoadAndStartRaceWithRules(result.Cars, result.EventRules);
         gameObject.SetActive(false);
+    }
+
+    // --- Config Sync ---
+
+    private void OnPushConfig()
+    {
+        if (NetworkManager == null || !NetworkManager.IsConnected || !NetworkManager.IsHost) return;
+        if (SurveyConfigManager == null || SurveyConfigManager.ActiveConfig == null)
+        {
+            if (InfoText != null) InfoText.text = "No active config to push.";
+            return;
+        }
+
+        var config = SurveyConfigManager.ActiveConfig;
+        string configJson = JsonUtility.ToJson(config);
+
+        var msg = new ConfigExportMessage
+        {
+            configName = config.ConfigName,
+            configJson = configJson
+        };
+
+        NetworkManager.Send(JsonUtility.ToJson(msg));
+        if (InfoText != null) InfoText.text = $"Config '{config.ConfigName}' sent to web app.";
+        Debug.Log($"[SetupScreen] Pushed config to web app: {config.ConfigName}");
     }
 
     // --- Web App Import ---

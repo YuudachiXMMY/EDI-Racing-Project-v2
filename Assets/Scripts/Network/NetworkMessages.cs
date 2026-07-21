@@ -315,6 +315,44 @@ public class ReconnectStateMessage
     public bool raceStarted;
 }
 
+// --- Config Sync Messages ---
+
+/// <summary>
+/// Professor -> Server -> Web App: exports raw SurveyConfig for import into web app.
+/// configJson is a serialized SurveyConfig (questions, mappings, rules).
+/// </summary>
+[Serializable]
+public class ConfigExportMessage
+{
+    public string type = "config_export";
+    public string configName;
+    public string configJson;
+}
+
+/// <summary>
+/// Web App -> Server -> Professor: sends raw SurveyConfig for loading into Unity.
+/// configJson is a serialized SurveyConfig (questions, mappings, rules).
+/// </summary>
+[Serializable]
+public class ConfigImportMessage
+{
+    public string type = "config_import";
+    public string configName;
+    public string configJson;
+}
+
+/// <summary>
+/// Server -> Client: acknowledges config export/import was processed.
+/// </summary>
+[Serializable]
+public class ConfigSyncAckMessage
+{
+    public string type = "config_sync_ack";
+    public bool success;
+    public string error;
+    public string direction; // "export" or "import"
+}
+
 // --- Student Identity Messages ---
 
 /// <summary>
