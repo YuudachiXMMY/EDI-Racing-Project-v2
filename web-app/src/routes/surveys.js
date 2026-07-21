@@ -128,6 +128,37 @@ router.patch('/:id/active', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
+// PATCH /api/surveys/:id/link-room — link survey to a game room for real-time notifications
+router.patch('/:id/link-room', requireAuth, (req, res) => {
+  const { roomCode } = req.body;
+  if (!roomCode || !roomCode.trim()) {
+    return res.status(400).json({ success: false, error: 'roomCode is required' });
+  }
+
+  const db = getDb();
+  const result = db.prepare(
+    "UPDATE surveys SET linked_room_code = ?, updated_at = datetime('now') WHERE id = ? AND user_id = ?"
+  ).run(roomCode.trim().toUpperCase(), req.params.id, req.user.userId);
+
+  if (result.changes === 0) {
+    return res.status(404).json({ success: false, error: 'Survey not found' });
+  }
+  res.json({ success: true, data: { linkedRoomCode: roomCode.trim().toUpperCase() } });
+});
+
+// DELETE /api/surveys/:id/link-room — unlink survey from game room
+router.delete('/:id/link-room', requireAuth, (req, res) => {
+  const db = getDb();
+  const result = db.prepare(
+    "UPDATE surveys SET linked_room_code = NULL, updated_at = datetime('now') WHERE id = ? AND user_id = ?"
+  ).run(req.params.id, req.user.userId);
+
+  if (result.changes === 0) {
+    return res.status(404).json({ success: false, error: 'Survey not found' });
+  }
+  res.json({ success: true });
+});
+
 // DELETE /api/surveys/:id
 router.delete('/:id', requireAuth, (req, res) => {
   const db = getDb();

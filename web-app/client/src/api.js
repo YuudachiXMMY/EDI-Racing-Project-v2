@@ -123,6 +123,17 @@ export async function getRoomResults(roomCode) {
   return request(`/game/room-results/${roomCode.toUpperCase()}`);
 }
 
+export async function linkRoom(surveyId, roomCode) {
+  return request(`/surveys/${surveyId}/link-room`, {
+    method: 'PATCH',
+    body: JSON.stringify({ roomCode }),
+  });
+}
+
+export async function unlinkRoom(surveyId) {
+  return request(`/surveys/${surveyId}/link-room`, { method: 'DELETE' });
+}
+
 export async function toggleSurveyActive(id, isActive) {
   return request(`/surveys/${id}/active`, {
     method: 'PATCH',

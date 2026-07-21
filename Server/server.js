@@ -98,8 +98,16 @@ function cleanupClient(ws) {
 // --- HTTP server for room-status API ---
 const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   res.setHeader('Content-Type', 'application/json');
+
+  // CORS preflight
+  if (req.method === 'OPTIONS') {
+    res.writeHead(204);
+    res.end();
+    return;
+  }
 
   const match = req.url.match(/^\/api\/room-status\/([A-Za-z0-9]+)$/);
   if (req.method === 'GET' && match) {
@@ -132,6 +140,40 @@ const server = http.createServer((req, res) => {
     }
     res.writeHead(200);
     res.end(room.raceResults);
+    return;
+  }
+
+  // POST /api/notify-response — notify room when a new web survey response is submitted
+  if (req.method === 'POST' && req.url === '/api/notify-response') {
+    let body = '';
+    req.on('data', chunk => { body += chunk; });
+    req.on('end', () => {
+      try {
+        const { roomCode, responseCount, teamName, surveyId } = JSON.parse(body);
+        const code = (roomCode || '').toUpperCase();
+        const room = rooms.get(code);
+        const notification = {
+          type: 'new_web_response',
+          responseCount: responseCount || 0,
+          teamName: teamName || '',
+          surveyId: surveyId || 0,
+        };
+        if (room && room.professor && room.professor.readyState === 1) {
+          sendJSON(room.professor, notification);
+        }
+        if (room) {
+          for (const webapp of room.webapps) {
+            if (webapp.readyState === 1) sendJSON(webapp, notification);
+          }
+        }
+        res.writeHead(200);
+        res.end(JSON.stringify({ success: true }));
+        console.log(`[Notify] Response for room ${code}: ${responseCount} total (${teamName})`);
+      } catch {
+        res.writeHead(400);
+        res.end(JSON.stringify({ success: false, error: 'Invalid JSON' }));
+      }
+    });
     return;
   }
 
