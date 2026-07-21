@@ -39,10 +39,43 @@ function broadcastToStudents(roomCode, message) {
   }
 }
 
+const API_URL = process.env.API_URL || 'http://localhost:3001';
+
 function destroyRoom(roomCode) {
   const room = rooms.get(roomCode);
   if (!room) return;
   if (room.graceTimer) clearTimeout(room.graceTimer);
+
+  // Archive session to web app DB (fire-and-forget)
+  const archivePayload = {
+    roomCode,
+    configName: '',
+    studentCount: room.students.size,
+    studentNames: [...room.studentTeamNames.values()],
+    gamePhase: room.gamePhase || 'Setup',
+    raceStarted: room.raceStarted,
+    rankings: [],
+    eventLog: [],
+    totalRaceTime: 0,
+  };
+  if (room.raceResults) {
+    try {
+      const parsed = JSON.parse(room.raceResults);
+      archivePayload.configName = parsed.configName || '';
+      if (parsed.resultsJson) {
+        const results = JSON.parse(parsed.resultsJson);
+        archivePayload.rankings = results.Rankings || [];
+        archivePayload.eventLog = results.EventLog || [];
+        archivePayload.totalRaceTime = results.TotalRaceTime || 0;
+      }
+    } catch { /* ignore parse errors */ }
+  }
+  fetch(`${API_URL}/api/sessions/archive`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(archivePayload),
+  }).catch(() => {});
+
   broadcastToStudents(roomCode, { type: 'room_closed' });
   for (const student of room.students) {
     clientRooms.delete(student);
@@ -52,7 +85,7 @@ function destroyRoom(roomCode) {
     if (info.roomCode === roomCode) sessions.delete(sid);
   }
   rooms.delete(roomCode);
-  console.log(`[Room ${roomCode}] Destroyed`);
+  console.log(`[Room ${roomCode}] Destroyed (archived)`);
 }
 
 function cleanupClient(ws) {
@@ -225,6 +258,7 @@ wss.on('connection', (ws) => {
           raceResults: null,
           latestLeaderboard: null,
           surveyData: null,
+          latestConfig: null,
           professorSessionId: msg.sessionId || null,
           graceTimer: null,
         });
@@ -352,7 +386,45 @@ wss.on('connection', (ws) => {
         // Send cached state to late-joining web viewer
         if (webRoom.latestState) ws.send(webRoom.latestState);
         if (webRoom.latestLeaderboard) ws.send(webRoom.latestLeaderboard);
+        if (webRoom.latestConfig) ws.send(webRoom.latestConfig);
         console.log(`[Room ${webCode}] Web-app client joined`);
+        break;
+      }
+
+      case 'config_export': {
+        const profInfo = clientRooms.get(ws);
+        if (!profInfo || profInfo.role !== 'professor') {
+          sendJSON(ws, { type: 'config_sync_ack', success: false, error: 'Not authorized', direction: 'export' });
+          return;
+        }
+        const configRoom = rooms.get(profInfo.roomCode);
+        if (!configRoom) {
+          sendJSON(ws, { type: 'config_sync_ack', success: false, error: 'Room not found', direction: 'export' });
+          return;
+        }
+        configRoom.latestConfig = data.toString();
+        for (const webapp of configRoom.webapps) {
+          if (webapp.readyState === 1) webapp.send(data.toString());
+        }
+        sendJSON(ws, { type: 'config_sync_ack', success: true, direction: 'export' });
+        console.log(`[Room ${profInfo.roomCode}] Config exported from Unity: ${msg.configName || '(unnamed)'}`);
+        break;
+      }
+
+      case 'config_import': {
+        const ciWebInfo = clientRooms.get(ws);
+        if (!ciWebInfo || ciWebInfo.role !== 'webapp') {
+          sendJSON(ws, { type: 'config_sync_ack', success: false, error: 'Not authorized', direction: 'import' });
+          return;
+        }
+        const ciRoom = rooms.get(ciWebInfo.roomCode);
+        if (!ciRoom || !ciRoom.professor || ciRoom.professor.readyState !== 1) {
+          sendJSON(ws, { type: 'config_sync_ack', success: false, error: 'Professor not connected', direction: 'import' });
+          return;
+        }
+        ciRoom.professor.send(data.toString());
+        sendJSON(ws, { type: 'config_sync_ack', success: true, direction: 'import' });
+        console.log(`[Room ${ciWebInfo.roomCode}] Config imported from web-app: ${msg.configName || '(unnamed)'}`);
         break;
       }
 

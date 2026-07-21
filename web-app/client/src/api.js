@@ -134,6 +134,24 @@ export async function unlinkRoom(surveyId) {
   return request(`/surveys/${surveyId}/link-room`, { method: 'DELETE' });
 }
 
+export async function sendConfigToGame(id, roomCode) {
+  return request(`/surveys/${id}/send-config-to-game`, {
+    method: 'POST',
+    body: JSON.stringify({ roomCode }),
+  });
+}
+
+export async function importConfigFromGame(configData) {
+  return request('/surveys/import-config', {
+    method: 'POST',
+    body: JSON.stringify(configData),
+  });
+}
+
+export async function getSessionHistory() {
+  return request('/sessions');
+}
+
 export async function toggleSurveyActive(id, isActive) {
   return request(`/surveys/${id}/active`, {
     method: 'PATCH',
