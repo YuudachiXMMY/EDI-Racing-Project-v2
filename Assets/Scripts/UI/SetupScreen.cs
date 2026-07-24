@@ -25,6 +25,10 @@ public class SetupScreen : MonoBehaviour
     [Header("Survey Config (Optional)")]
     public SurveyConfigManager SurveyConfigManager;
     public Text ActiveConfigText;
+    public Button NewSurveyButton;
+    public Button LoadConfigButton;
+    public Button TemplateButton;
+    public Button StartWithSurveyButton;
 
     [Header("Web App Import (Optional)")]
     public Button ImportJsonButton;

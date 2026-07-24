@@ -55,9 +55,9 @@ public class EventManagerTests
     public void TearDown()
     {
         foreach (var obj in carObjects)
-            Object.DestroyImmediate(obj);
-        Object.DestroyImmediate(managerObj);
-        Object.DestroyImmediate(schedule);
+            UnityEngine.Object.DestroyImmediate(obj);
+        UnityEngine.Object.DestroyImmediate(managerObj);
+        UnityEngine.Object.DestroyImmediate(schedule);
     }
 
     private CarIdentity CreateCar(string name, AttributeEntry[] attrs)

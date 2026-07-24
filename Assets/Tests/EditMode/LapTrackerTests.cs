@@ -30,8 +30,8 @@ public class LapTrackerTests
     [TearDown]
     public void TearDown()
     {
-        Object.DestroyImmediate(carObj);
-        Object.DestroyImmediate(trackerObj);
+        UnityEngine.Object.DestroyImmediate(carObj);
+        UnityEngine.Object.DestroyImmediate(trackerObj);
     }
 
     [Test]

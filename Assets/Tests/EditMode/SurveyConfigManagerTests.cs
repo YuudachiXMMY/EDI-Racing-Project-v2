@@ -22,8 +22,8 @@ public class SurveyConfigManagerTests
     [TearDown]
     public void TearDown()
     {
-        Object.DestroyImmediate(managerObj);
-        Object.DestroyImmediate(schedule);
+        UnityEngine.Object.DestroyImmediate(managerObj);
+        UnityEngine.Object.DestroyImmediate(schedule);
     }
 
     [Test]

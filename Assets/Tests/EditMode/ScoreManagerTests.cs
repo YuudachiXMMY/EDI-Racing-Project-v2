@@ -22,8 +22,8 @@ public class ScoreManagerTests
     public void TearDown()
     {
         foreach (var obj in carObjects)
-            Object.DestroyImmediate(obj);
-        Object.DestroyImmediate(managerObj);
+            UnityEngine.Object.DestroyImmediate(obj);
+        UnityEngine.Object.DestroyImmediate(managerObj);
     }
 
     private CarIdentity CreateCar(string name, int checkpoints, float time, int lap = 0)

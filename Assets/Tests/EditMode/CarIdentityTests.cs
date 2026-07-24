@@ -18,7 +18,7 @@ public class CarIdentityTests
     [TearDown]
     public void TearDown()
     {
-        Object.DestroyImmediate(testObj);
+        UnityEngine.Object.DestroyImmediate(testObj);
     }
 
     [Test]
