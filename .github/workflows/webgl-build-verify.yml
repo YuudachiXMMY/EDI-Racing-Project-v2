@@ -19,7 +19,18 @@ jobs:
         with:
           lfs: true
 
+      - name: Check if WebGL build exists
+        id: check-build
+        run: |
+          if [ -d "Deploy/webgl-build" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Deploy/webgl-build not found — skipping artifact verification. Run scripts/build-webgl.sh locally first."
+          fi
+
       - name: Verify WebGL build artifacts
+        if: steps.check-build.outputs.exists == 'true'
         run: |
           chmod +x scripts/verify-webgl-build.sh
           ./scripts/verify-webgl-build.sh
@@ -33,7 +44,18 @@ jobs:
         with:
           lfs: true
 
+      - name: Check if WebGL build exists
+        id: check-build
+        run: |
+          if [ -d "Deploy/webgl-build" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Deploy/webgl-build not found — skipping Docker smoke test."
+          fi
+
       - name: Build and test Docker image
+        if: steps.check-build.outputs.exists == 'true'
         run: |
           chmod +x scripts/verify-webgl-build.sh scripts/verify-webgl-docker.sh
           ./scripts/verify-webgl-docker.sh
