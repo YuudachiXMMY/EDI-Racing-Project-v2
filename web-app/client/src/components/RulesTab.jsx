@@ -1,11 +1,13 @@
 import RuleRow from './RuleRow.jsx';
-import { ComparisonOperator, WeatherType, MAX_RULES } from '../constants.js';
+import { ComparisonOperator, WeatherType, LogicOperator, MAX_RULES } from '../constants.js';
 
 export default function RulesTab({ rules, onChange }) {
   function handleAdd() {
     if (rules.length >= MAX_RULES) return;
     onChange([...rules, {
       DisplayName: '',
+      Logic: LogicOperator.And,
+      Conditions: [],
       AttributeName: '',
       Operator: ComparisonOperator.Equals,
       CompareValue: '',

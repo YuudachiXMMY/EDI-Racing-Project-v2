@@ -3,9 +3,32 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 /// <summary>
+/// Logic operator for combining multiple conditions within a single rule.
+/// </summary>
+public enum LogicOperator
+{
+    And,  // All conditions must match
+    Or    // Any condition can match
+}
+
+/// <summary>
+/// A single attribute condition used within compound rules.
+/// </summary>
+[Serializable]
+public struct RuleCondition
+{
+    public string AttributeName;
+    public ComparisonOperator Operator;
+    public string CompareValue;
+}
+
+/// <summary>
 /// Configuration for a single event rule.
 /// Replaces the hardcoded RaceEventConfig with a generic attribute-based matching system.
 /// Stored in EventSchedule ScriptableObject.
+/// Supports compound conditions: when Conditions array is non-empty, evaluates
+/// multiple sub-conditions joined by Logic (AND/OR). When empty, falls back to
+/// legacy single-condition fields (AttributeName/Operator/CompareValue).
 /// </summary>
 [Serializable]
 public struct EventRule
@@ -13,7 +36,14 @@ public struct EventRule
     [Tooltip("Display name shown in event panel and logs")]
     public string DisplayName;
 
-    [Header("Rule Condition")]
+    [Header("Compound Conditions (optional)")]
+    [Tooltip("Logic operator for combining conditions (AND = all must match, OR = any can match)")]
+    public LogicOperator Logic;
+
+    [Tooltip("Multiple conditions to evaluate. When non-empty, overrides legacy single-condition fields below.")]
+    public RuleCondition[] Conditions;
+
+    [Header("Legacy Single Condition")]
     [Tooltip("Attribute name to check on the car (e.g., 'colorIndex', 'functions', 'teamName', or any custom attribute)")]
     public string AttributeName;
 

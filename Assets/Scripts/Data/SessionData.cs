@@ -60,6 +60,17 @@ public struct SavedRaceConfig
 }
 
 /// <summary>
+/// Serializable copy of RuleCondition for JSON persistence.
+/// </summary>
+[Serializable]
+public struct SavedRuleCondition
+{
+    public string AttributeName;
+    public int Operator;
+    public string CompareValue;
+}
+
+/// <summary>
 /// Serializable copy of EventRule without runtime state (HasBeenTriggered)
 /// and without Key binding (UI concern, not data).
 /// </summary>
@@ -67,6 +78,8 @@ public struct SavedRaceConfig
 public struct SavedEventRule
 {
     public string DisplayName;
+    public int Logic;
+    public SavedRuleCondition[] Conditions;
     public string AttributeName;
     public int Operator;
     public string CompareValue;
@@ -77,9 +90,26 @@ public struct SavedEventRule
 
     public static SavedEventRule FromRule(EventRule rule)
     {
+        SavedRuleCondition[] savedConditions = null;
+        if (rule.Conditions != null && rule.Conditions.Length > 0)
+        {
+            savedConditions = new SavedRuleCondition[rule.Conditions.Length];
+            for (int i = 0; i < rule.Conditions.Length; i++)
+            {
+                savedConditions[i] = new SavedRuleCondition
+                {
+                    AttributeName = rule.Conditions[i].AttributeName ?? "",
+                    Operator = (int)rule.Conditions[i].Operator,
+                    CompareValue = rule.Conditions[i].CompareValue ?? ""
+                };
+            }
+        }
+
         return new SavedEventRule
         {
             DisplayName = rule.DisplayName ?? "",
+            Logic = (int)rule.Logic,
+            Conditions = savedConditions,
             AttributeName = rule.AttributeName ?? "",
             Operator = (int)rule.Operator,
             CompareValue = rule.CompareValue ?? "",
@@ -92,9 +122,26 @@ public struct SavedEventRule
 
     public EventRule ToRule(Key triggerKey)
     {
+        RuleCondition[] ruleConditions = null;
+        if (Conditions != null && Conditions.Length > 0)
+        {
+            ruleConditions = new RuleCondition[Conditions.Length];
+            for (int i = 0; i < Conditions.Length; i++)
+            {
+                ruleConditions[i] = new RuleCondition
+                {
+                    AttributeName = Conditions[i].AttributeName,
+                    Operator = (ComparisonOperator)Conditions[i].Operator,
+                    CompareValue = Conditions[i].CompareValue
+                };
+            }
+        }
+
         return new EventRule
         {
             DisplayName = DisplayName,
+            Logic = (LogicOperator)Logic,
+            Conditions = ruleConditions,
             AttributeName = AttributeName,
             Operator = (ComparisonOperator)Operator,
             CompareValue = CompareValue,
