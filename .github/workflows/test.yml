@@ -18,13 +18,26 @@ jobs:
   test:
     name: EditMode Tests
     runs-on: ubuntu-latest
-    if: ${{ secrets.UNITY_LICENSE != '' }}
     steps:
+      - name: Check Unity license
+        id: license
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+        run: |
+          if [ -z "$UNITY_LICENSE" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::UNITY_LICENSE secret not configured — skipping Unity tests."
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: actions/checkout@v4
+        if: steps.license.outputs.available == 'true'
         with:
           lfs: true
 
       - uses: game-ci/unity-test-runner@v4
+        if: steps.license.outputs.available == 'true'
         id: tests
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
@@ -37,13 +50,13 @@ jobs:
           githubToken: ${{ secrets.GITHUB_TOKEN }}
 
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && steps.license.outputs.available == 'true'
         with:
           name: test-results
           path: artifacts
 
       - uses: actions/upload-artifact@v4
-        if: always()
+        if: always() && steps.license.outputs.available == 'true'
         with:
           name: coverage-report
           path: CodeCoverage
