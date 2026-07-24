@@ -23,6 +23,9 @@ export const WeatherType = { None: 0, Snow: 1, Night: 2, Sunset: 3 };
 
 export const WeatherTypeLabels = ['None', 'Snow', 'Night', 'Sunset'];
 
+export const LogicOperator = { And: 0, Or: 1 };
+export const LogicOperatorLabels = ['AND (all must match)', 'OR (any can match)'];
+
 export const TransformTypes = ['direct', 'lookup', 'numeric'];
 
 export const MAX_QUESTIONS = 20;

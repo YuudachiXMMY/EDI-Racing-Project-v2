@@ -105,6 +105,13 @@ label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; co
 .rule-condition .label { color: var(--text-dim); font-size: 13px; }
 .rule-condition input { width: 120px; }
 .rule-condition select { width: 140px; }
+.logic-toggle { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.logic-toggle select { width: 200px; }
+.condition-list { display: flex; flex-direction: column; gap: 4px; }
+.condition-row { display: flex; align-items: center; gap: 8px; }
+.condition-row input { width: 120px; }
+.condition-row select { width: 140px; }
+.add-condition-btn { margin-top: 4px; font-size: 12px; padding: 2px 8px; }
 .rule-effect { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .rule-effect input[type="number"] { width: 70px; }
 .rule-effect select { width: 90px; }

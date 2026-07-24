@@ -191,4 +191,137 @@ public class RuleEngineTests
         // "French" can't be parsed as number, CompareNumeric returns 0
         Assert.IsFalse(RuleEngine.IsAffected(rule, testCar));
     }
+
+    // --- Compound condition tests ---
+
+    [Test]
+    public void IsAffected_AndConditions_AllMatch_ReturnsTrue()
+    {
+        var rule = new EventRule
+        {
+            Logic = LogicOperator.And,
+            Conditions = new[]
+            {
+                new RuleCondition { AttributeName = "colorIndex", Operator = ComparisonOperator.Equals, CompareValue = "2" },
+                new RuleCondition { AttributeName = "language", Operator = ComparisonOperator.Equals, CompareValue = "French" }
+            }
+        };
+        Assert.IsTrue(RuleEngine.IsAffected(rule, testCar));
+    }
+
+    [Test]
+    public void IsAffected_AndConditions_OneFails_ReturnsFalse()
+    {
+        var rule = new EventRule
+        {
+            Logic = LogicOperator.And,
+            Conditions = new[]
+            {
+                new RuleCondition { AttributeName = "colorIndex", Operator = ComparisonOperator.Equals, CompareValue = "2" },
+                new RuleCondition { AttributeName = "language", Operator = ComparisonOperator.Equals, CompareValue = "English" }
+            }
+        };
+        Assert.IsFalse(RuleEngine.IsAffected(rule, testCar));
+    }
+
+    [Test]
+    public void IsAffected_OrConditions_OneMatches_ReturnsTrue()
+    {
+        var rule = new EventRule
+        {
+            Logic = LogicOperator.Or,
+            Conditions = new[]
+            {
+                new RuleCondition { AttributeName = "colorIndex", Operator = ComparisonOperator.Equals, CompareValue = "5" },
+                new RuleCondition { AttributeName = "language", Operator = ComparisonOperator.Equals, CompareValue = "French" }
+            }
+        };
+        Assert.IsTrue(RuleEngine.IsAffected(rule, testCar));
+    }
+
+    [Test]
+    public void IsAffected_OrConditions_NoneMatch_ReturnsFalse()
+    {
+        var rule = new EventRule
+        {
+            Logic = LogicOperator.Or,
+            Conditions = new[]
+            {
+                new RuleCondition { AttributeName = "colorIndex", Operator = ComparisonOperator.Equals, CompareValue = "5" },
+                new RuleCondition { AttributeName = "language", Operator = ComparisonOperator.Equals, CompareValue = "English" }
+            }
+        };
+        Assert.IsFalse(RuleEngine.IsAffected(rule, testCar));
+    }
+
+    [Test]
+    public void IsAffected_EmptyConditions_FallsBackToLegacy()
+    {
+        var rule = new EventRule
+        {
+            Conditions = new RuleCondition[0],
+            AttributeName = "colorIndex",
+            Operator = ComparisonOperator.Equals,
+            CompareValue = "2"
+        };
+        Assert.IsTrue(RuleEngine.IsAffected(rule, testCar));
+    }
+
+    [Test]
+    public void IsAffected_NullConditions_FallsBackToLegacy()
+    {
+        var rule = new EventRule
+        {
+            Conditions = null,
+            AttributeName = "score",
+            Operator = ComparisonOperator.GreaterThan,
+            CompareValue = "5"
+        };
+        Assert.IsTrue(RuleEngine.IsAffected(rule, testCar));
+    }
+
+    [Test]
+    public void IsAffected_SingleConditionInArray_WorksLikeSimple()
+    {
+        var rule = new EventRule
+        {
+            Logic = LogicOperator.And,
+            Conditions = new[]
+            {
+                new RuleCondition { AttributeName = "colorIndex", Operator = ComparisonOperator.Equals, CompareValue = "2" }
+            }
+        };
+        Assert.IsTrue(RuleEngine.IsAffected(rule, testCar));
+    }
+
+    [Test]
+    public void IsAffected_AllOperator_IgnoresConditions()
+    {
+        var rule = new EventRule
+        {
+            Operator = ComparisonOperator.All,
+            Logic = LogicOperator.And,
+            Conditions = new[]
+            {
+                new RuleCondition { AttributeName = "colorIndex", Operator = ComparisonOperator.Equals, CompareValue = "999" }
+            }
+        };
+        Assert.IsTrue(RuleEngine.IsAffected(rule, testCar));
+    }
+
+    [Test]
+    public void IsAffected_AndConditions_MixedOperators_Works()
+    {
+        var rule = new EventRule
+        {
+            Logic = LogicOperator.And,
+            Conditions = new[]
+            {
+                new RuleCondition { AttributeName = "colorIndex", Operator = ComparisonOperator.Equals, CompareValue = "2" },
+                new RuleCondition { AttributeName = "score", Operator = ComparisonOperator.GreaterThan, CompareValue = "5" },
+                new RuleCondition { AttributeName = "functions", Operator = ComparisonOperator.Contains, CompareValue = "glasses" }
+            }
+        };
+        Assert.IsTrue(RuleEngine.IsAffected(rule, testCar));
+    }
 }

@@ -38,6 +38,7 @@ const templates = [
       { DisplayName: 'Inaccessible Building', AttributeName: 'disability', Operator: 1, CompareValue: 'none', SpeedDelta: -12, Duration: 8, Weather: 0, AllowRepeat: false },
       { DisplayName: 'Tech Upgrade', AttributeName: 'assistive_tech', Operator: 0, CompareValue: 'yes', SpeedDelta: 10, Duration: 6, Weather: 0, AllowRepeat: false },
       { DisplayName: 'Accommodation Barrier', AttributeName: 'accommodation_ease', Operator: 5, CompareValue: '5', SpeedDelta: -8, Duration: 10, Weather: 1, AllowRepeat: false },
+      { DisplayName: 'Intersectional Barrier', Logic: 0, Conditions: [{ AttributeName: 'disability', Operator: 1, CompareValue: 'none' }, { AttributeName: 'assistive_tech', Operator: 0, CompareValue: 'no' }], AttributeName: '', Operator: 0, CompareValue: '', SpeedDelta: -15, Duration: 10, Weather: 0, AllowRepeat: false },
     ]
   },
   {
