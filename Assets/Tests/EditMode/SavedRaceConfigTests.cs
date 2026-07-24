@@ -78,4 +78,48 @@ public class SavedRaceConfigTests
         Assert.AreEqual(sourceConfig.TotalLaps, targetConfig.TotalLaps);
         Assert.AreEqual(sourceConfig.CarScale, targetConfig.CarScale);
     }
+
+    [Test]
+    public void FromScriptableObject_ZeroValues_PreservesZeros()
+    {
+        sourceConfig.DefaultSpeed = 0f;
+        sourceConfig.AngularSpeed = 0f;
+        sourceConfig.Acceleration = 0f;
+        sourceConfig.TotalLaps = 0;
+        sourceConfig.CarScale = 0f;
+
+        var saved = SavedRaceConfig.FromScriptableObject(sourceConfig);
+
+        Assert.AreEqual(0f, saved.DefaultSpeed);
+        Assert.AreEqual(0, saved.TotalLaps);
+        Assert.AreEqual(0f, saved.CarScale);
+    }
+
+    [Test]
+    public void FromScriptableObject_NegativeSpeed_Preserves()
+    {
+        sourceConfig.DefaultSpeed = -10f;
+
+        var saved = SavedRaceConfig.FromScriptableObject(sourceConfig);
+
+        Assert.AreEqual(-10f, saved.DefaultSpeed);
+    }
+
+    [Test]
+    public void ApplyTo_OverwritesExistingValues()
+    {
+        targetConfig.DefaultSpeed = 999f;
+        targetConfig.TotalLaps = 99;
+
+        var saved = new SavedRaceConfig
+        {
+            DefaultSpeed = 50f,
+            TotalLaps = 3
+        };
+
+        saved.ApplyTo(targetConfig);
+
+        Assert.AreEqual(50f, targetConfig.DefaultSpeed);
+        Assert.AreEqual(3, targetConfig.TotalLaps);
+    }
 }

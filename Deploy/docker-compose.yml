@@ -14,6 +14,12 @@ services:
       - "${GAME_PORT:-3900}:80"
     environment:
       - PORT=3000
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     depends_on:
       web-app:
         condition: service_healthy
