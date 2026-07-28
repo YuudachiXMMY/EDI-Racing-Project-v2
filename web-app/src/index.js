@@ -11,9 +11,25 @@ import templateRoutes from './routes/templates.js';
 import responseRoutes from './routes/responses.js';
 import gameStatusRoutes from './routes/game-status.js';
 import resultsRoutes from './routes/results.js';
+import { checkSecretConfig } from './hostToken.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.API_PORT || '3001', 10);
+
+// Boot guard — refuse to start (or warn) if the host-token secret is misconfigured.
+// Runs before app.listen so a fatal config never binds the port. Mirrored in Server/server.js.
+const REQUIRE_HOST_TOKEN = (process.env.REQUIRE_HOST_TOKEN || 'false').toLowerCase() === 'true';
+const secretCheck = checkSecretConfig({
+  secret: process.env.INTERNAL_SECRET,
+  requireHostToken: REQUIRE_HOST_TOKEN,
+});
+if (secretCheck.level === 'fatal') {
+  console.error(`[Auth] FATAL: ${secretCheck.message}`);
+  process.exit(1);
+}
+if (secretCheck.level === 'warn') {
+  console.warn(`[Auth] WARNING: ${secretCheck.message}`);
+}
 
 const app = express();
 app.use(cors());

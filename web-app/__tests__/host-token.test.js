@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { createHmac } from 'crypto';
-import { mintHostToken, verifyHostToken } from '../src/hostToken.js';
+import {
+  mintHostToken,
+  verifyHostToken,
+  checkSecretConfig,
+  DEFAULT_INTERNAL_SECRET,
+} from '../src/hostToken.js';
 
 // Deterministic clock values — never read the real clock (coding-standards: no
 // time-dependent assertions). TTL default is 300000 ms.
@@ -62,5 +67,34 @@ describe('hostToken', () => {
       valid: false,
       error: 'unsupported version',
     });
+  });
+});
+
+describe('checkSecretConfig', () => {
+  // Pure decision function — inputs passed explicitly, never via process.env, so the
+  // matrix stays deterministic (coding-standards: no shared mutable global state).
+  it('is fatal when enforcement is on and secret is the default', () => {
+    expect(
+      checkSecretConfig({ secret: DEFAULT_INTERNAL_SECRET, requireHostToken: true }).level
+    ).toBe('fatal');
+  });
+
+  it('is fatal when enforcement is on and secret is unset', () => {
+    expect(checkSecretConfig({ secret: undefined, requireHostToken: true }).level).toBe('fatal');
+  });
+
+  it('is fatal when enforcement is on and secret is an empty string', () => {
+    expect(checkSecretConfig({ secret: '', requireHostToken: true }).level).toBe('fatal');
+  });
+
+  it('warns when enforcement is off but secret is still the default', () => {
+    expect(
+      checkSecretConfig({ secret: DEFAULT_INTERNAL_SECRET, requireHostToken: false }).level
+    ).toBe('warn');
+  });
+
+  it('is ok when a strong secret is set, regardless of enforcement', () => {
+    expect(checkSecretConfig({ secret: 's3cr3t-random', requireHostToken: true }).level).toBe('ok');
+    expect(checkSecretConfig({ secret: 's3cr3t-random', requireHostToken: false }).level).toBe('ok');
   });
 });

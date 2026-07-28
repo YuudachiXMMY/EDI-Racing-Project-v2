@@ -5,18 +5,51 @@ import { createHmac, timingSafeEqual } from 'crypto';
 // web-app, verified locally by the WebSocket relay (Server/server.js) using the
 // same shared secret — no cross-service round-trip.
 //
-// IMPORTANT: The wire format below is mirrored byte-for-byte in Server/server.js
-// (verifyHostToken). If you change the payload shape, base64url encoding, or the
-// signed bytes here, update Server/server.js in lockstep or tokens will silently
-// fail to verify across processes.
+// IMPORTANT: The wire format below — AND the checkSecretConfig boot guard — are
+// mirrored byte-for-byte in Server/server.js. If you change the payload shape,
+// base64url encoding, the signed bytes, or the guard's decision logic here, update
+// Server/server.js in lockstep or tokens will silently fail to verify across
+// processes (or the two services will disagree on whether it is safe to boot).
 //
 //   token      = payloadB64 + "." + sigB64
 //   payloadB64 = base64url( utf8( JSON.stringify(payload) ) )   // no padding
 //   payload    = { v:1, sid:<surveyId|null>, iat:<epoch ms>, exp:<epoch ms> }
 //   sigB64     = base64url( HMAC_SHA256(key=INTERNAL_SECRET, msg=payloadB64) )
 
-const INTERNAL_SECRET = process.env.INTERNAL_SECRET || 'edi-internal-default';
+// The committed fallback secret. Safe only while REQUIRE_HOST_TOKEN is off — once
+// the token becomes an auth boundary, anyone who knows this public value could mint
+// a valid token, so checkSecretConfig refuses to boot with it under enforcement.
+export const DEFAULT_INTERNAL_SECRET = 'edi-internal-default';
+
+const INTERNAL_SECRET = process.env.INTERNAL_SECRET || DEFAULT_INTERNAL_SECRET;
 const TTL_MS = parseInt(process.env.HOST_TOKEN_TTL_MS || '300000', 10); // 5 min
+
+/**
+ * Decide whether the current secret configuration is safe to boot with. Pure —
+ * never reads process.env or exits; the entry point acts on the returned level.
+ * Mirrored in Server/server.js — keep the decision logic in lockstep.
+ * @param {{ secret: string|undefined, requireHostToken: boolean }} cfg
+ * @returns {{ level: 'ok'|'warn'|'fatal', message: string }}
+ */
+export function checkSecretConfig({ secret, requireHostToken }) {
+  const isDefault = !secret || secret === DEFAULT_INTERNAL_SECRET;
+  if (!isDefault) return { level: 'ok', message: '' };
+  if (requireHostToken) {
+    return {
+      level: 'fatal',
+      message:
+        'REQUIRE_HOST_TOKEN=true but INTERNAL_SECRET is unset or the public default. ' +
+        'Set a strong random INTERNAL_SECRET (e.g. `openssl rand -hex 32`) before enabling ' +
+        'host-token enforcement. Refusing to start.',
+    };
+  }
+  return {
+    level: 'warn',
+    message:
+      "INTERNAL_SECRET is the public default 'edi-internal-default'. This is acceptable only " +
+      'with REQUIRE_HOST_TOKEN=false. Set a strong secret before enabling enforcement.',
+  };
+}
 
 function b64url(buf) {
   return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');

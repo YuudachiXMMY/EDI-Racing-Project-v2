@@ -7,10 +7,34 @@ const HEARTBEAT_INTERVAL = 30000;
 const PROFESSOR_GRACE_PERIOD = 60000; // 60s before room deletion after professor disconnect
 
 // Shared secret used for both the web-app archive call and host-token verification.
-const INTERNAL_SECRET = process.env.INTERNAL_SECRET || 'edi-internal-default';
+const DEFAULT_INTERNAL_SECRET = 'edi-internal-default';
+const INTERNAL_SECRET = process.env.INTERNAL_SECRET || DEFAULT_INTERNAL_SECRET;
 // When true, create_room requires a valid host token minted by the web-app.
 // Default off so the in-game Host flow keeps working until Phase 2 wires the token.
 const REQUIRE_HOST_TOKEN = (process.env.REQUIRE_HOST_TOKEN || 'false').toLowerCase() === 'true';
+
+// Boot guard — MUST match web-app/src/hostToken.js checkSecretConfig in lockstep.
+// Pure decision function: pass the RAW process.env.INTERNAL_SECRET (not the resolved
+// constant above, which already collapsed unset -> default) so "unset" is still flagged.
+function checkSecretConfig({ secret, requireHostToken }) {
+  const isDefault = !secret || secret === DEFAULT_INTERNAL_SECRET;
+  if (!isDefault) return { level: 'ok', message: '' };
+  if (requireHostToken) {
+    return {
+      level: 'fatal',
+      message:
+        'REQUIRE_HOST_TOKEN=true but INTERNAL_SECRET is unset or the public default. ' +
+        'Set a strong random INTERNAL_SECRET (e.g. `openssl rand -hex 32`) before enabling ' +
+        'host-token enforcement. Refusing to start.',
+    };
+  }
+  return {
+    level: 'warn',
+    message:
+      "INTERNAL_SECRET is the public default 'edi-internal-default'. This is acceptable only " +
+      'with REQUIRE_HOST_TOKEN=false. Set a strong secret before enabling enforcement.',
+  };
+}
 
 // Host-token verification — MUST match web-app/src/hostToken.js byte-for-byte.
 //   token = base64url(JSON payload) + "." + base64url(HMAC_SHA256(payloadB64, INTERNAL_SECRET))
@@ -590,6 +614,19 @@ wss.on('connection', (ws) => {
   ws.on('close', () => cleanupClient(ws));
   ws.on('error', () => cleanupClient(ws));
 });
+
+// Fail fast (or warn) on a misconfigured host-token secret before binding the port.
+const secretCheck = checkSecretConfig({
+  secret: process.env.INTERNAL_SECRET,
+  requireHostToken: REQUIRE_HOST_TOKEN,
+});
+if (secretCheck.level === 'fatal') {
+  console.error(`[Auth] FATAL: ${secretCheck.message}`);
+  process.exit(1);
+}
+if (secretCheck.level === 'warn') {
+  console.warn(`[Auth] WARNING: ${secretCheck.message}`);
+}
 
 server.listen(PORT, () => {
   console.log(`WebSocket + HTTP server listening on port ${PORT}`);
