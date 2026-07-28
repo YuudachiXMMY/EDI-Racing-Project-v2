@@ -1,6 +1,15 @@
-# EDI-Racing unified Docker Compose orchestration
-# Ports: Game 3900 | Survey API 3901
-# Domains: edi-racing.localhost | api.edi-racing.localhost
+# EDI-Racing unified Docker Compose — one command runs Game + WebSocket Server + Web App.
+#
+# Single origin: the game container's nginx (:80) is the edge and routes
+#   /            -> Unity WebGL (static, Brotli)
+#   /ws          -> WebSocket relay (Server/server.js on :3000, in-container)
+#   /survey /api -> Survey web app (web-app Express + SQLite on :3001)
+#
+# Self-contained: `docker compose up --build` needs no external network.
+# Production TLS / edge routing is layered via docker-compose.prod.yml.
+#
+#   Local:  docker compose -f Deploy/docker-compose.yml up --build   (-> http://localhost:${GAME_PORT:-8080})
+#   Prod:   docker compose -f Deploy/docker-compose.yml -f Deploy/docker-compose.prod.yml up -d
 
 name: edi-racing
 
@@ -11,9 +20,13 @@ services:
       dockerfile: Deploy/Dockerfile
     container_name: edi-racing-game
     ports:
-      - "${GAME_PORT:-3900}:80"
+      - "${GAME_PORT:-8080}:80"
     environment:
+      # WS server port — must match nginx.conf upstream (127.0.0.1:3000)
       - PORT=3000
+      # Cross-container session archive -> web-app (Server/server.js posts here)
+      - API_URL=http://web-app:3001
+      - INTERNAL_SECRET=${INTERNAL_SECRET:-edi-internal-default}
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:80"]
       interval: 10s
@@ -24,46 +37,40 @@ services:
       web-app:
         condition: service_healthy
     restart: unless-stopped
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.edi-racing-game.rule=Host(`${GAME_DOMAIN:-edi-racing.localhost}`)"
-      - "traefik.http.services.edi-racing-game.loadbalancer.server.port=80"
     networks:
-      - proxy
-      - edi-racing-net
+      edi-racing-net:
+        # web-app resolves this container via WS_GAME_URL=ws://edi-racing-game:3000
+        aliases:
+          - edi-racing-game
 
   web-app:
     build:
       context: ../web-app
       dockerfile: Dockerfile
     container_name: edi-racing-api
-    ports:
-      - "${API_PORT:-3901}:3001"
+    # Not published to the host by default — reached through the nginx edge at /survey and /api.
+    # Uncomment for direct debugging:
+    # ports:
+    #   - "${API_PORT:-3901}:3001"
     volumes:
       - survey-data:/app/data
     environment:
       - API_PORT=3001
       - DB_PATH=/app/data/edi-survey.db
       - WS_GAME_URL=ws://edi-racing-game:3000
+      - INTERNAL_SECRET=${INTERNAL_SECRET:-edi-internal-default}
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/api/health"]
       interval: 10s
       timeout: 5s
       retries: 3
     restart: unless-stopped
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.edi-racing-api.rule=Host(`${API_DOMAIN:-api.edi-racing.localhost}`)"
-      - "traefik.http.services.edi-racing-api.loadbalancer.server.port=3001"
     networks:
-      - proxy
       - edi-racing-net
 
 volumes:
   survey-data:
 
 networks:
-  proxy:
-    external: true
   edi-racing-net:
     driver: bridge
