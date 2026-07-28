@@ -14,6 +14,11 @@ COPY Deploy/nginx/nginx.conf /etc/nginx/nginx.conf
 # Copy WebGL build output
 COPY Deploy/webgl-build/ /usr/share/nginx/html/
 
+# Host build files may be copied without world-read (or dirs without world-exec),
+# which makes nginx's unprivileged worker return 403 for .br/.wasm/.data assets
+# and the game hangs on the loading screen. Grant read to files, traverse to dirs.
+RUN chmod -R a+rX /usr/share/nginx/html
+
 # Verify build artifacts are present (fail fast if build is incomplete)
 RUN test -f /usr/share/nginx/html/index.html \
     && ls /usr/share/nginx/html/Build/*.loader.js >/dev/null 2>&1 \
