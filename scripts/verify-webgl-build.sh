@@ -58,9 +58,9 @@ if [ ! -d "$BUILD_SUBDIR" ]; then
 fi
 
 LOADER=$(find "$BUILD_SUBDIR" -maxdepth 1 -name '*.loader.js' | head -1)
-FRAMEWORK=$(find "$BUILD_SUBDIR" -maxdepth 1 \( -name '*.framework.js' -o -name '*.framework.js.br' -o -name '*.framework.js.gz' \) | head -1)
-DATA=$(find "$BUILD_SUBDIR" -maxdepth 1 \( -name '*.data' -o -name '*.data.br' -o -name '*.data.gz' \) | head -1)
-WASM=$(find "$BUILD_SUBDIR" -maxdepth 1 \( -name '*.wasm' -o -name '*.wasm.br' -o -name '*.wasm.gz' \) | head -1)
+FRAMEWORK=$(find "$BUILD_SUBDIR" -maxdepth 1 \( -name '*.framework.js' -o -name '*.framework.js.br' -o -name '*.framework.js.gz' -o -name '*.framework.js.unityweb' \) | head -1)
+DATA=$(find "$BUILD_SUBDIR" -maxdepth 1 \( -name '*.data' -o -name '*.data.br' -o -name '*.data.gz' -o -name '*.data.unityweb' \) | head -1)
+WASM=$(find "$BUILD_SUBDIR" -maxdepth 1 \( -name '*.wasm' -o -name '*.wasm.br' -o -name '*.wasm.gz' -o -name '*.wasm.unityweb' \) | head -1)
 
 [ -n "$LOADER" ]    && check_pass "loader.js:    $(basename "$LOADER")"    || check_fail "loader.js not found"
 [ -n "$FRAMEWORK" ] && check_pass "framework.js: $(basename "$FRAMEWORK")" || check_fail "framework.js not found"
@@ -164,12 +164,15 @@ echo "── Compression ──"
 
 HAS_BR=$(find "$BUILD_SUBDIR" -maxdepth 1 -name '*.br' | head -1)
 HAS_GZ=$(find "$BUILD_SUBDIR" -maxdepth 1 -name '*.gz' | head -1)
+HAS_UNITYWEB=$(find "$BUILD_SUBDIR" -maxdepth 1 -name '*.unityweb' | head -1)
 HAS_RAW_WASM=$(find "$BUILD_SUBDIR" -maxdepth 1 -name '*.wasm' ! -name '*.br' ! -name '*.gz' | head -1)
 
 if [ -n "$HAS_BR" ]; then
   check_pass "Brotli compressed artifacts detected"
 elif [ -n "$HAS_GZ" ]; then
   check_pass "Gzip compressed artifacts detected"
+elif [ -n "$HAS_UNITYWEB" ]; then
+  check_pass "Compressed artifacts with decompression fallback (.unityweb) detected"
 elif [ -n "$HAS_RAW_WASM" ]; then
   check_warn "Uncompressed build — consider enabling Brotli for smaller downloads"
 else

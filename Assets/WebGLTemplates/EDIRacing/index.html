@@ -32,7 +32,7 @@
     <div id="loading-text">Loading...</div>
   </div>
   <canvas id="unity-canvas" tabindex="-1"></canvas>
-  <script src="{{{ UNITY_LOADER_URL }}}"></script>
+  <script src="Build/{{{ LOADER_FILENAME }}}"></script>
   <script>
     var canvas = document.getElementById("unity-canvas");
     var overlay = document.getElementById("loading-overlay");
@@ -40,19 +40,22 @@
     var loadingText = document.getElementById("loading-text");
 
     createUnityInstance(canvas, {
-      dataUrl: "{{{ DATA_URL }}}",
-      frameworkUrl: "{{{ FRAMEWORK_URL }}}",
-      codeUrl: "{{{ CODE_URL }}}",
-#if MEMORY_FILENAME
-      memoryUrl: "{{{ MEMORY_URL }}}",
+      arguments: [],
+      dataUrl: "Build/{{{ DATA_FILENAME }}}",
+      frameworkUrl: "Build/{{{ FRAMEWORK_FILENAME }}}",
+#if USE_THREADS
+      workerUrl: "Build/{{{ WORKER_FILENAME }}}",
+#endif
+#if USE_WASM
+      codeUrl: "Build/{{{ CODE_FILENAME }}}",
 #endif
 #if SYMBOLS_FILENAME
-      symbolsUrl: "{{{ SYMBOLS_URL }}}",
+      symbolsUrl: "Build/{{{ SYMBOLS_FILENAME }}}",
 #endif
       streamingAssetsUrl: "StreamingAssets",
-      companyName: "{{{ COMPANY_NAME }}}",
-      productName: "{{{ PRODUCT_NAME }}}",
-      productVersion: "{{{ PRODUCT_VERSION }}}",
+      companyName: {{{ JSON.stringify(COMPANY_NAME) }}},
+      productName: {{{ JSON.stringify(PRODUCT_NAME) }}},
+      productVersion: {{{ JSON.stringify(PRODUCT_VERSION) }}},
     }, function (progress) {
       var pct = Math.round(progress * 100);
       progressBar.style.width = pct + "%";

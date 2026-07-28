@@ -1,0 +1,27 @@
+{
+    # 本地内部 CA 给所有站点签证书（避免对 .localhost 走 ACME）
+    local_certs
+}
+
+# https://localhost 一定可用；edi-racing.localhost 需 hosts 或浏览器 .localhost 解析
+localhost, edi-racing.localhost {
+    root * {$WEBGL_ROOT:./webgl-build}
+
+    # 关闭 fallback 后 Unity loader 直接请求 *.br URL。
+    # 必须手动回传 Content-Encoding + 解压后的真实 Content-Type。
+    # （Caddy 的 precompressed 指令是给「无后缀请求自动挑 .br」用的，不适用带 .br 后缀的直接请求。）
+    @anybr  path *.br
+    @wasmbr path *.wasm.br
+    @jsbr   path *.framework.js.br *.js.br
+    @databr path *.data.br
+
+    header @anybr  Content-Encoding br
+    header @wasmbr Content-Type application/wasm
+    header @jsbr   Content-Type application/javascript
+    header @databr Content-Type application/octet-stream
+
+    @immutable path *.br *.loader.js
+    header @immutable Cache-Control "public, immutable, max-age=31536000"
+
+    file_server
+}

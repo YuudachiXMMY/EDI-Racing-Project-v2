@@ -85,6 +85,20 @@ public static class BuildScript
             }
         }
 
+        // Warn on uncompressed .data (a bare *.data with no .br/.gz/.unityweb sibling
+        // means webGLCompressionFormat is Disabled — expensive for classroom loading).
+        var bareData = Directory.GetFiles(buildDir, "*.data");
+        foreach (string dataFile in bareData)
+        {
+            long sizeMb = new FileInfo(dataFile).Length / (1024 * 1024);
+            if (sizeMb > 100)
+            {
+                Debug.LogWarning(
+                    $"[BuildScript] {Path.GetFileName(dataFile)} is uncompressed ({sizeMb} MB) — " +
+                    "check webGLCompressionFormat (expected Brotli)");
+            }
+        }
+
         // Check index.html exists and references valid files
         if (!File.Exists(indexPath))
         {
@@ -94,6 +108,18 @@ public static class BuildScript
         else
         {
             string html = File.ReadAllText(indexPath);
+
+            // Empty URLs mean the template macros failed to resolve (e.g. stale
+            // Unity 2019-era variable names). The Build/ reference scan below cannot
+            // catch this because empty strings produce no "Build/..." matches.
+            if (html.Contains("src=\"\"") ||
+                Regex.IsMatch(html, "(dataUrl|frameworkUrl|codeUrl):\\s*\"\""))
+            {
+                Debug.LogError(
+                    "[BuildScript] index.html contains empty URLs — template macros failed to resolve");
+                errors++;
+            }
+
             var refs = Regex.Matches(html, @"Build/[^""]+");
             foreach (Match m in refs)
             {
