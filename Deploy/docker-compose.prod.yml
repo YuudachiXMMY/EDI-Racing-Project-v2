@@ -1,0 +1,32 @@
+# Production overlay — layers a Traefik edge (TLS + host routing) on top of the
+# self-contained base. The base already serves a single origin via nginx; Traefik
+# just terminates TLS and routes ONE host to it.
+#
+#   docker compose -f Deploy/docker-compose.yml -f Deploy/docker-compose.prod.yml up -d
+#
+# Requires an external `proxy` network with a running Traefik instance:
+#   docker network create proxy   # once, if it does not exist
+
+services:
+  edi-racing:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.edi-racing-game.rule=Host(`${GAME_DOMAIN:-edi-racing.localhost}`)"
+      - "traefik.http.services.edi-racing-game.loadbalancer.server.port=80"
+    networks:
+      - proxy
+      - edi-racing-net
+
+  web-app:
+    # Optional/debug host router; browser clients use same-origin /api via the nginx edge.
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.edi-racing-api.rule=Host(`${API_DOMAIN:-api.edi-racing.localhost}`)"
+      - "traefik.http.services.edi-racing-api.loadbalancer.server.port=3001"
+    networks:
+      - proxy
+      - edi-racing-net
+
+networks:
+  proxy:
+    external: true

@@ -10,7 +10,7 @@ Accepted
 
 ## Last Verified
 
-2025-02-13
+2026-07-28
 
 ## Decision Makers
 
@@ -46,12 +46,23 @@ The system has three components: Unity WebGL game, Node.js WebSocket server, and
 
 ## Decision
 
-Use **Docker Compose** to orchestrate all services. The `Deploy/docker-compose.yml` defines:
-- **nginx** (:80) — serves the Unity WebGL build as static files
-- **Node.js** (:8080) — WebSocket server for real-time sync
-- **Web App** (:3001) — Survey creation, response collection, export
+Use **Docker Compose** to orchestrate all services behind a **single origin**. The
+game container's nginx (:80) is the edge and routes everything:
+- **`/`** — Unity WebGL build (static files, native Brotli)
+- **`/ws`** — Node.js WebSocket relay (`Server/server.js`, in-container port **3000**, matched by `nginx.conf` and pinned via `ENV PORT=3000`)
+- **`/survey`, `/api`** — Survey Web App (React + Express + SQLite, `web-app` service on :3001)
 
-SQLite database files persist via Docker volumes. The entire system starts with `docker compose up`.
+The **base** `Deploy/docker-compose.yml` is self-contained: `docker compose up --build`
+(or `./Deploy/up.sh`) starts every component with **no external network** and exposes
+one host port (`${GAME_PORT:-8080}`). Cross-container wiring is via env: the game
+service sets `API_URL=http://web-app:3001` and a shared `INTERNAL_SECRET` so
+`Server/server.js` can archive finished sessions into the web app; the web app sets
+`WS_GAME_URL=ws://edi-racing-game:3000` to reach the game server. SQLite persists via
+the `survey-data` Docker volume.
+
+Production concerns (TLS termination, host-based routing) are layered on the identical
+base via an optional overlay `Deploy/docker-compose.prod.yml` (Traefik + external
+`proxy` network): `docker compose -f Deploy/docker-compose.yml -f Deploy/docker-compose.prod.yml up -d`.
 
 ## Alternatives Considered
 
@@ -71,7 +82,9 @@ SQLite database files persist via Docker volumes. The entire system starts with 
 
 ### Positive
 
-- Single command deployment (`docker compose up`)
+- Single command deployment (`docker compose up --build` / `./Deploy/up.sh`) — no external infra
+- Single origin: game, realtime, and survey app share one host/port (honors the clients' same-origin `/ws` + `/api`)
+- Same base for local and production; production adds only a thin Traefik/TLS overlay
 - Works offline once images are built
 - Reproducible across machines
 - Easy backup (copy Docker volumes)

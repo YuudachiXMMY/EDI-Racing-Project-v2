@@ -26,6 +26,11 @@ RUN test -f /usr/share/nginx/html/index.html \
 COPY Deploy/start.sh /start.sh
 RUN chmod +x /start.sh
 
+# WebSocket server port — MUST match nginx.conf upstream (proxy_pass 127.0.0.1:3000).
+# server.js defaults to 8080; pin 3000 here so nginx and the WS server never drift,
+# even when this image is run without compose env overrides.
+ENV PORT=3000
+
 EXPOSE 80
 
 CMD ["/start.sh"]
