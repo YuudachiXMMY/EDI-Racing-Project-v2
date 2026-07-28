@@ -1,9 +1,65 @@
 const http = require('http');
+const crypto = require('crypto');
 const { WebSocketServer } = require('ws');
 
 const PORT = parseInt(process.env.PORT || '8080', 10);
 const HEARTBEAT_INTERVAL = 30000;
 const PROFESSOR_GRACE_PERIOD = 60000; // 60s before room deletion after professor disconnect
+
+// Shared secret used for both the web-app archive call and host-token verification.
+const INTERNAL_SECRET = process.env.INTERNAL_SECRET || 'edi-internal-default';
+// When true, create_room requires a valid host token minted by the web-app.
+// Default off so the in-game Host flow keeps working until Phase 2 wires the token.
+const REQUIRE_HOST_TOKEN = (process.env.REQUIRE_HOST_TOKEN || 'false').toLowerCase() === 'true';
+
+// Host-token verification — MUST match web-app/src/hostToken.js byte-for-byte.
+//   token = base64url(JSON payload) + "." + base64url(HMAC_SHA256(payloadB64, INTERNAL_SECRET))
+//   payload = { v:1, sid:<surveyId|null>, iat:<epoch ms>, exp:<epoch ms> }
+// If you change the format here, update web-app/src/hostToken.js in lockstep.
+function b64url(buf) {
+  return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function b64urlDecode(str) {
+  const pad = str.length % 4 === 0 ? '' : '='.repeat(4 - (str.length % 4));
+  return Buffer.from(str.replace(/-/g, '+').replace(/_/g, '/') + pad, 'base64');
+}
+function verifyHostToken(token, now = Date.now()) {
+  if (typeof token !== 'string' || token.length === 0) {
+    return { valid: false, error: 'missing token' };
+  }
+  const dot = token.indexOf('.');
+  if (dot <= 0 || dot === token.length - 1) {
+    return { valid: false, error: 'malformed token' };
+  }
+  const payloadB64 = token.slice(0, dot);
+  const sigB64 = token.slice(dot + 1);
+  const expected = b64url(crypto.createHmac('sha256', INTERNAL_SECRET).update(payloadB64).digest());
+  const a = Buffer.from(sigB64);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) {
+    return { valid: false, error: 'bad signature' };
+  }
+  try {
+    if (!crypto.timingSafeEqual(a, b)) {
+      return { valid: false, error: 'bad signature' };
+    }
+  } catch {
+    return { valid: false, error: 'bad signature' };
+  }
+  let payload;
+  try {
+    payload = JSON.parse(b64urlDecode(payloadB64).toString('utf8'));
+  } catch {
+    return { valid: false, error: 'bad payload' };
+  }
+  if (!payload || payload.v !== 1) {
+    return { valid: false, error: 'unsupported version' };
+  }
+  if (typeof payload.exp !== 'number' || payload.exp <= now) {
+    return { valid: false, error: 'expired' };
+  }
+  return { valid: true, surveyId: payload.sid ?? null };
+}
 
 // Room: { professor: WebSocket|null, students: Set<WebSocket>, webapps: Set<WebSocket>, raceStarted: boolean, latestState: string|null, gamePhase: string, raceResults: string|null, surveyData: string|null, professorSessionId: string|null, graceTimer: NodeJS.Timeout|null }
 const rooms = new Map();
@@ -71,7 +127,6 @@ function destroyRoom(roomCode) {
       }
     } catch { /* ignore parse errors */ }
   }
-  const INTERNAL_SECRET = process.env.INTERNAL_SECRET || 'edi-internal-default';
   fetch(`${API_URL}/api/sessions/archive`, {
     method: 'POST',
     headers: {
@@ -251,6 +306,14 @@ wss.on('connection', (ws) => {
 
     switch (msg.type) {
       case 'create_room': {
+        if (REQUIRE_HOST_TOKEN) {
+          const result = verifyHostToken(msg.hostToken);
+          if (!result.valid) {
+            sendJSON(ws, { type: 'error', message: 'Host authorization required' });
+            console.log(`[Auth] Rejected create_room (${result.error || 'no token'})`);
+            return;
+          }
+        }
         const roomCode = generateRoomCode();
         rooms.set(roomCode, {
           professor: ws,

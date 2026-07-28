@@ -19,6 +19,7 @@ public class CreateRoomMessage
 {
     public string type = "create_room";
     public string sessionId;
+    public string hostToken;   // set when launched from the professor Dashboard (Phase 2)
 }
 
 [Serializable]

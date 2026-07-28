@@ -1,0 +1,90 @@
+import { createHmac, timingSafeEqual } from 'crypto';
+
+// Host token: a short-lived, HMAC-signed credential that authorizes a client to
+// create a game room (become the professor/host). Minted by the authenticated
+// web-app, verified locally by the WebSocket relay (Server/server.js) using the
+// same shared secret — no cross-service round-trip.
+//
+// IMPORTANT: The wire format below is mirrored byte-for-byte in Server/server.js
+// (verifyHostToken). If you change the payload shape, base64url encoding, or the
+// signed bytes here, update Server/server.js in lockstep or tokens will silently
+// fail to verify across processes.
+//
+//   token      = payloadB64 + "." + sigB64
+//   payloadB64 = base64url( utf8( JSON.stringify(payload) ) )   // no padding
+//   payload    = { v:1, sid:<surveyId|null>, iat:<epoch ms>, exp:<epoch ms> }
+//   sigB64     = base64url( HMAC_SHA256(key=INTERNAL_SECRET, msg=payloadB64) )
+
+const INTERNAL_SECRET = process.env.INTERNAL_SECRET || 'edi-internal-default';
+const TTL_MS = parseInt(process.env.HOST_TOKEN_TTL_MS || '300000', 10); // 5 min
+
+function b64url(buf) {
+  return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function b64urlDecode(str) {
+  const pad = str.length % 4 === 0 ? '' : '='.repeat(4 - (str.length % 4));
+  return Buffer.from(str.replace(/-/g, '+').replace(/_/g, '/') + pad, 'base64');
+}
+
+function sign(payloadB64) {
+  return b64url(createHmac('sha256', INTERNAL_SECRET).update(payloadB64).digest());
+}
+
+/**
+ * Mint a host token for the given survey.
+ * @param {number|null} surveyId - survey this host session is tied to (optional).
+ * @param {number} now - epoch ms; injectable for deterministic tests.
+ * @returns {{ token: string, expiresAt: number }}
+ */
+export function mintHostToken(surveyId = null, now = Date.now()) {
+  const payload = { v: 1, sid: surveyId, iat: now, exp: now + TTL_MS };
+  const payloadB64 = b64url(Buffer.from(JSON.stringify(payload)));
+  return { token: payloadB64 + '.' + sign(payloadB64), expiresAt: payload.exp };
+}
+
+/**
+ * Verify a host token. Never throws.
+ * @param {string} token
+ * @param {number} now - epoch ms; injectable for deterministic tests.
+ * @returns {{ valid: boolean, surveyId?: number|null, error?: string }}
+ */
+export function verifyHostToken(token, now = Date.now()) {
+  if (typeof token !== 'string' || token.length === 0) {
+    return { valid: false, error: 'missing token' };
+  }
+  const dot = token.indexOf('.');
+  if (dot <= 0 || dot === token.length - 1) {
+    return { valid: false, error: 'malformed token' };
+  }
+  const payloadB64 = token.slice(0, dot);
+  const sigB64 = token.slice(dot + 1);
+
+  const expected = sign(payloadB64);
+  const a = Buffer.from(sigB64);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) {
+    return { valid: false, error: 'bad signature' };
+  }
+  try {
+    if (!timingSafeEqual(a, b)) {
+      return { valid: false, error: 'bad signature' };
+    }
+  } catch {
+    return { valid: false, error: 'bad signature' };
+  }
+
+  let payload;
+  try {
+    payload = JSON.parse(b64urlDecode(payloadB64).toString('utf8'));
+  } catch {
+    return { valid: false, error: 'bad payload' };
+  }
+  if (!payload || payload.v !== 1) {
+    return { valid: false, error: 'unsupported version' };
+  }
+  if (typeof payload.exp !== 'number' || payload.exp <= now) {
+    return { valid: false, error: 'expired' };
+  }
+  return { valid: true, surveyId: payload.sid ?? null };
+}
