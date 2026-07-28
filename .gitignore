@@ -187,6 +187,8 @@ secrets.json
 # === Claude Code Local ===
 .claude/settings.local.json
 CLAUDE.local.md
+# Transient git worktrees created by CCG tooling — never commit
+.claude/worktrees/
 
 # === Session State & Logs (ephemeral) ===
 production/session-state/*
