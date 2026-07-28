@@ -26,9 +26,7 @@ public class SessionManager : MonoBehaviour
         string dir = GetSaveDirectory();
         Directory.CreateDirectory(dir);
 
-        string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
-        string filename = $"session_{timestamp}.json";
-        string path = Path.Combine(dir, filename);
+        string path = GetUniquePath(dir, "session", "json");
 
         string json = JsonUtility.ToJson(session, true);
         File.WriteAllText(path, json);
@@ -84,7 +82,7 @@ public class SessionManager : MonoBehaviour
 #else
         string dir = GetSaveDirectory();
         Directory.CreateDirectory(dir);
-        string path = Path.Combine(dir, filename);
+        string path = GetUniquePath(dir, "results", "csv");
         File.WriteAllText(path, csv);
         Debug.Log($"[SessionManager] Results exported: {path}");
         return path;
@@ -104,5 +102,21 @@ public class SessionManager : MonoBehaviour
     private string GetSaveDirectory()
     {
         return Path.Combine(Application.persistentDataPath, SaveFolder);
+    }
+
+    /// <summary>
+    /// Builds a timestamped path guaranteed not to collide with an existing file,
+    /// even when multiple saves happen within the same second. The base name keeps
+    /// second precision (e.g. "session_20260727_200718.json"); on collision a
+    /// numeric suffix is appended ("..._1", "..._2", ...).
+    /// </summary>
+    private static string GetUniquePath(string dir, string prefix, string extension)
+    {
+        string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+        string path = Path.Combine(dir, $"{prefix}_{timestamp}.{extension}");
+        int suffix = 1;
+        while (File.Exists(path))
+            path = Path.Combine(dir, $"{prefix}_{timestamp}_{suffix++}.{extension}");
+        return path;
     }
 }
