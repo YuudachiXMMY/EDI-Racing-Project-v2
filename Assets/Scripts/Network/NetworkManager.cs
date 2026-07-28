@@ -133,14 +133,14 @@ public class NetworkManager : MonoBehaviour
             bridge.Send(json);
     }
 
-    public void CreateRoom()
+    public void CreateRoom(string hostToken = null)
     {
         manualDisconnect = false;
         Connect();
         pendingAction = () =>
         {
             IsHost = true;
-            var msg = new CreateRoomMessage { sessionId = sessionId };
+            var msg = new CreateRoomMessage { sessionId = sessionId, hostToken = hostToken };
             Send(JsonUtility.ToJson(msg));
         };
         if (bridge.IsConnected)

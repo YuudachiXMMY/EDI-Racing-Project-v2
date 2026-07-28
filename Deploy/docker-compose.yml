@@ -27,6 +27,9 @@ services:
       # Cross-container session archive -> web-app (Server/server.js posts here)
       - API_URL=http://web-app:3001
       - INTERNAL_SECRET=${INTERNAL_SECRET:-edi-internal-default}
+      # When true, create_room requires a valid host token (minted by web-app).
+      # Keep false until the Dashboard host-launch (PRD phase 2) supplies the token.
+      - REQUIRE_HOST_TOKEN=${REQUIRE_HOST_TOKEN:-false}
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:80"]
       interval: 10s
