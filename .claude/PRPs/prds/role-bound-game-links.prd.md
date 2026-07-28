@@ -45,7 +45,7 @@ We'll know we're right when a professor can go from "survey complete" to "studen
 ## Open Questions
 
 - [ ] Should students ever actively drive a car, or is "join" strictly visual-only (current behavior)?
-- [ ] Host token lifetime & scope: single-use per launch, or reusable while the professor session is valid? What happens on professor refresh/reconnect (there is a 60s grace period today — does the token survive it)?
+- [x] Host token lifetime & scope: single-use per launch, or reusable while the professor session is valid? What happens on professor refresh/reconnect (there is a 60s grace period today — does the token survive it)? **RESOLVED (2026-07-28)**: create-scoped, surveyId-bound, 5-min TTL, stateless (reusable within TTL — LOW-2 accepted for the single-professor classroom trust model since the token never enters the student link). The token authorizes `create_room` only; professor refresh/reconnect uses the existing `sessionId` path (`Server/server.js:412-443`), so the token does **not** need to survive the 60s grace period. Phase 2 must persist `sessionId` client-side and prefer `reconnect` over a fresh `create_room` on reload.
 - [ ] Should the student landing page default to 3D or 2D, and should low-bandwidth/mobile auto-fall back to 2D?
 - [ ] Is the student link tied to a specific survey/room only, or a stable per-class link reused across sessions?
 - [ ] Does the professor still need a manual "re-send data" path if the survey is edited after the race starts?
@@ -199,6 +199,7 @@ Phases 2 and 3 both depend only on Phase 1's token and touch different surfaces 
 | Role security | Server-side host-token enforcement | URL + hidden UI only | Prevents a crafted host URL from triggering events; UI hiding alone is bypassable |
 | Survey→game data | Auto-inject on host launch | Keep manual Send-to-Game | Eliminates the error-prone room-code handoff |
 | Student driving | Deferred (visual-only join) | Let students drive | Keeps scope tight; matches current visual-only design (confirm in Open Questions) |
+| Host token scope | create-scoped, surveyId-bound, 5-min TTL, stateless (reusable within TTL); reconnect via `sessionId` | Single-use `jti` tracking; session-lifetime token | Lowest complexity, reuses existing sessionId-based reconnect; token never in student link so replay exposure is low (LOW-2 accepted for classroom trust) |
 
 ---
 
