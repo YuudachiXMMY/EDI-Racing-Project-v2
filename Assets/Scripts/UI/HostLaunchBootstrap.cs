@@ -33,31 +33,42 @@ public class HostLaunchBootstrap : MonoBehaviour
             Debug.Log("[HostLaunchBootstrap] Launching as host from Dashboard.");
 
             // Phase 3: once the room exists, auto-inject the launched survey's responses so the
-            // professor never opens the manual Send-to-Game modal. One-shot — unsubscribe on the
-            // first fire so a later reconnect/create never re-injects. Subscribe BEFORE CreateRoom
-            // so the handler is attached when room_created returns. Captures surveyId now, before
-            // ClearUrlHash() wipes the launch params.
-            if (HostAutoInjectDecision.ShouldAutoInject(role, surveyId))
+            // professor never opens the manual Send-to-Game modal, then clear the launch hash.
+            // Both are one-shot: they self-unsubscribe on the first room_created. Subscribe
+            // BEFORE CreateRoom so the handler is attached when room_created returns. Captures
+            // surveyId now, before ClearUrlHash() wipes the launch params.
+            //
+            // Clearing the hash is deferred to room_created (not done synchronously) so a tab
+            // reload during the connect window keeps the token — otherwise the professor would
+            // retry with an *untokened* create. Once confirmed, the persisted host session is
+            // already set, so a later reload resumes via sessionId.
+            bool autoInject = HostAutoInjectDecision.ShouldAutoInject(role, surveyId);
+
+            void Unsubscribe()
             {
-                void OnCreated(string roomCode)
+                NetworkManager.OnRoomCreated -= OnCreated;
+                NetworkManager.OnConnectionError -= OnCreateFailed;
+            }
+
+            void OnCreated(string roomCode)
+            {
+                Unsubscribe();
+                if (autoInject)
                 {
-                    NetworkManager.OnRoomCreated -= OnCreated;
                     Debug.Log($"[HostLaunchBootstrap] Auto-injecting survey {surveyId} into room {roomCode}.");
                     WebSocketBridge.HostAutoInject(surveyId, roomCode);
                 }
-                NetworkManager.OnRoomCreated += OnCreated;
-            }
-
-            // Clear the launch hash only AFTER room_created is confirmed. Clearing it
-            // synchronously would lose the token if the tab reloads during the connect window,
-            // forcing the professor to create an *untokened* room on retry. Once confirmed, the
-            // persisted host session is already set, so a later reload resumes via sessionId.
-            void ClearHashOnCreated(string _)
-            {
-                NetworkManager.OnRoomCreated -= ClearHashOnCreated;
                 WebSocketBridge.ClearUrlHash();
             }
-            NetworkManager.OnRoomCreated += ClearHashOnCreated;
+
+            // If the tokened create fails (e.g. invalid/expired host token → server 'error'),
+            // tear down these one-shot handlers. Otherwise a later manual Host retry's
+            // room_created would fire this stale closure and auto-inject the ORIGINAL survey
+            // into the retried room.
+            void OnCreateFailed(string _) => Unsubscribe();
+
+            NetworkManager.OnRoomCreated += OnCreated;
+            NetworkManager.OnConnectionError += OnCreateFailed;
 
             NetworkManager.CreateRoom(token);
             RaceUI.SetRoleFromNetwork(true);

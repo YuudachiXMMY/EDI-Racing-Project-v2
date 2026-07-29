@@ -33,14 +33,27 @@ public class StudentJoinBootstrap : MonoBehaviour
         p.TryGetValue("role", out var role);
         p.TryGetValue("room", out var room);
 
-        if (!StudentJoinDecision.ShouldAutoJoin(role, room))
+        // Fail-closed on the student link: role=="play" is the audience entry, so this client
+        // must NEVER show Host controls even if the room code is missing/malformed. Lock to
+        // Student FIRST (independent of whether we can actually auto-join), then attempt the
+        // join only when the room code is valid. This closes the fail-open path where a
+        // blank/garbled room would fall through to RaceUI's Professor default (that default is
+        // load-bearing for the manual local-host flow, so it stays Professor there).
+        if (role != "play")
             return; // not a student launch — leave the manual Host/Join UI intact
+
+        // Hard-lock to Student: hide EventPanel/Controls/Setup, show JoinScreen, block any flip.
+        RaceUI.LockAsStudent();
+
+        if (!StudentJoinDecision.ShouldAutoJoin(role, room))
+        {
+            Debug.LogWarning("[StudentJoinBootstrap] Student launch with no valid room code; locked to Student, not auto-joining.");
+            return;
+        }
 
         Debug.Log($"[StudentJoinBootstrap] Auto-joining room {room} as student spectator.");
         // Empty team name = anonymous spectator; the server accepts a blank teamName on join_room.
         NetworkManager.JoinRoom(room, "");
-        // Hard-lock to Student: hide EventPanel/Controls/Setup, show JoinScreen, block any flip.
-        RaceUI.LockAsStudent();
         // NOTE: intentionally NOT calling WebSocketBridge.ClearUrlHash() — retaining
         // "#room=CODE&role=play" lets a reload re-run this bootstrap and auto-rejoin.
     }

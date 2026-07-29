@@ -148,6 +148,10 @@ public class NetworkManager : MonoBehaviour
     public void CreateRoom(string hostToken = null)
     {
         manualDisconnect = false;
+        // Take ownership of the socket: cancel any in-flight reconnect coroutine so it can't
+        // fire a competing rejoin_room on the same connection this create opens (see HandleOpen
+        // vs ReconnectCoroutine — otherwise two actions race one socket).
+        CancelReconnect();
         Connect();
         pendingAction = () =>
         {
@@ -165,6 +169,7 @@ public class NetworkManager : MonoBehaviour
     public void JoinRoom(string code, string teamName = "")
     {
         manualDisconnect = false;
+        CancelReconnect(); // own the socket; don't let a reconnect race this join
         Connect();
         TeamName = teamName;
         var joinMsg = new JoinRoomMessage { roomCode = code.ToUpper(), sessionId = sessionId, teamName = teamName };
@@ -201,6 +206,7 @@ public class NetworkManager : MonoBehaviour
         string room = WebSocketBridge.StorageGet(LastRoomKey);
         if (string.IsNullOrEmpty(room)) return;
         manualDisconnect = false;
+        CancelReconnect(); // own the socket; don't let a reconnect race this resume
         lastRoomCode = room;
         wasHost = true;
         Connect();
@@ -355,14 +361,36 @@ public class NetworkManager : MonoBehaviour
 
             if (bridge.IsConnected)
             {
-                // Send rejoin request
+                // Send rejoin request. Do NOT treat socket-open as reconnect success: if the
+                // 60s grace period already expired, the server rejects the rejoin (error/close)
+                // and RoomCode is never set. Keep IsReconnecting=true until the server confirms
+                // via reconnect_state (HandleMessage sets RoomCode) — this both fires OnReconnected
+                // only on real success AND stops HandleClose from spawning a *second* coroutine
+                // from attempt 1 (its guard is !IsReconnecting), which previously caused an endless
+                // "Reconnecting… (1/N)" loop against a room the server had already discarded.
                 var msg = new RejoinRoomMessage { roomCode = lastRoomCode, sessionId = sessionId, teamName = TeamName ?? "" };
                 Send(JsonUtility.ToJson(msg));
-                IsReconnecting = false;
-                ReconnectAttempt = 0;
-                reconnectCoroutine = null;
-                // OnReconnected fires when server responds with reconnect_state
-                yield break;
+
+                float ackTimeout = 5f;
+                while (ackTimeout > 0 && bridge.IsConnected && RoomCode == null)
+                {
+                    ackTimeout -= Time.unscaledDeltaTime;
+                    yield return null;
+                }
+
+                if (RoomCode != null)
+                {
+                    // Server confirmed the rejoin (reconnect_state received).
+                    IsReconnecting = false;
+                    ReconnectAttempt = 0;
+                    reconnectCoroutine = null;
+                    yield break;
+                }
+
+                // Unconfirmed (grace period expired, server error, or ack timeout). Close any
+                // half-open socket so the next attempt reconnects cleanly, then fall through to
+                // the bounded backoff/retry below instead of looping forever.
+                if (bridge.IsConnected) bridge.Close();
             }
 
             delay = Mathf.Min(delay * BackoffMultiplier, MaxDelay);

@@ -63,12 +63,27 @@ export default function DashboardPage() {
   // at the game root with role/token/survey in the URL hash (Phase 2). Unity auto-creates
   // the room carrying the token — no manual in-game Host click or room-code handoff.
   async function handleHostGame(surveyId) {
+    // Open the game tab SYNCHRONOUSLY inside the click handler. If we opened it after the
+    // `await` below, Safari (and Chrome under some settings) treat the popup as non-user-
+    // initiated and block it silently — the professor clicks "主持游戏" and nothing happens.
+    // We can't pass 'noopener' here (that makes window.open return null, so we couldn't set
+    // the URL after the token resolves); the target is same-origin, so opener access is not a
+    // cross-origin tabnabbing vector, and we still null the back-reference defensively.
+    const gameTab = window.open('about:blank', '_blank');
     const result = await requestHostToken(surveyId);
     if (!result.success) {
+      if (gameTab) gameTab.close();
       alert(`Failed to start host session: ${result.error || 'unknown error'}`);
       return;
     }
-    window.open(buildHostLaunchUrl(result.data.token, surveyId), '_blank', 'noopener');
+    const url = buildHostLaunchUrl(result.data.token, surveyId);
+    if (gameTab) {
+      try { gameTab.opener = null; } catch { /* some browsers disallow; harmless */ }
+      gameTab.location.href = url;
+    } else {
+      // Popup was blocked before the await; last-resort retry (may still be blocked).
+      window.open(url, '_blank', 'noopener');
+    }
   }
 
   async function handleLogout() {

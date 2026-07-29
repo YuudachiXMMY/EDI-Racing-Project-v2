@@ -7923,6 +7923,7 @@ GameObject:
   - component: {fileID: 1404780700}
   - component: {fileID: 1404780702}
   - component: {fileID: 1404780703}
+  - component: {fileID: 1404780704}
   m_Layer: 0
   m_Name: Network
   m_TagString: Untagged
@@ -7991,8 +7992,22 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 46879e305e64f4edcadc71f178f7cf3d, type: 3}
-  m_Name: 
+  m_Name:
   m_EditorClassIdentifier: EDIRacing.Runtime::HostLaunchBootstrap
+  NetworkManager: {fileID: 1404780700}
+  RaceUI: {fileID: 868943145}
+--- !u!114 &1404780704
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1404780699}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fc2f71f0afbdc1f49898d8904314d4c3, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: EDIRacing.Runtime::StudentJoinBootstrap
   NetworkManager: {fileID: 1404780700}
   RaceUI: {fileID: 868943145}
 --- !u!1 &1409382924

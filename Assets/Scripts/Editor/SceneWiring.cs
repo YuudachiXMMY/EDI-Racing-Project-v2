@@ -287,6 +287,26 @@ public static class SceneWiring
         }
 
         // ═══════════════════════════════════════════════════════
+        // WIRE: Host / Student launch bootstraps (URL role binding)
+        // ═══════════════════════════════════════════════════════
+        // Both read the WebGL launch URL (role=host / role=play) on Start and live on the
+        // NetworkManager GameObject. StudentJoinBootstrap in particular MUST exist, or the
+        // student link never hard-locks the client to Student — regenerating the scene without
+        // it would silently reopen that security hole. Idempotent via FindOrCreate.
+        if (networkManager != null && raceUI != null)
+        {
+            var hostBootstrap = FindOrCreate<HostLaunchBootstrap>(networkManager.gameObject, "HostLaunchBootstrap");
+            Wire(ref hostBootstrap.NetworkManager, networkManager, "HostLaunchBootstrap.NetworkManager");
+            Wire(ref hostBootstrap.RaceUI, raceUI, "HostLaunchBootstrap.RaceUI");
+            EditorUtility.SetDirty(hostBootstrap);
+
+            var studentBootstrap = FindOrCreate<StudentJoinBootstrap>(networkManager.gameObject, "StudentJoinBootstrap");
+            Wire(ref studentBootstrap.NetworkManager, networkManager, "StudentJoinBootstrap.NetworkManager");
+            Wire(ref studentBootstrap.RaceUI, raceUI, "StudentJoinBootstrap.RaceUI");
+            EditorUtility.SetDirty(studentBootstrap);
+        }
+
+        // ═══════════════════════════════════════════════════════
         // WIRE: CameraManager + SpectatorCamera + CarLabelSpawner
         // ═══════════════════════════════════════════════════════
         if (cameraManager != null)
