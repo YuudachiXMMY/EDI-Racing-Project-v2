@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildHostLaunchUrl, buildStudentPlayUrl } from '../client/src/gameLaunch.js';
+import { buildHostLaunchUrl, buildStudentPlayUrl, buildSpectatorPath } from '../client/src/gameLaunch.js';
 
 // VITE_GAME_URL is unset under vitest, so GAME_ROOT falls back to '/'. Assertions below
 // assume that default (single-origin deploy: game at /, survey app at /survey/).
@@ -39,5 +39,22 @@ describe('buildStudentPlayUrl', () => {
 
   it('carries no host token key', () => {
     expect(buildStudentPlayUrl('R1')).not.toContain('token');
+  });
+});
+
+describe('buildSpectatorPath', () => {
+  it('builds the in-app 2D spectator route for the room', () => {
+    expect(buildSpectatorPath('A1B2C3')).toBe('/live/A1B2C3');
+  });
+
+  it('upper-cases the room code so URL, display, and WS all agree', () => {
+    expect(buildSpectatorPath('abc123')).toBe('/live/ABC123');
+  });
+
+  it('is a router path, not a game-root hash URL, and carries no token', () => {
+    const p = buildSpectatorPath('R1');
+    expect(p.startsWith('/live/')).toBe(true);
+    expect(p).not.toContain('#');
+    expect(p).not.toContain('token');
   });
 });

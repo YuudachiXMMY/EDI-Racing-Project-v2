@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import useRaceWebSocket from '../hooks/useRaceWebSocket.js';
 import LiveLeaderboard from '../components/LiveLeaderboard.jsx';
 import LiveEventFeed from '../components/LiveEventFeed.jsx';
@@ -30,6 +30,7 @@ export default function LiveRacePage() {
   return (
     <div className="live-race-page">
       <header className="live-header">
+        <Link className="live-back" to={`/join/${roomCode}`} aria-label="返回视图选择">← 返回</Link>
         <h1>Live Race</h1>
         <div className="live-room-info">
           <span className="live-room-code">Room {roomCode?.toUpperCase()}</span>

@@ -16,3 +16,12 @@ export function buildStudentPlayUrl(roomCode) {
   const params = new URLSearchParams({ room: String(roomCode), role: 'play' });
   return `${GAME_ROOT}#${params.toString()}`;
 }
+
+// Build the in-app path to the 2D spectator dashboard for a room. Returns a HashRouter-relative
+// path ("/live/CODE") — NOT a game-root hash URL — because the 2D view lives inside the survey
+// app (see App.jsx route /live/:roomCode). Upper-cases the code so the URL bar, the on-page
+// "Room …" label, and the server's web_join_room (which upper-cases too) all agree. Carries no
+// token and grants no host authority: a spectator can watch but never create a room or trigger.
+export function buildSpectatorPath(roomCode) {
+  return `/live/${String(roomCode).toUpperCase()}`;
+}

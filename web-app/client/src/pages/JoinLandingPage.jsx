@@ -1,5 +1,5 @@
 import { useParams, Link } from 'react-router-dom';
-import { buildStudentPlayUrl } from '../gameLaunch.js';
+import { buildStudentPlayUrl, buildSpectatorPath } from '../gameLaunch.js';
 
 // Public landing page (no auth) reached via the professor-shared student link
 // /survey/#/join/:roomCode. Offers the two audience paths; neither exposes host controls.
@@ -17,7 +17,7 @@ export default function JoinLandingPage() {
           <span className="join-choice-sub">在浏览器中观看你队伍的赛车</span>
         </a>
         {/* 2D: stays inside the survey app (HashRouter) — existing spectator view. */}
-        <Link className="btn-primary btn-choice" to={`/live/${roomCode}`}>
+        <Link className="btn-primary btn-choice" to={buildSpectatorPath(roomCode)}>
           <span className="join-choice-title">2D 观战</span>
           <span className="join-choice-sub">排行榜 · 小地图 · 事件流</span>
         </Link>

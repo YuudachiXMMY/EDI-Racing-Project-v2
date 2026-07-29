@@ -219,6 +219,9 @@ label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; co
 /* --- Live Race Viewer --- */
 .live-race-page { display: flex; flex-direction: column; height: 100vh; background: var(--bg); }
 .live-header { display: flex; align-items: center; gap: 16px; padding: 12px 20px; border-bottom: 1px solid var(--border); }
+.live-back { color: var(--accent); text-decoration: none; font-size: 14px; font-weight: 600;
+  padding: 4px 10px; border: 1px solid var(--border); border-radius: 6px; white-space: nowrap; }
+.live-back:hover { background: var(--border); }
 .live-header h1 { font-size: 20px; margin: 0; }
 .live-room-info { display: flex; align-items: center; gap: 10px; }
 .live-room-code { font-size: 16px; font-weight: 600; letter-spacing: 1px; color: var(--accent); }
