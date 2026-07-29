@@ -21,15 +21,27 @@ async function request(path, options = {}) {
   const headers = { 'Content-Type': 'application/json', ...options.headers };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(`/api${path}`, { ...options, headers });
-  const json = await res.json();
+  let res;
+  try {
+    res = await fetch(`/api${path}`, { ...options, headers });
+  } catch {
+    // Network failure / server unreachable — return the standard result contract so callers
+    // (e.g. handleHostGame) can surface an error instead of an unhandled promise rejection.
+    return { success: false, error: 'Network error — could not reach the server.' };
+  }
 
   if (res.status === 401) {
     clearToken();
     window.location.hash = '#/login';
   }
 
-  return json;
+  // A proxy 502/504 or other non-JSON body would make res.json() throw; degrade gracefully
+  // rather than reject, keeping the { success, error } shape the rest of the app expects.
+  try {
+    return await res.json();
+  } catch {
+    return { success: false, error: `Server returned an unexpected response (HTTP ${res.status}).` };
+  }
 }
 
 export async function login(email, password) {

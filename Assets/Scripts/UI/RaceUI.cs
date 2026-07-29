@@ -9,6 +9,13 @@ public class RaceUI : MonoBehaviour
     public enum UserRole { Professor, Student }
 
     [Header("Role")]
+    // Defaults to Professor because the manual local-host flow (no URL params) relies on the
+    // Setup/Host screen being visible on a plain launch — flipping this to Student would hide
+    // the Host button and break in-editor / single-machine hosting. The security-critical
+    // fail-closed guard for the *shared student link* lives in StudentJoinBootstrap, which
+    // calls LockAsStudent() whenever role=="play" (even on a malformed room code), so a student
+    // link can never fall through to this Professor default. Server-side host-token enforcement
+    // is the actual authority: a student socket cannot create a room or trigger events regardless.
     public UserRole Role = UserRole.Professor;
 
     [Header("References")]
