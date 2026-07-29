@@ -5,6 +5,7 @@ import DashboardPage from './pages/DashboardPage.jsx';
 import EditorPage from './pages/EditorPage.jsx';
 import StudentSurveyPage from './pages/StudentSurveyPage.jsx';
 import LiveRacePage from './pages/LiveRacePage.jsx';
+import JoinLandingPage from './pages/JoinLandingPage.jsx';
 import HistoryPage from './pages/HistoryPage.jsx';
 
 function ProtectedRoute({ children }) {
@@ -21,6 +22,7 @@ export default function App() {
         <Route path="/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
         <Route path="/s/:shareCode" element={<StudentSurveyPage />} />
         <Route path="/live/:roomCode" element={<LiveRacePage />} />
+        <Route path="/join/:roomCode" element={<JoinLandingPage />} />
         <Route path="*" element={<Navigate to={isAuthenticated() ? "/dashboard" : "/login"} replace />} />
       </Routes>
     </HashRouter>

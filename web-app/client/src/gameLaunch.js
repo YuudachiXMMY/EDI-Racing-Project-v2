@@ -8,3 +8,11 @@ export function buildHostLaunchUrl(token, surveyId) {
   const params = new URLSearchParams({ role: 'host', token, survey: String(surveyId) });
   return `${GAME_ROOT}#${params.toString()}`;
 }
+
+// Build the student 3D-join URL. Carries the room code and role=play only — NEVER a host
+// token — so opening it can join/watch but cannot create a room or trigger events. The hash
+// (client-only) keeps it out of server/CDN logs, consistent with the host-launch URL.
+export function buildStudentPlayUrl(roomCode) {
+  const params = new URLSearchParams({ room: String(roomCode), role: 'play' });
+  return `${GAME_ROOT}#${params.toString()}`;
+}

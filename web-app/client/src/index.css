@@ -242,3 +242,13 @@ label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; co
 
 /* --- SurveyJS Creator overrides --- */
 .questions-tab { background: #fff; border-radius: 6px; }
+
+/* --- Student join landing page (Phase 4) --- */
+.join-landing { display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 100vh; gap: 20px; background: var(--bg); text-align: center; padding: 24px; }
+.join-room-code { font-size: 18px; font-weight: 600; letter-spacing: 2px; color: var(--accent); }
+.join-choices { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; }
+.btn-choice { display: flex; flex-direction: column; gap: 6px; padding: 24px 32px; min-width: 200px;
+  border: none; border-radius: 10px; text-decoration: none; cursor: pointer; }
+.join-choice-title { font-size: 20px; font-weight: 700; }
+.join-choice-sub { font-size: 13px; opacity: 0.85; }
