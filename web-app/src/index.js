@@ -10,7 +10,7 @@ import exportRoutes from './routes/export.js';
 import templateRoutes from './routes/templates.js';
 import responseRoutes from './routes/responses.js';
 import gameStatusRoutes from './routes/game-status.js';
-import resultsRoutes from './routes/results.js';
+import resultsRoutes, { archiveSecretUsable } from './routes/results.js';
 import { checkSecretConfig } from './hostToken.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -31,6 +31,16 @@ if (secretCheck.level === 'warn') {
   console.warn(`[Auth] WARNING: ${secretCheck.message}`);
 }
 
+// Archive endpoint is a separate auth boundary from the host-token gate above: it accepts
+// writes against any professor account, so it fails closed unless a strong secret is set —
+// independent of REQUIRE_HOST_TOKEN. Warn loudly when it is disabled so the operator knows.
+if (!archiveSecretUsable(process.env.INTERNAL_SECRET)) {
+  console.warn(
+    '[Auth] WARNING: /api/sessions/archive is DISABLED — INTERNAL_SECRET is unset or the ' +
+    'public default. Set a strong secret to enable session archiving.'
+  );
+}
+
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '1mb' }));
@@ -43,9 +53,10 @@ app.use('/api/auth', authRoutes);
 app.use('/api/surveys', surveyRoutes);
 app.use('/api/surveys', exportRoutes);
 app.use('/api/templates', templateRoutes);
+// Each router is mounted exactly once at /api; sub-paths are baked into the route
+// definitions (e.g. '/surveys/:id/responses', '/sessions/archive'). Mounting under two
+// prefixes would give every route a second, untested shadow URL — avoid that.
 app.use('/api', responseRoutes);
-app.use('/api/surveys', responseRoutes);
-app.use('/api/surveys', resultsRoutes);
 app.use('/api', resultsRoutes);
 app.use('/api/game', gameStatusRoutes);
 
