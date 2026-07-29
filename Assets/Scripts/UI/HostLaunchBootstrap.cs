@@ -48,9 +48,18 @@ public class HostLaunchBootstrap : MonoBehaviour
                 NetworkManager.OnRoomCreated += OnCreated;
             }
 
+            // Clear the launch hash only AFTER room_created is confirmed. Clearing it
+            // synchronously would lose the token if the tab reloads during the connect window,
+            // forcing the professor to create an *untokened* room on retry. Once confirmed, the
+            // persisted host session is already set, so a later reload resumes via sessionId.
+            void ClearHashOnCreated(string _)
+            {
+                NetworkManager.OnRoomCreated -= ClearHashOnCreated;
+                WebSocketBridge.ClearUrlHash();
+            }
+            NetworkManager.OnRoomCreated += ClearHashOnCreated;
+
             NetworkManager.CreateRoom(token);
-            // Drop the hash so a reload resumes the room instead of re-minting with a stale token.
-            WebSocketBridge.ClearUrlHash();
             RaceUI.SetRoleFromNetwork(true);
             return;
         }
