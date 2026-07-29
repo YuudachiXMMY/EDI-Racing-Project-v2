@@ -176,6 +176,7 @@ public class WebSocketBridge : MonoBehaviour
     [DllImport("__Internal")] private static extern string WebSocketBridge_LocalStorageGet(string key);
     [DllImport("__Internal")] private static extern void WebSocketBridge_LocalStorageSet(string key, string val);
     [DllImport("__Internal")] private static extern void WebSocketBridge_ClearUrlHash();
+    [DllImport("__Internal")] private static extern void WebSocketBridge_HostAutoInject(string surveyId, string roomCode);
 #endif
 
     /// <summary>Full page URL (WebGL). Empty string in Editor/Standalone.</summary>
@@ -216,6 +217,20 @@ public class WebSocketBridge : MonoBehaviour
     {
 #if UNITY_WEBGL && !UNITY_EDITOR
         WebSocketBridge_ClearUrlHash();
+#endif
+    }
+
+    /// <summary>
+    /// Phase 3 auto-inject: ask the web-app to push the given survey's responses into the
+    /// freshly-created room via the existing authenticated send-to-game endpoint. Fire-and-forget
+    /// in WebGL; a no-op (logged) in Editor/Standalone since the endpoint + browser auth are absent.
+    /// </summary>
+    public static void HostAutoInject(string surveyId, string roomCode)
+    {
+#if UNITY_WEBGL && !UNITY_EDITOR
+        WebSocketBridge_HostAutoInject(surveyId, roomCode);
+#else
+        Debug.Log($"[WebSocketBridge] HostAutoInject noop (editor): survey={surveyId}, room={roomCode}");
 #endif
     }
 }
