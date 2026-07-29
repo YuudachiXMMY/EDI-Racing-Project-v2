@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildHostLaunchUrl } from '../client/src/gameLaunch.js';
+import { buildHostLaunchUrl, buildStudentPlayUrl } from '../client/src/gameLaunch.js';
 
 // VITE_GAME_URL is unset under vitest, so GAME_ROOT falls back to '/'. Assertions below
 // assume that default (single-origin deploy: game at /, survey app at /survey/).
@@ -23,5 +23,21 @@ describe('buildHostLaunchUrl', () => {
     const url = buildHostLaunchUrl('secret', 9);
     expect(url).not.toContain('?');
     expect(url).toContain('#');
+  });
+});
+
+describe('buildStudentPlayUrl', () => {
+  it('puts room and role=play in the hash at the game root, with no token', () => {
+    expect(buildStudentPlayUrl('A1B2C3')).toBe('/#room=A1B2C3&role=play');
+  });
+
+  it('never begins a query string (room code stays out of server logs)', () => {
+    const url = buildStudentPlayUrl('XYZ');
+    expect(url).not.toContain('?');
+    expect(url).toContain('#room=XYZ');
+  });
+
+  it('carries no host token key', () => {
+    expect(buildStudentPlayUrl('R1')).not.toContain('token');
   });
 });

@@ -177,6 +177,8 @@ public class WebSocketBridge : MonoBehaviour
     [DllImport("__Internal")] private static extern void WebSocketBridge_LocalStorageSet(string key, string val);
     [DllImport("__Internal")] private static extern void WebSocketBridge_ClearUrlHash();
     [DllImport("__Internal")] private static extern void WebSocketBridge_HostAutoInject(string surveyId, string roomCode);
+    [DllImport("__Internal")] private static extern string WebSocketBridge_GetPageOrigin();
+    [DllImport("__Internal")] private static extern void WebSocketBridge_CopyToClipboard(string text);
 #endif
 
     /// <summary>Full page URL (WebGL). Empty string in Editor/Standalone.</summary>
@@ -231,6 +233,32 @@ public class WebSocketBridge : MonoBehaviour
         WebSocketBridge_HostAutoInject(surveyId, roomCode);
 #else
         Debug.Log($"[WebSocketBridge] HostAutoInject noop (editor): survey={surveyId}, room={roomCode}");
+#endif
+    }
+
+    /// <summary>
+    /// Page origin (e.g. "https://host") for composing the shareable student join link
+    /// (Phase 4). Empty string in Editor/Standalone, so SetupScreen keeps the link UI hidden.
+    /// </summary>
+    public static string GetPageOrigin()
+    {
+#if UNITY_WEBGL && !UNITY_EDITOR
+        return WebSocketBridge_GetPageOrigin();
+#else
+        return "";
+#endif
+    }
+
+    /// <summary>
+    /// Copy text (the student link) to the clipboard (Phase 4). WebGL uses the browser
+    /// Clipboard API (secure-context only); Editor/Standalone uses the system copy buffer.
+    /// </summary>
+    public static void CopyToClipboard(string text)
+    {
+#if UNITY_WEBGL && !UNITY_EDITOR
+        WebSocketBridge_CopyToClipboard(text);
+#else
+        GUIUtility.systemCopyBuffer = text;
 #endif
     }
 }

@@ -116,6 +116,28 @@ var WebSocketBridgeLib = {
         }).catch(function(e) {
             console.warn('[HostAutoInject] send-to-game error', e);
         });
+    },
+
+    // Phase 4 student link: return the page origin so C# can compose the shareable student
+    // landing URL ({origin}/survey/#/join/{roomCode}) shown on the professor host screen.
+    WebSocketBridge_GetPageOrigin: function() {
+        var origin = window.location.origin;
+        var bufferSize = lengthBytesUTF8(origin) + 1;
+        var buffer = _malloc(bufferSize);
+        stringToUTF8(origin, buffer, bufferSize);
+        return buffer;
+    },
+
+    // Phase 4 student link: copy the shareable student link to the clipboard when the
+    // professor clicks the copy button. Requires a secure context (HTTPS/localhost); the
+    // guard degrades gracefully so a non-secure context is a no-op, never an error.
+    WebSocketBridge_CopyToClipboard: function(textPtr) {
+        var text = UTF8ToString(textPtr);
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).catch(function(e) {
+                console.warn('[Clipboard] copy failed', e);
+            });
+        }
     }
 };
 

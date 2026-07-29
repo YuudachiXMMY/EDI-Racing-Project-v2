@@ -21,6 +21,9 @@ public class SetupScreen : MonoBehaviour
     public Button HostButton;
     public Text RoomCodeText;
     public Text StudentCountText;
+    public Text StudentLinkText;
+    public Button CopyLinkButton;
+    private string currentStudentLink = "";
 
     [Header("Survey Config (Optional)")]
     public SurveyConfigManager SurveyConfigManager;
@@ -71,6 +74,12 @@ public class SetupScreen : MonoBehaviour
         if (HostButton != null) HostButton.gameObject.SetActive(hasNetwork);
         if (RoomCodeText != null) RoomCodeText.gameObject.SetActive(false);
         if (StudentCountText != null) StudentCountText.gameObject.SetActive(false);
+        if (StudentLinkText != null) StudentLinkText.gameObject.SetActive(false);
+        if (CopyLinkButton != null)
+        {
+            CopyLinkButton.gameObject.SetActive(false);
+            CopyLinkButton.onClick.AddListener(OnCopyStudentLink);
+        }
 
         // Config sync button
         if (PushConfigButton != null)
@@ -151,6 +160,28 @@ public class SetupScreen : MonoBehaviour
         // Show push-config button if we have an active config
         bool canPush = SurveyConfigManager != null && SurveyConfigManager.ActiveConfig != null;
         if (PushConfigButton != null) PushConfigButton.gameObject.SetActive(canPush);
+
+        ShowStudentLink(roomCode);
+    }
+
+    // Build and surface the shareable student join link (room code only, no host token) so the
+    // professor can copy it once the room exists. Empty origin (Editor) → keep the UI hidden.
+    private void ShowStudentLink(string roomCode)
+    {
+        currentStudentLink = StudentLinkBuilder.BuildJoinLink(WebSocketBridge.GetPageOrigin(), roomCode);
+        if (string.IsNullOrEmpty(currentStudentLink)) return;
+        if (StudentLinkText != null)
+        {
+            StudentLinkText.gameObject.SetActive(true);
+            StudentLinkText.text = $"学生链接: {currentStudentLink}";
+        }
+        if (CopyLinkButton != null) CopyLinkButton.gameObject.SetActive(true);
+    }
+
+    private void OnCopyStudentLink()
+    {
+        if (!string.IsNullOrEmpty(currentStudentLink))
+            WebSocketBridge.CopyToClipboard(currentStudentLink);
     }
 
     private void OnStudentCountChanged(int count)
@@ -187,6 +218,7 @@ public class SetupScreen : MonoBehaviour
             StudentCountText.gameObject.SetActive(true);
             StudentCountText.text = $"{NetworkManager.StudentCount} student(s) connected";
         }
+        if (NetworkManager.RoomCode != null) ShowStudentLink(NetworkManager.RoomCode);
     }
 
     private void OnReconnectFailed()
@@ -195,6 +227,8 @@ public class SetupScreen : MonoBehaviour
         if (HostButton != null) HostButton.interactable = true;
         if (RoomCodeText != null) RoomCodeText.gameObject.SetActive(false);
         if (StudentCountText != null) StudentCountText.gameObject.SetActive(false);
+        if (StudentLinkText != null) StudentLinkText.gameObject.SetActive(false);
+        if (CopyLinkButton != null) CopyLinkButton.gameObject.SetActive(false);
     }
 
     // --- Web App Direct Send ---
