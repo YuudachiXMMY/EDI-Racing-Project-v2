@@ -145,7 +145,7 @@ Minimum to validate the hypothesis:
 | 4 | Student link + landing page | Auto-generate student link (room code, no token); landing page with 3D/2D choice | complete (web-app tests + build green; **Unity EditMode run + scene wiring + WebGL copy QA pending**) | - | 2 | `.claude/PRPs/plans/completed/student-link-landing-page.plan.md` (report: `.claude/PRPs/reports/student-link-landing-page-report.md`) |
 | 5 | Student Unity auto-join + role lock | 3D path auto-joins via URL room code, hides Host/EventPanel, hard-locks non-host role | complete (code landed, static checks green; **Unity EditMode run + scene wiring + runtime QA pending**) | with 6 | 4 | `.claude/PRPs/plans/completed/student-unity-auto-join-role-lock.plan.md` (report: `.claude/PRPs/reports/student-unity-auto-join-role-lock-report.md`) |
 | 6 | Student 2D wiring | Route the 2D spectator (`/live/:roomCode`) from the landing page | complete (lint + vitest + build green; **live-session QA pending**) | with 5 | 4 | `.claude/PRPs/plans/completed/student-2d-wiring.plan.md` (report: `.claude/PRPs/reports/student-2d-wiring-report.md`) |
-| 7 | End-to-end + adversarial QA | Full professor→student flow; verify a student link cannot trigger events even via crafted URL | pending | - | 3, 5, 6 | - |
+| 7 | End-to-end + adversarial QA | Full professor→student flow; verify a student link cannot trigger events even via crafted URL | in-progress (plan authored) | - | 3, 5, 6 | `.claude/PRPs/plans/end-to-end-adversarial-qa.plan.md` |
 
 ### Phase Details
 
