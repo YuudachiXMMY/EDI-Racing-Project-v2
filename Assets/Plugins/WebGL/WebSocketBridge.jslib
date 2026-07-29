@@ -67,6 +67,33 @@ var WebSocketBridgeLib = {
     WebSocketBridge_GetState: function() {
         if (webSocket == null) return 3; // CLOSED
         return webSocket.readyState;
+    },
+
+    WebSocketBridge_GetPageUrl: function() {
+        var url = window.location.href;
+        var bufferSize = lengthBytesUTF8(url) + 1;
+        var buffer = _malloc(bufferSize);
+        stringToUTF8(url, buffer, bufferSize);
+        return buffer;
+    },
+
+    WebSocketBridge_LocalStorageGet: function(keyPtr) {
+        var key = UTF8ToString(keyPtr);
+        var val = window.localStorage.getItem(key) || '';
+        var bufferSize = lengthBytesUTF8(val) + 1;
+        var buffer = _malloc(bufferSize);
+        stringToUTF8(val, buffer, bufferSize);
+        return buffer;
+    },
+
+    WebSocketBridge_LocalStorageSet: function(keyPtr, valPtr) {
+        window.localStorage.setItem(UTF8ToString(keyPtr), UTF8ToString(valPtr));
+    },
+
+    WebSocketBridge_ClearUrlHash: function() {
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
     }
 };
 

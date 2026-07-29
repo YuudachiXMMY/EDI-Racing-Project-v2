@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getSurveys, createSurvey, deleteSurvey, getTemplates, toggleSurveyActive, logout, clearToken } from '../api.js';
+import { getSurveys, createSurvey, deleteSurvey, getTemplates, toggleSurveyActive, logout, clearToken, requestHostToken } from '../api.js';
+import { buildHostLaunchUrl } from '../gameLaunch.js';
 import SendToGameModal from '../components/SendToGameModal.jsx';
 
 export default function DashboardPage() {
@@ -56,6 +57,18 @@ export default function DashboardPage() {
     if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
     const result = await deleteSurvey(id);
     if (result.success) setSurveys(prev => prev.filter(s => s.id !== id));
+  }
+
+  // Launch the game in professor host mode: mint a host token, then open the Unity build
+  // at the game root with role/token/survey in the URL hash (Phase 2). Unity auto-creates
+  // the room carrying the token — no manual in-game Host click or room-code handoff.
+  async function handleHostGame(surveyId) {
+    const result = await requestHostToken(surveyId);
+    if (!result.success) {
+      alert(`Failed to start host session: ${result.error || 'unknown error'}`);
+      return;
+    }
+    window.open(buildHostLaunchUrl(result.data.token, surveyId), '_blank', 'noopener');
   }
 
   async function handleLogout() {
@@ -122,6 +135,14 @@ export default function DashboardPage() {
                 <span className="updated">Updated: {new Date(s.updated_at).toLocaleDateString()}</span>
               </div>
               <div className="card-actions">
+                {(s.response_count ?? 0) > 0 && (
+                  <button
+                    className="btn-primary btn-small"
+                    onClick={e => { e.stopPropagation(); handleHostGame(s.id); }}
+                  >
+                    主持游戏
+                  </button>
+                )}
                 {(s.response_count ?? 0) > 0 && (
                   <button
                     className="btn-primary btn-small"

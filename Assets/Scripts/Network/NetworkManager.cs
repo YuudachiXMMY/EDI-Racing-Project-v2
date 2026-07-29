@@ -48,6 +48,11 @@ public class NetworkManager : MonoBehaviour
     public event Action OnReconnected;
     public event Action OnReconnectFailed;
 
+    // Persistence keys (localStorage in WebGL, PlayerPrefs in editor) — see WebSocketBridge.
+    private const string SessionIdKey = "edi-session-id";
+    private const string LastRoomKey = "edi-last-room";
+    private const string WasHostKey = "edi-was-host";
+
     private WebSocketBridge bridge;
     private Action pendingAction;
 
@@ -61,7 +66,14 @@ public class NetworkManager : MonoBehaviour
 
     private void Awake()
     {
-        sessionId = Guid.NewGuid().ToString("N").Substring(0, 12);
+        // Persist sessionId across reloads so a refreshed host tab rejoins its room
+        // (rejoin_room keyed by sessionId) instead of creating a duplicate.
+        sessionId = WebSocketBridge.StorageGet(SessionIdKey);
+        if (string.IsNullOrEmpty(sessionId))
+        {
+            sessionId = Guid.NewGuid().ToString("N").Substring(0, 12);
+            WebSocketBridge.StorageSet(SessionIdKey, sessionId);
+        }
 
         bridge = GetComponentInChildren<WebSocketBridge>();
         if (bridge == null)
@@ -168,6 +180,43 @@ public class NetworkManager : MonoBehaviour
         }
     }
 
+    private void PersistSession(string roomCode, bool asHost)
+    {
+        WebSocketBridge.StorageSet(LastRoomKey, roomCode);
+        WebSocketBridge.StorageSet(WasHostKey, asHost ? "1" : "0");
+    }
+
+    /// <summary>True if a host room was persisted this browser (survives page reload).</summary>
+    public bool HasPersistedHostSession()
+        => WebSocketBridge.StorageGet(WasHostKey) == "1"
+        && !string.IsNullOrEmpty(WebSocketBridge.StorageGet(LastRoomKey));
+
+    /// <summary>
+    /// Resume a persisted host room after a reload: reconnect and rejoin with the stored
+    /// sessionId/roomCode instead of creating a duplicate room. Mirrors CreateRoom's
+    /// pendingAction pattern so it is safe to call before the socket is open.
+    /// </summary>
+    public void ResumeHostSession()
+    {
+        string room = WebSocketBridge.StorageGet(LastRoomKey);
+        if (string.IsNullOrEmpty(room)) return;
+        manualDisconnect = false;
+        lastRoomCode = room;
+        wasHost = true;
+        Connect();
+        pendingAction = () =>
+        {
+            IsHost = true;
+            var msg = new RejoinRoomMessage { roomCode = room, sessionId = sessionId, teamName = TeamName ?? "" };
+            Send(JsonUtility.ToJson(msg));
+        };
+        if (bridge.IsConnected)
+        {
+            pendingAction();
+            pendingAction = null;
+        }
+    }
+
     public void CancelReconnect()
     {
         if (reconnectCoroutine != null)
@@ -235,6 +284,7 @@ public class NetworkManager : MonoBehaviour
                 var rc = JsonUtility.FromJson<RoomCreatedMessage>(json);
                 RoomCode = rc.roomCode;
                 lastRoomCode = rc.roomCode;
+                PersistSession(rc.roomCode, true);
                 Debug.Log($"[NetworkManager] Room created: {RoomCode}");
                 OnRoomCreated?.Invoke(RoomCode);
                 break;
@@ -243,6 +293,7 @@ public class NetworkManager : MonoBehaviour
                 var rj = JsonUtility.FromJson<RoomJoinedMessage>(json);
                 RoomCode = rj.roomCode;
                 lastRoomCode = rj.roomCode;
+                PersistSession(rj.roomCode, false);
                 Debug.Log($"[NetworkManager] Joined room: {RoomCode}");
                 OnRoomJoined?.Invoke(RoomCode);
                 break;

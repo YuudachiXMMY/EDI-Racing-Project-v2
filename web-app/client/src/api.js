@@ -122,6 +122,15 @@ export async function sendToGame(id, roomCode) {
   });
 }
 
+// Mint a short-lived host token for launching the game in professor host mode (Phase 2).
+// Backend: POST /api/game/host-token (requireAuth) -> { success, data: { token, expiresAt } }.
+export async function requestHostToken(surveyId) {
+  return request('/game/host-token', {
+    method: 'POST',
+    body: JSON.stringify({ surveyId }),
+  });
+}
+
 export async function getRoomStatus(roomCode) {
   return request(`/game/room-status/${roomCode.toUpperCase()}`);
 }
