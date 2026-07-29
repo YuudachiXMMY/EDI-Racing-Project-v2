@@ -47,14 +47,33 @@ public class RaceUI : MonoBehaviour
     // UI to Professor so role state cannot drift from the network truth.
     private void HandleRoomCreated(string _) => SetRoleFromNetwork(true);
 
+    // Once locked to Student (URL student launch, Phase 5), the role cannot be changed by any
+    // later network event or manual Host click — a hard, one-way lock for the non-host client.
+    private bool roleLocked;
+
     /// <summary>
-    /// Set role from network state. Called by NetworkSync or external code.
+    /// Set role from network state. Called by NetworkSync or external code. Ignored once the
+    /// role has been hard-locked to Student via <see cref="LockAsStudent"/>.
     /// </summary>
     public void SetRoleFromNetwork(bool isHost)
     {
+        if (roleLocked) return;
         Role = isHost ? UserRole.Professor : UserRole.Student;
         ApplyRole();
         OnStateChanged(RaceManager != null ? RaceManager.CurrentState : GameState.Setup);
+    }
+
+    /// <summary>
+    /// Hard-lock this client to the Student role (Phase 5 student URL launch). Hides the
+    /// EventPanel / race controls / Host Setup screen, shows the JoinScreen, and blocks any later
+    /// <see cref="SetRoleFromNetwork"/> or <see cref="HandleRoomCreated"/> from flipping to Professor.
+    /// </summary>
+    public void LockAsStudent()
+    {
+        Role = UserRole.Student;
+        ApplyRole();
+        OnStateChanged(RaceManager != null ? RaceManager.CurrentState : GameState.Setup);
+        roleLocked = true;
     }
 
     private void ApplyRole()
@@ -80,8 +99,12 @@ public class RaceUI : MonoBehaviour
     {
         bool isSetup = state == GameState.Setup;
         bool isRacing = state == GameState.Racing || state == GameState.Paused;
+        bool isProfessor = Role == UserRole.Professor;
 
-        if (Setup != null) Setup.gameObject.SetActive(isSetup);
+        // Setup is the host room-creation screen — only the professor ever sees it, so gate on
+        // role too. Without this, a locked student in GameState.Setup would have the Host UI
+        // re-shown here right after ApplyRole() hid it.
+        if (Setup != null) Setup.gameObject.SetActive(isSetup && isProfessor);
         if (Leaderboard != null) Leaderboard.gameObject.SetActive(isRacing);
 
         if (Role == UserRole.Professor)
