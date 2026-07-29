@@ -86,7 +86,7 @@ router.post('/s/:shareCode/respond', (req, res) => {
 });
 
 // GET /api/surveys/:id/responses — list responses (professor, requires auth)
-router.get('/:id/responses', requireAuth, (req, res) => {
+router.get('/surveys/:id/responses', requireAuth, (req, res) => {
   const db = getDb();
   const survey = db.prepare('SELECT id FROM surveys WHERE id = ? AND user_id = ?')
     .get(req.params.id, req.user.userId);
