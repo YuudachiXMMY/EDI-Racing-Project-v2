@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import { randomBytes } from 'crypto';
 import WebSocket from 'ws';
 import XLSX from 'xlsx';
 import { getDb } from '../db.js';
@@ -331,50 +330,6 @@ router.post('/:id/send-to-game', requireAuth, (req, res) => {
       clearTimeout(timeout);
       res.status(502).json({ success: false, error: 'Cannot connect to game server' });
     }
-  });
-});
-
-// POST /api/surveys/import-config — import a SurveyConfig from Unity format
-router.post('/import-config', requireAuth, (req, res) => {
-  const { configName, configJson } = req.body;
-  if (!configJson) {
-    return res.status(400).json({ success: false, error: 'configJson is required' });
-  }
-
-  let config;
-  try {
-    config = JSON.parse(configJson);
-  } catch {
-    return res.status(400).json({ success: false, error: 'Invalid config JSON' });
-  }
-
-  const name = configName || config.ConfigName || 'Imported Config';
-  const description = config.Description || '';
-  const questions = config.Questions || [];
-  const mappings = config.Mappings || [];
-  const rules = config.Rules || [];
-  const postProcessing = config.PostProcessing || [];
-
-  const db = getDb();
-  const shareCode = randomBytes(4).toString('hex').toUpperCase();
-
-  const result = db.prepare(
-    `INSERT INTO surveys (user_id, config_name, description, questions_json, mappings_json, rules_json, post_processing_json, share_code)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-  ).run(
-    req.user.userId,
-    name,
-    description,
-    JSON.stringify(questions),
-    JSON.stringify(mappings),
-    JSON.stringify(rules),
-    JSON.stringify(postProcessing),
-    shareCode
-  );
-
-  res.status(201).json({
-    success: true,
-    data: { id: result.lastInsertRowid, configName: name, shareCode }
   });
 });
 

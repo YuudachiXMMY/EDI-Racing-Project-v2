@@ -180,13 +180,6 @@ export async function sendConfigToGame(id, roomCode) {
   });
 }
 
-export async function importConfigFromGame(configData) {
-  return request('/surveys/import-config', {
-    method: 'POST',
-    body: JSON.stringify(configData),
-  });
-}
-
 export async function getSessionHistory() {
   return request('/sessions');
 }

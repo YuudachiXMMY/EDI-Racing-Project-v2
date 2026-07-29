@@ -4,7 +4,7 @@ using UnityEngine.UI;
 
 /// <summary>
 /// Displays a winner overlay with top 3 standings when the race finishes.
-/// Auto-wired by RuntimeSetup or assignable via Inspector.
+/// Assignable via Inspector.
 /// </summary>
 public class RaceFinishPanel : MonoBehaviour
 {

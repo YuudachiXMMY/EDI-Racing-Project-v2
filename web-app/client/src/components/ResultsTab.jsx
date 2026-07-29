@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getRaceResults } from '../api.js';
+import { buildResultsCsv, downloadBlob, downloadJsonFile } from '../utils/csvExport.js';
 
 export default function ResultsTab({ surveyId }) {
   const [sessions, setSessions] = useState([]);
@@ -18,34 +19,13 @@ export default function ResultsTab({ surveyId }) {
   }
 
   function downloadCsv(session) {
-    const rankings = session.rankings || [];
-    if (rankings.length === 0) return;
-
-    const allKeys = [];
-    for (const car of rankings) {
-      for (const attr of (car.Attributes || [])) {
-        if (attr.Key && !allKeys.includes(attr.Key)) allKeys.push(attr.Key);
-      }
-    }
-
-    let csv = 'Rank,TeamName';
-    for (const key of allKeys) csv += `,${escapeCsv(key)}`;
-    csv += ',LapsCompleted,CheckpointsPassed,Time\n';
-
-    for (const car of rankings) {
-      csv += `${car.Rank},${escapeCsv(car.TeamName)}`;
-      for (const key of allKeys) {
-        const attr = (car.Attributes || []).find(a => a.Key === key);
-        csv += `,${escapeCsv(attr ? attr.Value : '')}`;
-      }
-      csv += `,${car.LapsCompleted},${car.CheckpointsPassed},${(car.TotalTime || 0).toFixed(2)}\n`;
-    }
-
+    const csv = buildResultsCsv(session);
+    if (!csv) return;
     downloadBlob(csv, `race-results-${session.id}.csv`, 'text/csv;charset=utf-8');
   }
 
   function downloadJson(session) {
-    downloadBlob(JSON.stringify(session, null, 2), `race-results-${session.id}.json`, 'application/json');
+    downloadJsonFile(session, `race-results-${session.id}.json`);
   }
 
   if (loading) return <p className="loading">Loading results...</p>;
@@ -67,7 +47,7 @@ export default function ResultsTab({ surveyId }) {
               {(session.rankings || []).length} car(s) | {(session.totalRaceTime || 0).toFixed(1)}s
               {session.roomCode && ` | Room ${session.roomCode}`}
             </span>
-            <span className="expand-icon">{expandedId === session.id ? '\u25BC' : '\u25B6'}</span>
+            <span className="expand-icon">{expandedId === session.id ? '▼' : '▶'}</span>
           </div>
 
           {expandedId === session.id && (
@@ -137,21 +117,4 @@ export default function ResultsTab({ surveyId }) {
       </button>
     </div>
   );
-}
-
-function escapeCsv(value) {
-  if (!value) return '';
-  const str = String(value);
-  if (str.includes(',') || str.includes('"')) return '"' + str.replace(/"/g, '""') + '"';
-  return str;
-}
-
-function downloadBlob(content, filename, mimeType) {
-  const blob = new Blob([content], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
 }
