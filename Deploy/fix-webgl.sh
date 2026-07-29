@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Deploy/fix-webgl.sh — Validate WebGL build output (and optionally serve it)
+# Deploy/fix-webgl.sh — Validate WebGL build output
 #
 # What it does:
 #   1. Validates that Build artifacts exist in Deploy/webgl-build/Build/
@@ -9,11 +9,13 @@
 #      (Assets/WebGLTemplates/EDIRacing/index.html) now uses Unity 6 macros
 #      ({{{ LOADER_FILENAME }}} etc.), so a correct build needs no patching.
 #      A mismatch here means the template regressed; fix the template and rebuild.
-#   3. Optionally starts a local HTTP server on port 8080 for testing
+#
+# To actually run the game locally, use the unified Docker stack (serves Brotli
+# correctly over http://localhost — a plain Python server cannot):
+#   ./Deploy/up.sh                 # -> http://localhost:${GAME_PORT:-3900}
 #
 # Usage:
-#   ./Deploy/fix-webgl.sh          # validate only
-#   ./Deploy/fix-webgl.sh --serve  # validate + start local server on :8080
+#   ./Deploy/fix-webgl.sh          # validate build artifacts
 
 set -e
 
@@ -107,33 +109,5 @@ fi
 
 echo ""
 echo -e "${GREEN}index.html references are valid.${NC}"
-
-# ── Step 3: Optionally serve locally ────────────────────────────
-
-if [ "$1" = "--serve" ]; then
-  PORT="${2:-8080}"
-
-  if ls "$SCRIPT_DIR/webgl-build/Build/"*.br >/dev/null 2>&1; then
-    echo -e "${YELLOW}检测到 .br 产物：原生 Brotli 需 HTTPS，Python HTTP 无法正确测试。${NC}"
-    echo "  请改用: ./Deploy/serve-local-https.sh (Caddy HTTPS)"
-  fi
-
-  echo ""
-  echo "Starting local server on http://localhost:$PORT ..."
-  echo "Press Ctrl+C to stop."
-  echo ""
-
-  cd "$SCRIPT_DIR/webgl-build"
-
-  # Prefer Python 3, fall back to Python 2, then Node
-  if command -v python3 &>/dev/null; then
-    python3 -m http.server "$PORT"
-  elif command -v python &>/dev/null; then
-    python -m SimpleHTTPServer "$PORT"
-  elif command -v npx &>/dev/null; then
-    npx serve -l "$PORT" .
-  else
-    echo -e "${RED}No HTTP server found. Install Python 3 or Node.js.${NC}"
-    exit 1
-  fi
-fi
+echo ""
+echo "To run the game locally: ./Deploy/up.sh  (-> http://localhost:\${GAME_PORT:-3900})"

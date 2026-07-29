@@ -60,9 +60,8 @@ Zoom,2,password
 | Command | Description |
 |---------|-------------|
 | `./scripts/build-webgl.sh` | Build WebGL from CLI (auto-detects Unity 6 on macOS, or set `UNITY_PATH`) |
-| `./Deploy/fix-webgl.sh` | Validate and patch `index.html` with correct Build artifact filenames |
-| `./Deploy/fix-webgl.sh --serve` | Patch + start local HTTP server on port 8080 for testing |
-| `cd Deploy && docker-compose up --build` | Build and start all services: nginx + WebSocket + survey web-app |
+| `./Deploy/fix-webgl.sh` | Validate that `index.html` references match the real Build artifact filenames |
+| `./Deploy/up.sh` | Build + run the whole stack (game + WebSocket + survey) at `http://localhost:${GAME_PORT:-3900}` |
 | `cd Server && npm start` | Run WebSocket relay server standalone (for local dev) |
 | `cd web-app && npm start` | Run survey web-app API server standalone (port 3001) |
 | `cd web-app && npm run dev` | Run survey web-app API with `--watch` hot reload |
@@ -103,22 +102,22 @@ Output: `Deploy/webgl-build/`
 
 ### Fix Loading Issues
 
-If the WebGL build gets stuck at loading, run the fixer script:
+If the WebGL build gets stuck at loading, validate the build output:
 
 ```bash
-./Deploy/fix-webgl.sh          # patch index.html
-./Deploy/fix-webgl.sh --serve  # patch + serve locally on :8080
+./Deploy/fix-webgl.sh          # check index.html references match Build artifacts
 ```
 
 ## Docker Deployment
 
 ```bash
-cd Deploy
-docker-compose up --build
+./Deploy/up.sh                 # build + run everything (Ctrl+C to stop)
+# or: cd Deploy && docker compose up --build
 ```
 
-Open `http://localhost:8080` in a browser. Docker Compose runs two services:
-- **edi-racing** — nginx (port 80→8080) serving the WebGL build with Brotli support, plus a Node.js WebSocket server on port 3000 (proxied at `/ws`)
+Open `http://localhost:3900` in a browser (override with `GAME_PORT` in `Deploy/.env`).
+Docker Compose runs two services:
+- **edi-racing** — nginx (host `${GAME_PORT:-3900}` → container port 80) serving the WebGL build with Brotli support, plus a Node.js WebSocket server on port 3000 (proxied at `/ws`)
 - **web-app** — Express API + React SPA for survey management (proxied by nginx at `/survey/` and `/api`). Uses SQLite with a persistent Docker volume (`survey-data`)
 
 ## Architecture
