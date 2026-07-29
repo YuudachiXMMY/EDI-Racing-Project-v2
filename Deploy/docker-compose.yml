@@ -8,7 +8,7 @@
 # Self-contained: `docker compose up --build` needs no external network.
 # Production TLS / edge routing is layered via docker-compose.prod.yml.
 #
-#   Local:  docker compose -f Deploy/docker-compose.yml up --build   (-> http://localhost:${GAME_PORT:-8080})
+#   Local:  docker compose -f Deploy/docker-compose.yml up --build   (-> http://localhost:${GAME_PORT:-3900})
 #   Prod:   docker compose -f Deploy/docker-compose.yml -f Deploy/docker-compose.prod.yml up -d
 
 name: edi-racing
@@ -20,7 +20,7 @@ services:
       dockerfile: Deploy/Dockerfile
     container_name: edi-racing-game
     ports:
-      - "${GAME_PORT:-8080}:80"
+      - "${GAME_PORT:-3900}:80"
     environment:
       # WS server port — must match nginx.conf upstream (127.0.0.1:3000)
       - PORT=3000
@@ -33,7 +33,9 @@ services:
       # docker-compose.prod.yml (REQUIRE_HOST_TOKEN=true + a required strong INTERNAL_SECRET).
       - REQUIRE_HOST_TOKEN=${REQUIRE_HOST_TOKEN:-false}
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80"]
+      # 127.0.0.1 (not localhost): nginx listens on IPv4 0.0.0.0:80 only, while
+      # `localhost` resolves to IPv6 ::1 first inside the container -> false unhealthy.
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:80"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -65,7 +67,7 @@ services:
       - WS_GAME_URL=ws://edi-racing-game:3000
       - INTERNAL_SECRET=${INTERNAL_SECRET:-edi-internal-default}
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3001/api/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3001/api/health"]
       interval: 10s
       timeout: 5s
       retries: 3

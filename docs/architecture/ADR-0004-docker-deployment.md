@@ -54,7 +54,7 @@ game container's nginx (:80) is the edge and routes everything:
 
 The **base** `Deploy/docker-compose.yml` is self-contained: `docker compose up --build`
 (or `./Deploy/up.sh`) starts every component with **no external network** and exposes
-one host port (`${GAME_PORT:-8080}`). Cross-container wiring is via env: the game
+one host port (`${GAME_PORT:-3900}`). Cross-container wiring is via env: the game
 service sets `API_URL=http://web-app:3001` and a shared `INTERNAL_SECRET` so
 `Server/server.js` can archive finished sessions into the web app; the web app sets
 `WS_GAME_URL=ws://edi-racing-game:3000` to reach the game server. SQLite persists via
