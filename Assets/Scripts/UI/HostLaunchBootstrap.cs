@@ -29,7 +29,25 @@ public class HostLaunchBootstrap : MonoBehaviour
         if (p.TryGetValue("role", out var role) && role == "host")
         {
             p.TryGetValue("token", out var token);
+            p.TryGetValue("survey", out var surveyId);
             Debug.Log("[HostLaunchBootstrap] Launching as host from Dashboard.");
+
+            // Phase 3: once the room exists, auto-inject the launched survey's responses so the
+            // professor never opens the manual Send-to-Game modal. One-shot — unsubscribe on the
+            // first fire so a later reconnect/create never re-injects. Subscribe BEFORE CreateRoom
+            // so the handler is attached when room_created returns. Captures surveyId now, before
+            // ClearUrlHash() wipes the launch params.
+            if (HostAutoInjectDecision.ShouldAutoInject(role, surveyId))
+            {
+                void OnCreated(string roomCode)
+                {
+                    NetworkManager.OnRoomCreated -= OnCreated;
+                    Debug.Log($"[HostLaunchBootstrap] Auto-injecting survey {surveyId} into room {roomCode}.");
+                    WebSocketBridge.HostAutoInject(surveyId, roomCode);
+                }
+                NetworkManager.OnRoomCreated += OnCreated;
+            }
+
             NetworkManager.CreateRoom(token);
             // Drop the hash so a reload resumes the room instead of re-minting with a stale token.
             WebSocketBridge.ClearUrlHash();
