@@ -55,7 +55,10 @@ public class HostLaunchBootstrap : MonoBehaviour
             return;
         }
 
-        if (NetworkManager.HasPersistedHostSession())
+        // Only resume a persisted host session on a *plain* reload. A student launch (role=play)
+        // in a browser that previously hosted (edi-was-host=="1") must NOT be hijacked into
+        // resuming the old host room — StudentJoinBootstrap will join it as a student instead.
+        if (role != "play" && NetworkManager.HasPersistedHostSession())
         {
             Debug.Log("[HostLaunchBootstrap] Resuming persisted host session after reload.");
             NetworkManager.ResumeHostSession();
