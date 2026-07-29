@@ -14,6 +14,8 @@ public class RaceUI : MonoBehaviour
     [Header("References")]
     public RaceManager RaceManager;
     public CameraManager CameraManager;
+    [Tooltip("Optional. When assigned, creating a room locks the UI to Professor automatically.")]
+    public NetworkManager NetworkManager;
 
     [Header("Panels")]
     public LeaderboardPanel Leaderboard;
@@ -26,6 +28,8 @@ public class RaceUI : MonoBehaviour
     {
         if (RaceManager != null)
             RaceManager.OnStateChanged += OnStateChanged;
+        if (NetworkManager != null)
+            NetworkManager.OnRoomCreated += HandleRoomCreated;
 
         ApplyRole();
         OnStateChanged(RaceManager != null ? RaceManager.CurrentState : GameState.Setup);
@@ -35,7 +39,13 @@ public class RaceUI : MonoBehaviour
     {
         if (RaceManager != null)
             RaceManager.OnStateChanged -= OnStateChanged;
+        if (NetworkManager != null)
+            NetworkManager.OnRoomCreated -= HandleRoomCreated;
     }
+
+    // Any successful room creation (Dashboard host launch OR manual in-game Host) locks the
+    // UI to Professor so role state cannot drift from the network truth.
+    private void HandleRoomCreated(string _) => SetRoleFromNetwork(true);
 
     /// <summary>
     /// Set role from network state. Called by NetworkSync or external code.

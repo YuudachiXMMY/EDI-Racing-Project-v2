@@ -167,4 +167,70 @@ public class WebSocketBridge : MonoBehaviour
         Close();
     }
 #endif
+
+    // --- Static page-URL + persistence bridge (Phase 2 host launch) ---
+    // WebGL: window.location + localStorage via jslib. Editor/Standalone: PlayerPrefs fallback,
+    // and no page URL (so HostLaunchBootstrap treats "" as "no host params" and never auto-hosts).
+#if UNITY_WEBGL && !UNITY_EDITOR
+    [DllImport("__Internal")] private static extern string WebSocketBridge_GetPageUrl();
+    [DllImport("__Internal")] private static extern string WebSocketBridge_LocalStorageGet(string key);
+    [DllImport("__Internal")] private static extern void WebSocketBridge_LocalStorageSet(string key, string val);
+    [DllImport("__Internal")] private static extern void WebSocketBridge_ClearUrlHash();
+    [DllImport("__Internal")] private static extern void WebSocketBridge_HostAutoInject(string surveyId, string roomCode);
+#endif
+
+    /// <summary>Full page URL (WebGL). Empty string in Editor/Standalone.</summary>
+    public static string GetPageUrl()
+    {
+#if UNITY_WEBGL && !UNITY_EDITOR
+        return WebSocketBridge_GetPageUrl();
+#else
+        return "";
+#endif
+    }
+
+    /// <summary>Read a persisted value. localStorage in WebGL, PlayerPrefs otherwise. Never null.</summary>
+    public static string StorageGet(string key)
+    {
+#if UNITY_WEBGL && !UNITY_EDITOR
+        return WebSocketBridge_LocalStorageGet(key);
+#else
+        return PlayerPrefs.GetString(key, "");
+#endif
+    }
+
+    /// <summary>Persist a value. localStorage in WebGL, PlayerPrefs otherwise.</summary>
+    public static void StorageSet(string key, string val)
+    {
+#if UNITY_WEBGL && !UNITY_EDITOR
+        WebSocketBridge_LocalStorageSet(key, val);
+#else
+        PlayerPrefs.SetString(key, val);
+#endif
+    }
+
+    /// <summary>
+    /// Strip the URL hash (host-launch params) after consuming it, so a page reload does
+    /// not re-mint/re-create a room with a now-stale token. No-op in Editor/Standalone.
+    /// </summary>
+    public static void ClearUrlHash()
+    {
+#if UNITY_WEBGL && !UNITY_EDITOR
+        WebSocketBridge_ClearUrlHash();
+#endif
+    }
+
+    /// <summary>
+    /// Phase 3 auto-inject: ask the web-app to push the given survey's responses into the
+    /// freshly-created room via the existing authenticated send-to-game endpoint. Fire-and-forget
+    /// in WebGL; a no-op (logged) in Editor/Standalone since the endpoint + browser auth are absent.
+    /// </summary>
+    public static void HostAutoInject(string surveyId, string roomCode)
+    {
+#if UNITY_WEBGL && !UNITY_EDITOR
+        WebSocketBridge_HostAutoInject(surveyId, roomCode);
+#else
+        Debug.Log($"[WebSocketBridge] HostAutoInject noop (editor): survey={surveyId}, room={roomCode}");
+#endif
+    }
 }

@@ -5322,6 +5322,7 @@ MonoBehaviour:
   Role: 0
   RaceManager: {fileID: 607591796}
   CameraManager: {fileID: 1155417298}
+  NetworkManager: {fileID: 1404780700}
   Leaderboard: {fileID: 0}
   Events: {fileID: 0}
   Controls: {fileID: 0}
@@ -7921,6 +7922,7 @@ GameObject:
   - component: {fileID: 1404780701}
   - component: {fileID: 1404780700}
   - component: {fileID: 1404780702}
+  - component: {fileID: 1404780703}
   m_Layer: 0
   m_Name: Network
   m_TagString: Untagged
@@ -7979,6 +7981,20 @@ MonoBehaviour:
   StateUpdateInterval: 0.1
   LeaderboardInterval: 0.5
   InterpolationSpeed: 15
+--- !u!114 &1404780703
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1404780699}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 46879e305e64f4edcadc71f178f7cf3d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: EDIRacing.Runtime::HostLaunchBootstrap
+  NetworkManager: {fileID: 1404780700}
+  RaceUI: {fileID: 868943145}
 --- !u!1 &1409382924
 GameObject:
   m_ObjectHideFlags: 0

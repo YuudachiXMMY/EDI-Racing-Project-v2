@@ -140,8 +140,8 @@ Minimum to validate the hypothesis:
 | # | Phase | Description | Status | Parallel | Depends | PRP Plan |
 |---|-------|-------------|--------|----------|---------|----------|
 | 1 | Host token model | Issue + validate a host token; server rejects host-only messages without it | complete | - | - | `.claude/PRPs/plans/completed/host-token-model.plan.md` (report: `.claude/PRPs/reports/host-token-model-report.md`) |
-| 2 | Professor host launch | Dashboard "Host Game" launches Unity in host mode carrying token + survey id; Unity auto-creates room, hides Join UI | pending | with 3 | 1 | - |
-| 3 | Auto-inject survey data | On host launch, auto-run `survey_import` for the selected survey (drop manual Send-to-Game) | pending | with 2 | 1 | - |
+| 2 | Professor host launch | Dashboard "Host Game" launches Unity in host mode carrying token + survey id; Unity auto-creates room, hides Join UI | in-progress (code landed, compiles + web-app tests green; **scene wiring + runtime QA pending**) | with 3 | 1 | `.claude/PRPs/plans/completed/professor-host-launch.plan.md` (report: `.claude/PRPs/reports/professor-host-launch-report.md`) |
+| 3 | Auto-inject survey data | On host launch, auto-run `survey_import` for the selected survey (drop manual Send-to-Game) | in-progress (code landed, JS syntax + static checks green; **Unity EditMode run + runtime QA pending**) | with 2 | 1 | `.claude/PRPs/plans/completed/auto-inject-survey-data.plan.md` (report: `.claude/PRPs/reports/auto-inject-survey-data-report.md`) |
 | 4 | Student link + landing page | Auto-generate student link (room code, no token); landing page with 3D/2D choice | pending | - | 2 | - |
 | 5 | Student Unity auto-join + role lock | 3D path auto-joins via URL room code, hides Host/EventPanel, hard-locks non-host role | pending | with 6 | 4 | - |
 | 6 | Student 2D wiring | Route the 2D spectator (`/live/:roomCode`) from the landing page | pending | with 5 | 4 | - |

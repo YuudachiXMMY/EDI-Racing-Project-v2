@@ -67,6 +67,55 @@ var WebSocketBridgeLib = {
     WebSocketBridge_GetState: function() {
         if (webSocket == null) return 3; // CLOSED
         return webSocket.readyState;
+    },
+
+    WebSocketBridge_GetPageUrl: function() {
+        var url = window.location.href;
+        var bufferSize = lengthBytesUTF8(url) + 1;
+        var buffer = _malloc(bufferSize);
+        stringToUTF8(url, buffer, bufferSize);
+        return buffer;
+    },
+
+    WebSocketBridge_LocalStorageGet: function(keyPtr) {
+        var key = UTF8ToString(keyPtr);
+        var val = window.localStorage.getItem(key) || '';
+        var bufferSize = lengthBytesUTF8(val) + 1;
+        var buffer = _malloc(bufferSize);
+        stringToUTF8(val, buffer, bufferSize);
+        return buffer;
+    },
+
+    WebSocketBridge_LocalStorageSet: function(keyPtr, valPtr) {
+        window.localStorage.setItem(UTF8ToString(keyPtr), UTF8ToString(valPtr));
+    },
+
+    WebSocketBridge_ClearUrlHash: function() {
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+    },
+
+    // Phase 3 auto-inject: on host launch, ask the web-app to push the selected survey's
+    // responses into this freshly-created room. Reuses the existing authenticated
+    // POST /api/surveys/:id/send-to-game endpoint (relative -> same origin behind nginx),
+    // carrying the professor's Bearer token from localStorage. Fire-and-forget: failures
+    // are logged, never block hosting, and the manual Send-to-Game modal remains a fallback.
+    WebSocketBridge_HostAutoInject: function(surveyIdPtr, roomCodePtr) {
+        var surveyId = UTF8ToString(surveyIdPtr);
+        var roomCode = UTF8ToString(roomCodePtr);
+        var token = window.localStorage.getItem('edi-survey-token') || '';
+        var headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+        fetch('/api/surveys/' + encodeURIComponent(surveyId) + '/send-to-game', {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({ roomCode: roomCode })
+        }).then(function(r) {
+            if (!r.ok) console.warn('[HostAutoInject] send-to-game failed: HTTP ' + r.status);
+        }).catch(function(e) {
+            console.warn('[HostAutoInject] send-to-game error', e);
+        });
     }
 };
 
