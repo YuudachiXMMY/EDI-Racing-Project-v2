@@ -25,3 +25,10 @@ export function buildStudentPlayUrl(roomCode) {
 export function buildSpectatorPath(roomCode) {
   return `/live/${String(roomCode).toUpperCase()}`;
 }
+
+// Build the shareable survey-response URL for a survey's share code. Points at the survey
+// app's HashRouter route (/survey/#/s/CODE) on the current origin. Single source of truth for
+// the share link used by SharePanel and the dashboard card (both direct copy and readonly input).
+export function buildShareUrl(shareCode) {
+  return `${window.location.origin}/survey/#/s/${shareCode}`;
+}

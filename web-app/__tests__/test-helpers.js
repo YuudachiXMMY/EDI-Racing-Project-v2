@@ -3,6 +3,7 @@ import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { seedTemplates } from '../src/seed-templates.js';
+import { applyMigrations } from '../src/db.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const schemaPath = join(__dirname, '..', 'src', 'schema.sql');
@@ -19,27 +20,8 @@ export function createTestDb() {
   const schema = readFileSync(schemaPath, 'utf-8');
   db.exec(schema);
 
-  // Apply same migrations as db.js
-  try { db.exec("ALTER TABLE surveys ADD COLUMN linked_room_code TEXT DEFAULT NULL"); } catch {}
-  try { db.exec("ALTER TABLE surveys ADD COLUMN post_processing_json TEXT NOT NULL DEFAULT '[]'"); } catch {}
-  try { db.exec("ALTER TABLE templates ADD COLUMN post_processing_json TEXT NOT NULL DEFAULT '[]'"); } catch {}
-
-  db.exec(`CREATE TABLE IF NOT EXISTS game_sessions (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER REFERENCES users(id),
-    survey_id INTEGER REFERENCES surveys(id),
-    room_code TEXT NOT NULL DEFAULT '',
-    config_name TEXT NOT NULL DEFAULT '',
-    student_count INTEGER NOT NULL DEFAULT 0,
-    student_names_json TEXT NOT NULL DEFAULT '[]',
-    game_phase TEXT NOT NULL DEFAULT 'Setup',
-    race_started INTEGER NOT NULL DEFAULT 0,
-    rankings_json TEXT NOT NULL DEFAULT '[]',
-    event_log_json TEXT NOT NULL DEFAULT '[]',
-    total_race_time REAL NOT NULL DEFAULT 0,
-    started_at TEXT NOT NULL DEFAULT (datetime('now')),
-    ended_at TEXT NOT NULL DEFAULT (datetime('now'))
-  )`);
+  // Apply the same migrations as production init (single source of truth in db.js).
+  applyMigrations(db);
 
   return db;
 }

@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { getRaceResults } from '../api.js';
 import { buildResultsCsv, downloadBlob, downloadJsonFile } from '../utils/csvExport.js';
+import ResultsTable from './ResultsTable.jsx';
+import EventLogTable from './EventLogTable.jsx';
 
 export default function ResultsTab({ surveyId }) {
   const [sessions, setSessions] = useState([]);
@@ -52,52 +54,9 @@ export default function ResultsTab({ surveyId }) {
 
           {expandedId === session.id && (
             <div className="result-session-body">
-              <table className="response-table">
-                <thead>
-                  <tr>
-                    <th>Rank</th>
-                    <th>Team</th>
-                    <th>Laps</th>
-                    <th>Checkpoints</th>
-                    <th>Time</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {(session.rankings || []).map((car, i) => (
-                    <tr key={i} className="response-row">
-                      <td className={car.Rank <= 3 ? `rank-${car.Rank}` : ''}>{car.Rank}</td>
-                      <td>{car.TeamName}</td>
-                      <td>{car.LapsCompleted}</td>
-                      <td>{car.CheckpointsPassed}</td>
-                      <td>{(car.TotalTime || 0).toFixed(2)}s</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <ResultsTable rankings={session.rankings} />
 
-              {(session.eventLog || []).length > 0 && (
-                <div className="event-log">
-                  <h4>Event Log</h4>
-                  <table className="response-table">
-                    <thead>
-                      <tr>
-                        <th>Time</th>
-                        <th>Event</th>
-                        <th>Affected</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {session.eventLog.map((e, i) => (
-                        <tr key={i} className="response-row">
-                          <td>{(e.Timestamp || 0).toFixed(1)}s</td>
-                          <td>{e.EventName}</td>
-                          <td>{e.AffectedCount}/{e.TotalCars}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
+              <EventLogTable eventLog={session.eventLog} />
 
               <div className="result-actions">
                 <button className="btn-primary btn-small" onClick={() => downloadCsv(session)}>

@@ -24,6 +24,16 @@ export function downloadBlob(content, filename, mimeType) {
   URL.revokeObjectURL(url);
 }
 
+/** Trigger a browser download of an already-constructed Blob. */
+export function downloadBlobObject(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 /**
  * Build a CSV string from a race session's `rankings`. Columns: Rank, TeamName, one per
  * distinct car attribute key, then LapsCompleted, CheckpointsPassed, Time.
