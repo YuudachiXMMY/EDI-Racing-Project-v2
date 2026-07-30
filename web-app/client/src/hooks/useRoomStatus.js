@@ -20,32 +20,40 @@ export default function useRoomStatus({ poll = false, onFinished } = {}) {
   const pollRef = useRef(null);
   const abortRef = useRef(false);
 
-  async function fetchStatus(code) {
-    if (abortRef.current) return;
-    const trimmed = code.trim().toUpperCase();
-    if (trimmed.length < MIN_CODE_LENGTH) {
-      setRoomStatus(null);
-      setChecking(false);
-      return;
-    }
-    setChecking(true);
-    const result = await getRoomStatus(trimmed);
-    if (abortRef.current) return;
-    const data = result.success ? result.data : { exists: false, error: 'Failed to check' };
-    setRoomStatus(data);
-    setChecking(false);
+  // Keep the latest onFinished in a ref so an already-scheduled poll/debounce timer
+  // invokes the current handler instead of a stale closure from an earlier render.
+  const onFinishedRef = useRef(onFinished);
+  useEffect(() => { onFinishedRef.current = onFinished; });
 
-    if (onFinished && data && data.gamePhase === 'Finished') {
-      await onFinished(trimmed);
-    }
-  }
-
-  // Debounced check + optional polling when roomCode changes
+  // Debounced check + optional polling. Re-runs only when roomCode or poll changes; the
+  // check reads the latest onFinished via ref, so it is defined inside the effect and
+  // depends on nothing render-varying.
   useEffect(() => {
     abortRef.current = false;
     clearTimeout(debounceRef.current);
     clearInterval(pollRef.current);
     setRoomStatus(null);
+
+    async function fetchStatus(code) {
+      if (abortRef.current) return;
+      const trimmedCode = code.trim().toUpperCase();
+      if (trimmedCode.length < MIN_CODE_LENGTH) {
+        setRoomStatus(null);
+        setChecking(false);
+        return;
+      }
+      setChecking(true);
+      const result = await getRoomStatus(trimmedCode);
+      if (abortRef.current) return;
+      const data = result.success ? result.data : { exists: false, error: 'Failed to check' };
+      setRoomStatus(data);
+      setChecking(false);
+
+      const handleFinished = onFinishedRef.current;
+      if (handleFinished && data && data.gamePhase === 'Finished') {
+        await handleFinished(trimmedCode);
+      }
+    }
 
     const trimmed = roomCode.trim();
     if (trimmed.length < MIN_CODE_LENGTH) return;
@@ -62,7 +70,7 @@ export default function useRoomStatus({ poll = false, onFinished } = {}) {
       clearTimeout(debounceRef.current);
       clearInterval(pollRef.current);
     };
-  }, [roomCode]);
+  }, [roomCode, poll]);
 
   // Cleanup on unmount
   useEffect(() => {

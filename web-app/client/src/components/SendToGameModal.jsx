@@ -34,10 +34,12 @@ export default function SendToGameModal({ surveyId, onClose }) {
     onFinished: handleFinished,
   });
 
-  // Pause polling while sending
+  // Pause polling while sending. `pausePolling` only clears the hook's ref-held interval,
+  // so it is ref-stable across renders and safe to omit from the dependency array.
   useEffect(() => {
     if (status === 'sending') pausePolling();
-  }, [status]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [status]);
 
   async function handleSend() {
     const code = roomCode.trim().toUpperCase();
