@@ -293,7 +293,7 @@ public class SurveyResponseMapperTests
 - 不移动 `gameLaunch.js` 到 `utils/`（保留在 src 根，避免连带改 2 处 import；仅就地新增函数）
 - 不改 Unity asmdef、命名空间结构
 - 不删除 `db.js` 中的 3 段 `ALTER TABLE`（旧库迁移必须保留）
-- 不新增 Sunset 到两个模板 / 不从 EventSchedule 删 Sunset —— 见 Task U4（需人工决策，默认保留各自现状，仅提取「共同的前 7 条」）
+- ~~不新增 Sunset 到两个模板~~ —— **已推翻**：用户 2026-07-30 决策模板也加入 Sunset（见 Task U4），DefaultEventRules 提取统一 8 条
 
 ---
 
@@ -595,9 +595,8 @@ public class SurveyResponseMapperTests
   - EventSchedule = 8 条（含 `Sunset Weather` Digit8，`SpeedDelta=-3f,Duration=20f,WeatherType.Sunset`）+ 强类型 `EventRule` + 每条 `TriggerKey`
   - 两模板 = 7 条（无 Sunset）+ `SavedEventRule` + `(int)` 枚举转换 + 无 TriggerKey
   - 处 2（`:37-116` 多行）与处 3（`:395-404` 单行）**前 7 条数据值逐字一致**——最纯粹的重复。
-  - **决策点**：Sunset 是否应进入模板？默认**保守**——`BaseSaved()` = 现有 7 条（不含 Sunset，保持模板行为不变）；`BaseRuntime()` = 8 条（含 Sunset，保持 EventSchedule 不变）。可让 `BaseRuntime` 内部 `EventRuleKeys.AssignKeys(BaseSaved())` 再 append Sunset + 手动补 Digit8，以复用前 7 条数据；或各自独立写以避免类型耦合。
-  - `SavedEventRule` 用 `(int)ComparisonOperator.X`，`EventRule` 用强类型枚举——转换靠 `SavedEventRule.ToRule(Key)`（已存在于 SessionData.cs）。
-  - **若不确定 Sunset 归属，询问用户**——这是唯一有行为语义分歧的任务。
+  - ✅ **决策已定（2026-07-30，用户拍板）：模板也加入 Sunset。** `BaseSaved()` = **8 条**（含 Sunset，`DisplayName="Sunset Weather"`、`AttributeName=""`、`Operator=(int)ComparisonOperator.All`、`CompareValue=""`、`SpeedDelta=-3f`、`Duration=20f`、`Weather=(int)WeatherType.Sunset`、`AllowRepeat=true`）；`BaseRuntime()` = 8 条（含 Sunset，TriggerKey=Digit8）。两个 Survey 模板从 7 条变 8 条——**这会改变模板生成的比赛行为（多一个日落事件），是有意为之**。更新 `SurveyTemplatesTests` 断言为 8 条。
+  - `SavedEventRule` 用 `(int)ComparisonOperator.X`，`EventRule` 用强类型枚举——转换靠 `SavedEventRule.ToRule(Key)`（已存在于 SessionData.cs）。可让 `BaseRuntime` 内部 `EventRuleKeys.AssignKeys(BaseSaved())` 一次性复用全部 8 条数据（因现在 BaseSaved 也含 Sunset）。
 - **VALIDATE**: Unity 编译 + `EventScheduleTests`、`SurveyTemplatesTests`、`SavedEventRuleTests` 通过（这些测试锁定条数/字段值，是回归防线）
 
 ### Task U5: Unity 测试 —— 为新提取单元补测
