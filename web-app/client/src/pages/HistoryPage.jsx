@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSessionHistory } from '../api.js';
+import { buildResultsCsv, downloadBlob, downloadJsonFile } from '../utils/csvExport.js';
 
 export default function HistoryPage() {
   const navigate = useNavigate();
@@ -31,34 +32,13 @@ export default function HistoryPage() {
   }
 
   function downloadCsv(session) {
-    const rankings = session.rankings || [];
-    if (rankings.length === 0) return;
-
-    const allKeys = [];
-    for (const car of rankings) {
-      for (const attr of (car.Attributes || [])) {
-        if (attr.Key && !allKeys.includes(attr.Key)) allKeys.push(attr.Key);
-      }
-    }
-
-    let csv = 'Rank,TeamName';
-    for (const key of allKeys) csv += `,${escapeCsv(key)}`;
-    csv += ',LapsCompleted,CheckpointsPassed,Time\n';
-
-    for (const car of rankings) {
-      csv += `${car.Rank},${escapeCsv(car.TeamName)}`;
-      for (const key of allKeys) {
-        const attr = (car.Attributes || []).find(a => a.Key === key);
-        csv += `,${escapeCsv(attr ? attr.Value : '')}`;
-      }
-      csv += `,${car.LapsCompleted},${car.CheckpointsPassed},${(car.TotalTime || 0).toFixed(2)}\n`;
-    }
-
+    const csv = buildResultsCsv(session);
+    if (!csv) return;
     downloadBlob(csv, `session-${session.roomCode}-${session.id}.csv`, 'text/csv;charset=utf-8');
   }
 
   function downloadJson(session) {
-    downloadBlob(JSON.stringify(session, null, 2), `session-${session.roomCode}-${session.id}.json`, 'application/json');
+    downloadJsonFile(session, `session-${session.roomCode}-${session.id}.json`);
   }
 
   return (
@@ -89,7 +69,7 @@ export default function HistoryPage() {
                   {` | ${session.gamePhase}`}
                   {` | ${new Date(session.endedAt).toLocaleString()}`}
                 </span>
-                <span className="expand-icon">{expandedId === session.id ? '\u25BC' : '\u25B6'}</span>
+                <span className="expand-icon">{expandedId === session.id ? '▼' : '▶'}</span>
               </div>
 
               {expandedId === session.id && (
@@ -174,22 +154,4 @@ export default function HistoryPage() {
       )}
     </div>
   );
-}
-
-function escapeCsv(value) {
-  if (!value) return '';
-  const str = String(value);
-  if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r'))
-    return '"' + str.replace(/"/g, '""') + '"';
-  return str;
-}
-
-function downloadBlob(content, filename, mimeType) {
-  const blob = new Blob([content], { type: mimeType });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
 }
