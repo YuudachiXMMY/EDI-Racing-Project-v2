@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSurveys, createSurvey, deleteSurvey, getTemplates, toggleSurveyActive, logout, clearToken, requestHostToken } from '../api.js';
-import { buildHostLaunchUrl } from '../gameLaunch.js';
+import { buildHostLaunchUrl, buildShareUrl } from '../gameLaunch.js';
 import SendToGameModal from '../components/SendToGameModal.jsx';
 
 export default function DashboardPage() {
@@ -49,7 +49,7 @@ export default function DashboardPage() {
 
   function copyShareLink(shareCode, e) {
     e.stopPropagation();
-    const url = `${window.location.origin}/survey/#/s/${shareCode}`;
+    const url = buildShareUrl(shareCode);
     navigator.clipboard.writeText(url).catch(() => {});
   }
 
@@ -137,7 +137,7 @@ export default function DashboardPage() {
                 <input
                   type="text"
                   className="share-url-mini"
-                  value={`${window.location.origin}/survey/#/s/${s.share_code}`}
+                  value={buildShareUrl(s.share_code)}
                   readOnly
                   onClick={e => e.target.select()}
                 />

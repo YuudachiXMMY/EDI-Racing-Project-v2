@@ -9,6 +9,7 @@ import ResultsTab from '../components/ResultsTab.jsx';
 import SharePanel from '../components/SharePanel.jsx';
 import SendToGameModal from '../components/SendToGameModal.jsx';
 import SendConfigModal from '../components/SendConfigModal.jsx';
+import { downloadBlob, downloadBlobObject } from '../utils/csvExport.js';
 
 const TABS = ['Questions', 'Mappings', 'Rules', 'Responses', 'Results'];
 const SAVE_DELAY = 2000;
@@ -90,36 +91,21 @@ export default function EditorPage() {
     }
   }
 
-  function downloadBlob(blob, filename) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
   async function handleExportExcel() {
     const result = await exportExcel(id);
-    if (result.success) downloadBlob(result.blob, result.filename);
+    if (result.success) downloadBlobObject(result.blob, result.filename);
   }
 
   async function handleExportCsv() {
     const result = await exportCsv(id);
-    if (result.success) downloadBlob(result.blob, result.filename);
+    if (result.success) downloadBlobObject(result.blob, result.filename);
   }
 
   function downloadExportJson() {
     if (!exportData) return;
     const json = JSON.stringify(exportData, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
     const safeName = (exportData.configName || 'export').replace(/[^a-zA-Z0-9_-]/g, '_');
-    a.href = url;
-    a.download = `${safeName}-export.json`;
-    a.click();
-    URL.revokeObjectURL(url);
+    downloadBlob(json, `${safeName}-export.json`, 'application/json');
   }
 
   function copyExportJson() {

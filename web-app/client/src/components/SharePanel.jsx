@@ -1,9 +1,10 @@
 import { useState } from 'react';
+import { buildShareUrl } from '../gameLaunch.js';
 
 export default function SharePanel({ shareCode, isActive, onToggleActive }) {
   const [copied, setCopied] = useState(false);
 
-  const shareUrl = `${window.location.origin}/survey/#/s/${shareCode}`;
+  const shareUrl = buildShareUrl(shareCode);
 
   async function handleCopy() {
     try {
