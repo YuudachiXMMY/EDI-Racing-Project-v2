@@ -1,6 +1,8 @@
-# Implementation Report: Extract Duplicated Logic — Backend Workstream
+# Implementation Report: Extract Duplicated Logic — Backend + Frontend
 
-> **部分实施**：本报告覆盖 **Backend workstream (B1–B6)**。计划共 3 个独立 workstream，Frontend (F1–F4) 与 Unity (U1–U5) **尚未实施**，按计划建议留作独立 PR。计划文件**未归档**（仍有未完成 workstream）。
+> **部分实施**：本报告覆盖 **Backend (B1–B6) + Frontend (F1–F4)**，均已完成、提交、推送（PR #54）。**Unity workstream (U1–U5) 尚未实施**，留作独立 PR（U4 Sunset 决策已定=模板加入 Sunset，见计划）。计划文件**未归档**（Unity 未完成）。
+>
+> **Frontend 摘要**：`buildShareUrl`（3 处硬编码收敛）、`downloadBlobObject`（EditorPage 去本地副本）、`ResultsTable`/`EventLogTable` 展示组件（ResultsTab+HistoryPage 复用，PascalCase 字段保留）。无偏离；Vite build 通过、oxlint 无新增告警；净 ~−120 行；2 新建组件 + 7 修改。前端无测试框架，靠 build+lint+人工核对。
 
 ## Summary
 按 `.claude/PRPs/plans/extract-duplicated-logic.plan.md` 实施后端去重：集中化配置（`config.js`）、归属校验中间件（`loadOwnedSurvey`）、WS 端点骨架提取（`sendToGameRoom`）、迁移函数统一（`applyMigrations`，消除 `game_sessions` 第 3 副本）。纯行为保持型重构，净减 146 行。
