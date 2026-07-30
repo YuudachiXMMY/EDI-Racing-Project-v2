@@ -25,7 +25,7 @@ public class SurveyTemplatesTests
         Assert.AreEqual("V1 Parity", config.ConfigName);
         Assert.AreEqual(0, config.Questions.Length);
         Assert.AreEqual(0, config.Mappings.Length);
-        Assert.AreEqual(7, config.Rules.Length);
+        Assert.AreEqual(8, config.Rules.Length);
     }
 
     [Test]
@@ -61,7 +61,7 @@ public class SurveyTemplatesTests
         Assert.AreEqual("ENGG*1100 Survey", config.ConfigName);
         Assert.AreEqual(14, config.Questions.Length);
         Assert.AreEqual(7, config.Mappings.Length);
-        Assert.AreEqual(7, config.Rules.Length);
+        Assert.AreEqual(8, config.Rules.Length);
     }
 
     [Test]

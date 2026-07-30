@@ -34,86 +34,7 @@ public static class SurveyTemplates
             CreatedAt = DateTime.Now.ToString("o"),
             Questions = Array.Empty<SurveyQuestion>(),
             Mappings = Array.Empty<AttributeMapping>(),
-            Rules = new SavedEventRule[]
-            {
-                new SavedEventRule
-                {
-                    DisplayName = "Name Length Penalty",
-                    AttributeName = "teamName",
-                    Operator = (int)ComparisonOperator.LengthGreaterThan,
-                    CompareValue = "10",
-                    SpeedDelta = -10f,
-                    Duration = 8f,
-                    Weather = (int)WeatherType.None,
-                    AllowRepeat = false
-                },
-                new SavedEventRule
-                {
-                    DisplayName = "Color Boost (Blue)",
-                    AttributeName = "colorIndex",
-                    Operator = (int)ComparisonOperator.Equals,
-                    CompareValue = "3",
-                    SpeedDelta = 15f,
-                    Duration = 6f,
-                    Weather = (int)WeatherType.None,
-                    AllowRepeat = false
-                },
-                new SavedEventRule
-                {
-                    DisplayName = "Color Penalty (Red)",
-                    AttributeName = "colorIndex",
-                    Operator = (int)ComparisonOperator.Equals,
-                    CompareValue = "2",
-                    SpeedDelta = -12f,
-                    Duration = 8f,
-                    Weather = (int)WeatherType.None,
-                    AllowRepeat = false
-                },
-                new SavedEventRule
-                {
-                    DisplayName = "Function Boost (Password)",
-                    AttributeName = "functions",
-                    Operator = (int)ComparisonOperator.Contains,
-                    CompareValue = "password",
-                    SpeedDelta = 10f,
-                    Duration = 6f,
-                    Weather = (int)WeatherType.None,
-                    AllowRepeat = false
-                },
-                new SavedEventRule
-                {
-                    DisplayName = "Function Penalty (Face Recog)",
-                    AttributeName = "functions",
-                    Operator = (int)ComparisonOperator.Contains,
-                    CompareValue = "facerecog",
-                    SpeedDelta = -10f,
-                    Duration = 8f,
-                    Weather = (int)WeatherType.None,
-                    AllowRepeat = false
-                },
-                new SavedEventRule
-                {
-                    DisplayName = "Snow Weather",
-                    AttributeName = "",
-                    Operator = (int)ComparisonOperator.All,
-                    CompareValue = "",
-                    SpeedDelta = -8f,
-                    Duration = 12f,
-                    Weather = (int)WeatherType.Snow,
-                    AllowRepeat = true
-                },
-                new SavedEventRule
-                {
-                    DisplayName = "Night Weather",
-                    AttributeName = "",
-                    Operator = (int)ComparisonOperator.All,
-                    CompareValue = "",
-                    SpeedDelta = -5f,
-                    Duration = 15f,
-                    Weather = (int)WeatherType.Night,
-                    AllowRepeat = true
-                }
-            }
+            Rules = DefaultEventRules.BaseSaved()
         };
     }
 
@@ -392,16 +313,7 @@ public static class SurveyTemplates
                 new AttributeMapping { QuestionId = "pwd_count", AttributeName = "pwd_count", DefaultValue = "0", TransformType = "numeric", LookupEntries = Array.Empty<AttributeEntry>() },
                 new AttributeMapping { QuestionId = "distance_km", AttributeName = "distance_km", DefaultValue = "0", TransformType = "numeric", LookupEntries = Array.Empty<AttributeEntry>() },
             },
-            Rules = new SavedEventRule[]
-            {
-                new SavedEventRule { DisplayName = "Name Length Penalty", AttributeName = "teamName", Operator = (int)ComparisonOperator.LengthGreaterThan, CompareValue = "10", SpeedDelta = -10f, Duration = 8f, Weather = (int)WeatherType.None, AllowRepeat = false },
-                new SavedEventRule { DisplayName = "Color Boost (Blue)", AttributeName = "colorIndex", Operator = (int)ComparisonOperator.Equals, CompareValue = "3", SpeedDelta = 15f, Duration = 6f, Weather = (int)WeatherType.None, AllowRepeat = false },
-                new SavedEventRule { DisplayName = "Color Penalty (Red)", AttributeName = "colorIndex", Operator = (int)ComparisonOperator.Equals, CompareValue = "2", SpeedDelta = -12f, Duration = 8f, Weather = (int)WeatherType.None, AllowRepeat = false },
-                new SavedEventRule { DisplayName = "Function Boost (Password)", AttributeName = "functions", Operator = (int)ComparisonOperator.Contains, CompareValue = "password", SpeedDelta = 10f, Duration = 6f, Weather = (int)WeatherType.None, AllowRepeat = false },
-                new SavedEventRule { DisplayName = "Function Penalty (Face Recog)", AttributeName = "functions", Operator = (int)ComparisonOperator.Contains, CompareValue = "facerecog", SpeedDelta = -10f, Duration = 8f, Weather = (int)WeatherType.None, AllowRepeat = false },
-                new SavedEventRule { DisplayName = "Snow Weather", AttributeName = "", Operator = (int)ComparisonOperator.All, CompareValue = "", SpeedDelta = -8f, Duration = 12f, Weather = (int)WeatherType.Snow, AllowRepeat = true },
-                new SavedEventRule { DisplayName = "Night Weather", AttributeName = "", Operator = (int)ComparisonOperator.All, CompareValue = "", SpeedDelta = -5f, Duration = 15f, Weather = (int)WeatherType.Night, AllowRepeat = true },
-            }
+            Rules = DefaultEventRules.BaseSaved()
         };
     }
 }

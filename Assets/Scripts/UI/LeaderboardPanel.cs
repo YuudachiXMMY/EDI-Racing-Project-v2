@@ -67,10 +67,7 @@ public class LeaderboardPanel : MonoBehaviour
                     text.text = $"{i + 1}. [{car.CurrentLap}] {car.TeamName}";
 
                     // Highlight top 3
-                    if (i == 0) text.color = new Color(1f, 0.84f, 0f); // gold
-                    else if (i == 1) text.color = new Color(0.75f, 0.75f, 0.75f); // silver
-                    else if (i == 2) text.color = new Color(0.8f, 0.5f, 0.2f); // bronze
-                    else text.color = Color.white;
+                    text.color = LeaderboardFormatter.RankColor(i);
                 }
             }
             else

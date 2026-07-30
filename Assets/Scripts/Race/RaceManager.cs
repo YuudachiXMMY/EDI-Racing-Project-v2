@@ -77,16 +77,9 @@ public class RaceManager : MonoBehaviour
     {
         if (EventManager != null && EventManager.Schedule != null && rules != null && rules.Length > 0)
         {
-            Key[] keys = {
-                Key.Digit1, Key.Digit2, Key.Digit3, Key.Digit4, Key.Digit5,
-                Key.Digit6, Key.Digit7, Key.Digit8, Key.Digit9
-            };
-            int count = Mathf.Min(rules.Length, keys.Length);
-            var eventRules = new EventRule[count];
-            for (int i = 0; i < count; i++)
-                eventRules[i] = rules[i].ToRule(keys[i]);
+            var eventRules = EventRuleKeys.AssignKeys(rules);
             EventManager.Schedule.Events = eventRules;
-            Debug.Log($"[RaceManager] Applied {count} event rules from Web App import");
+            Debug.Log($"[RaceManager] Applied {eventRules.Length} event rules from Web App import");
         }
 
         LoadAndStartRace(carDataList);

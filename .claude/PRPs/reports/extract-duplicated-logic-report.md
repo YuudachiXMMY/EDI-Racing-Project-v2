@@ -1,6 +1,8 @@
 # Implementation Report: Extract Duplicated Logic — Backend + Frontend
 
-> **部分实施**：本报告覆盖 **Backend (B1–B6) + Frontend (F1–F4)**，均已完成、提交、推送（PR #54）。**Unity workstream (U1–U5) 尚未实施**，留作独立 PR（U4 Sunset 决策已定=模板加入 Sunset，见计划）。计划文件**未归档**（Unity 未完成）。
+> **全部实施完成**：Backend (B1–B6) + Frontend (F1–F4) 已合入 PR #54；**Unity workstream (U1–U5) 已实施并推送（PR #55）**。三个 workstream 全部完成，计划已归档。
+>
+> **Unity (U1–U5) 摘要**：`EventRuleKeys`（Digit1-9 共享 + AssignKeys，2 处内联消除）、`AttributeEntryExtensions.Get/Has`（8 处查找 → 首个扩展方法）、`LeaderboardFormatter`（金银铜色 + RankHex，4 处）、`DefaultEventRules`（默认规则单一真相；**U4 决策：模板加入 Sunset → 8 条**，EventSchedule 行为逐字不变）。验证经活跃 UnitySkills API（Unity 6000.3.19f1）：编译 0 错误 0 警告；EditMode **429/430 通过**（唯一失败为 UnitySkills 包内部 ShaderGraph 测试，与本改动无关）。8 新文件 + 13 修改，源文件净减（EventSchedule −100、SurveyTemplates −92）。
 >
 > **Frontend 摘要**：`buildShareUrl`（3 处硬编码收敛）、`downloadBlobObject`（EditorPage 去本地副本）、`ResultsTable`/`EventLogTable` 展示组件（ResultsTab+HistoryPage 复用，PascalCase 字段保留）。无偏离；Vite build 通过、oxlint 无新增告警；净 ~−120 行；2 新建组件 + 7 修改。前端无测试框架，靠 build+lint+人工核对。
 

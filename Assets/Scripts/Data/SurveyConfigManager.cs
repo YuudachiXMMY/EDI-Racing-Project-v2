@@ -98,25 +98,13 @@ public class SurveyConfigManager : MonoBehaviour
             return;
         }
 
-        Key[] keys = {
-            Key.Digit1, Key.Digit2, Key.Digit3, Key.Digit4, Key.Digit5,
-            Key.Digit6, Key.Digit7, Key.Digit8, Key.Digit9
-        };
-
-        int count = Mathf.Min(ActiveConfig.Rules.Length, keys.Length);
-        var eventRules = new EventRule[count];
-
-        for (int i = 0; i < count; i++)
-        {
-            eventRules[i] = ActiveConfig.Rules[i].ToRule(keys[i]);
-        }
-
+        var eventRules = EventRuleKeys.AssignKeys(ActiveConfig.Rules);
         schedule.Events = eventRules;
 
-        if (ActiveConfig.Rules.Length > keys.Length)
-            Debug.LogWarning($"[SurveyConfigManager] Config has {ActiveConfig.Rules.Length} rules but only {keys.Length} key bindings available. Extra rules skipped.");
+        if (ActiveConfig.Rules.Length > EventRuleKeys.DigitKeys.Length)
+            Debug.LogWarning($"[SurveyConfigManager] Config has {ActiveConfig.Rules.Length} rules but only {EventRuleKeys.DigitKeys.Length} key bindings available. Extra rules skipped.");
 
-        Debug.Log($"[SurveyConfigManager] Applied {count} rules to EventSchedule");
+        Debug.Log($"[SurveyConfigManager] Applied {eventRules.Length} rules to EventSchedule");
     }
 
     private string GetSaveDirectory()
