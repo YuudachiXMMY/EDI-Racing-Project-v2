@@ -2,18 +2,15 @@ import { Router } from 'express';
 import { timingSafeEqual } from 'crypto';
 import { getDb } from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
+import { loadOwnedSurvey } from '../middleware/loadOwnedSurvey.js';
 import { DEFAULT_INTERNAL_SECRET } from '../hostToken.js';
 
 const router = Router();
 
 // POST /api/surveys/:id/results — store race results
-router.post('/surveys/:id/results', requireAuth, (req, res) => {
+router.post('/surveys/:id/results', requireAuth, loadOwnedSurvey, (req, res) => {
   const db = getDb();
-  const survey = db.prepare('SELECT * FROM surveys WHERE id = ? AND user_id = ?')
-    .get(req.params.id, req.user.userId);
-  if (!survey) {
-    return res.status(404).json({ success: false, error: 'Survey not found' });
-  }
+  const survey = req.survey;
 
   const { roomCode, configName, rankings, eventLog, totalRaceTime } = req.body;
   if (!rankings || !Array.isArray(rankings)) {
@@ -36,13 +33,9 @@ router.post('/surveys/:id/results', requireAuth, (req, res) => {
 });
 
 // GET /api/surveys/:id/results — fetch all race results for a survey
-router.get('/surveys/:id/results', requireAuth, (req, res) => {
+router.get('/surveys/:id/results', requireAuth, loadOwnedSurvey, (req, res) => {
   const db = getDb();
-  const survey = db.prepare('SELECT * FROM surveys WHERE id = ? AND user_id = ?')
-    .get(req.params.id, req.user.userId);
-  if (!survey) {
-    return res.status(404).json({ success: false, error: 'Survey not found' });
-  }
+  const survey = req.survey;
 
   const results = db.prepare(
     'SELECT * FROM race_results WHERE survey_id = ? ORDER BY received_at DESC'

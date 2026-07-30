@@ -1,10 +1,10 @@
 import { Router } from 'express';
-import WebSocket from 'ws';
 import XLSX from 'xlsx';
 import { getDb } from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
-
-const WS_GAME_URL = process.env.WS_GAME_URL || 'ws://localhost:8080';
+import { loadOwnedSurvey } from '../middleware/loadOwnedSurvey.js';
+import { normalizeRoomCode } from '../config.js';
+import { sendToGameRoom } from '../lib/gameSocket.js';
 
 const router = Router();
 
@@ -164,13 +164,8 @@ function buildCarData(survey) {
 }
 
 // GET /api/surveys/:id/export — export survey data for Unity
-router.get('/:id/export', requireAuth, (req, res) => {
-  const db = getDb();
-  const survey = db.prepare('SELECT * FROM surveys WHERE id = ? AND user_id = ?')
-    .get(req.params.id, req.user.userId);
-  if (!survey) {
-    return res.status(404).json({ success: false, error: 'Survey not found' });
-  }
+router.get('/:id/export', requireAuth, loadOwnedSurvey, (req, res) => {
+  const survey = req.survey;
 
   const carData = buildCarData(survey);
   const eventRules = JSON.parse(survey.rules_json);
@@ -180,13 +175,8 @@ router.get('/:id/export', requireAuth, (req, res) => {
 });
 
 // GET /api/surveys/:id/export-csv — export as vehicleGroupData.csv format
-router.get('/:id/export-csv', requireAuth, (req, res) => {
-  const db = getDb();
-  const survey = db.prepare('SELECT * FROM surveys WHERE id = ? AND user_id = ?')
-    .get(req.params.id, req.user.userId);
-  if (!survey) {
-    return res.status(404).json({ success: false, error: 'Survey not found' });
-  }
+router.get('/:id/export-csv', requireAuth, loadOwnedSurvey, (req, res) => {
+  const survey = req.survey;
 
   const carData = buildCarData(survey);
   const csv = carData.map(car => {
@@ -201,13 +191,9 @@ router.get('/:id/export-csv', requireAuth, (req, res) => {
 });
 
 // GET /api/surveys/:id/export-excel — export as xlsx matching input.xlsx format
-router.get('/:id/export-excel', requireAuth, (req, res) => {
+router.get('/:id/export-excel', requireAuth, loadOwnedSurvey, (req, res) => {
   const db = getDb();
-  const survey = db.prepare('SELECT * FROM surveys WHERE id = ? AND user_id = ?')
-    .get(req.params.id, req.user.userId);
-  if (!survey) {
-    return res.status(404).json({ success: false, error: 'Survey not found' });
-  }
+  const survey = req.survey;
 
   const questions = JSON.parse(survey.questions_json);
   const responses = db.prepare(
@@ -250,19 +236,13 @@ router.get('/:id/export-excel', requireAuth, (req, res) => {
 });
 
 // POST /api/surveys/:id/send-to-game — send survey data directly to Unity via WebSocket
-router.post('/:id/send-to-game', requireAuth, (req, res) => {
-  const { roomCode } = req.body;
-  if (!roomCode || !roomCode.trim()) {
-    return res.status(400).json({ success: false, error: 'roomCode is required' });
+router.post('/:id/send-to-game', requireAuth, loadOwnedSurvey, (req, res) => {
+  const rc = normalizeRoomCode(req.body.roomCode);
+  if (!rc.ok) {
+    return res.status(400).json({ success: false, error: rc.error });
   }
 
-  const db = getDb();
-  const survey = db.prepare('SELECT * FROM surveys WHERE id = ? AND user_id = ?')
-    .get(req.params.id, req.user.userId);
-  if (!survey) {
-    return res.status(404).json({ success: false, error: 'Survey not found' });
-  }
-
+  const survey = req.survey;
   const carData = buildCarData(survey);
   const mappings = JSON.parse(survey.mappings_json);
   const eventRules = JSON.parse(survey.rules_json);
@@ -277,75 +257,30 @@ router.post('/:id/send-to-game', requireAuth, (req, res) => {
     mappings,
     eventRules,
   };
-
   const exportJson = JSON.stringify(exportPayload);
-  const code = roomCode.trim().toUpperCase();
 
-  const ws = new WebSocket(WS_GAME_URL);
-  let responded = false;
-
-  const timeout = setTimeout(() => {
-    if (!responded) {
-      responded = true;
-      ws.close();
-      res.status(504).json({ success: false, error: 'Game server did not respond in time' });
-    }
-  }, 5000);
-
-  ws.on('open', () => {
-    ws.send(JSON.stringify({ type: 'web_join_room', roomCode: code }));
-  });
-
-  ws.on('message', (data) => {
-    if (responded) return;
-    let msg;
-    try {
-      msg = JSON.parse(data.toString());
-    } catch {
-      return;
-    }
-
-    if (msg.type === 'error') {
-      responded = true;
-      clearTimeout(timeout);
-      ws.close();
-      return res.status(400).json({ success: false, error: msg.message || 'Room not found' });
-    }
-
-    if (msg.type === 'room_joined') {
+  sendToGameRoom(res, {
+    code: rc.code,
+    onRoomJoined: (ws) => {
       ws.send(JSON.stringify({ type: 'survey_import', configName: survey.config_name, exportJson }));
-    }
-
-    if (msg.type === 'survey_import_ack') {
-      responded = true;
-      clearTimeout(timeout);
-      ws.close();
-      return res.json({ success: true, data: { carsCount: carData.length, rulesCount: eventRules.length } });
-    }
-  });
-
-  ws.on('error', () => {
-    if (!responded) {
-      responded = true;
-      clearTimeout(timeout);
-      res.status(502).json({ success: false, error: 'Cannot connect to game server' });
-    }
+    },
+    handleAck: (msg, res, ws, done) => {
+      if (msg.type === 'survey_import_ack') {
+        done();
+        return res.json({ success: true, data: { carsCount: carData.length, rulesCount: eventRules.length } });
+      }
+    },
   });
 });
 
 // POST /api/surveys/:id/send-config-to-game — send raw survey config to Unity
-router.post('/:id/send-config-to-game', requireAuth, (req, res) => {
-  const { roomCode } = req.body;
-  if (!roomCode || !roomCode.trim()) {
-    return res.status(400).json({ success: false, error: 'roomCode is required' });
+router.post('/:id/send-config-to-game', requireAuth, loadOwnedSurvey, (req, res) => {
+  const rc = normalizeRoomCode(req.body.roomCode);
+  if (!rc.ok) {
+    return res.status(400).json({ success: false, error: rc.error });
   }
 
-  const db = getDb();
-  const survey = db.prepare('SELECT * FROM surveys WHERE id = ? AND user_id = ?')
-    .get(req.params.id, req.user.userId);
-  if (!survey) {
-    return res.status(404).json({ success: false, error: 'Survey not found' });
-  }
+  const survey = req.survey;
 
   // Build Unity-compatible SurveyConfig (PascalCase fields for JsonUtility)
   const configPayload = {
@@ -358,63 +293,24 @@ router.post('/:id/send-config-to-game', requireAuth, (req, res) => {
     Rules: JSON.parse(survey.rules_json),
   };
 
-  const code = roomCode.trim().toUpperCase();
-  const ws = new WebSocket(WS_GAME_URL);
-  let responded = false;
-
-  const timeout = setTimeout(() => {
-    if (!responded) {
-      responded = true;
-      ws.close();
-      res.status(504).json({ success: false, error: 'Game server did not respond in time' });
-    }
-  }, 5000);
-
-  ws.on('open', () => {
-    ws.send(JSON.stringify({ type: 'web_join_room', roomCode: code }));
-  });
-
-  ws.on('message', (data) => {
-    if (responded) return;
-    let msg;
-    try {
-      msg = JSON.parse(data.toString());
-    } catch {
-      return;
-    }
-
-    if (msg.type === 'error') {
-      responded = true;
-      clearTimeout(timeout);
-      ws.close();
-      return res.status(400).json({ success: false, error: msg.message || 'Room not found' });
-    }
-
-    if (msg.type === 'room_joined') {
+  sendToGameRoom(res, {
+    code: rc.code,
+    onRoomJoined: (ws) => {
       ws.send(JSON.stringify({
         type: 'config_import',
         configName: survey.config_name,
         configJson: JSON.stringify(configPayload),
       }));
-    }
-
-    if (msg.type === 'config_sync_ack') {
-      responded = true;
-      clearTimeout(timeout);
-      ws.close();
-      if (msg.success) {
-        return res.json({ success: true, data: { configName: survey.config_name } });
+    },
+    handleAck: (msg, res, ws, done) => {
+      if (msg.type === 'config_sync_ack') {
+        done();
+        if (msg.success) {
+          return res.json({ success: true, data: { configName: survey.config_name } });
+        }
+        return res.status(400).json({ success: false, error: msg.error || 'Config sync failed' });
       }
-      return res.status(400).json({ success: false, error: msg.error || 'Config sync failed' });
-    }
-  });
-
-  ws.on('error', () => {
-    if (!responded) {
-      responded = true;
-      clearTimeout(timeout);
-      res.status(502).json({ success: false, error: 'Cannot connect to game server' });
-    }
+    },
   });
 });
 

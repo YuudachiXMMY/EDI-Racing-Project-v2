@@ -1,9 +1,8 @@
 import { Router } from 'express';
 import { getDb } from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
-
-const WS_GAME_URL = process.env.WS_GAME_URL || 'ws://localhost:8080';
-const GAME_HTTP_URL = WS_GAME_URL.replace(/^ws/, 'http');
+import { loadOwnedSurvey } from '../middleware/loadOwnedSurvey.js';
+import { GAME_HTTP_URL } from '../config.js';
 
 const router = Router();
 
@@ -86,14 +85,8 @@ router.post('/s/:shareCode/respond', (req, res) => {
 });
 
 // GET /api/surveys/:id/responses — list responses (professor, requires auth)
-router.get('/surveys/:id/responses', requireAuth, (req, res) => {
+router.get('/surveys/:id/responses', requireAuth, loadOwnedSurvey, (req, res) => {
   const db = getDb();
-  const survey = db.prepare('SELECT id FROM surveys WHERE id = ? AND user_id = ?')
-    .get(req.params.id, req.user.userId);
-  if (!survey) {
-    return res.status(404).json({ success: false, error: 'Survey not found' });
-  }
-
   const responses = db.prepare(
     'SELECT id, email, team_name, answers_json, submitted_at FROM responses WHERE survey_id = ? ORDER BY submitted_at DESC'
   ).all(req.params.id);

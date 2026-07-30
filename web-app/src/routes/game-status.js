@@ -2,9 +2,7 @@ import { Router } from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import { mintHostToken } from '../hostToken.js';
 import { getDb } from '../db.js';
-
-const WS_GAME_URL = process.env.WS_GAME_URL || 'ws://localhost:8080';
-const GAME_HTTP_URL = WS_GAME_URL.replace(/^ws/, 'http');
+import { GAME_HTTP_URL } from '../config.js';
 
 const router = Router();
 

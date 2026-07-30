@@ -1,13 +1,10 @@
 import { Router } from 'express';
-import { randomBytes } from 'crypto';
 import { getDb } from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
+import { loadOwnedSurvey } from '../middleware/loadOwnedSurvey.js';
+import { generateShareCode } from '../config.js';
 
 const router = Router();
-
-function generateShareCode() {
-  return randomBytes(4).toString('hex').toUpperCase(); // 8-char code
-}
 
 // GET /api/surveys — list professor's surveys (includes response count)
 router.get('/', requireAuth, (req, res) => {
@@ -21,26 +18,16 @@ router.get('/', requireAuth, (req, res) => {
 });
 
 // GET /api/surveys/:id/responses/count
-router.get('/:id/responses/count', requireAuth, (req, res) => {
+router.get('/:id/responses/count', requireAuth, loadOwnedSurvey, (req, res) => {
   const db = getDb();
-  const survey = db.prepare('SELECT id FROM surveys WHERE id = ? AND user_id = ?')
-    .get(req.params.id, req.user.userId);
-  if (!survey) {
-    return res.status(404).json({ success: false, error: 'Survey not found' });
-  }
   const row = db.prepare('SELECT COUNT(*) as count FROM responses WHERE survey_id = ?')
     .get(req.params.id);
   res.json({ success: true, data: { count: row.count } });
 });
 
 // GET /api/surveys/:id — get full survey config
-router.get('/:id', requireAuth, (req, res) => {
-  const db = getDb();
-  const survey = db.prepare('SELECT * FROM surveys WHERE id = ? AND user_id = ?')
-    .get(req.params.id, req.user.userId);
-  if (!survey) {
-    return res.status(404).json({ success: false, error: 'Survey not found' });
-  }
+router.get('/:id', requireAuth, loadOwnedSurvey, (req, res) => {
+  const survey = req.survey;
   res.json({
     success: true,
     data: {
@@ -83,15 +70,9 @@ router.post('/', requireAuth, (req, res) => {
 });
 
 // PUT /api/surveys/:id — update survey
-router.put('/:id', requireAuth, (req, res) => {
+router.put('/:id', requireAuth, loadOwnedSurvey, (req, res) => {
   const { configName, description, questions, mappings, rules, postProcessing } = req.body;
   const db = getDb();
-
-  const existing = db.prepare('SELECT id FROM surveys WHERE id = ? AND user_id = ?')
-    .get(req.params.id, req.user.userId);
-  if (!existing) {
-    return res.status(404).json({ success: false, error: 'Survey not found' });
-  }
 
   db.prepare(
     `UPDATE surveys SET config_name = ?, description = ?, questions_json = ?, mappings_json = ?, rules_json = ?, post_processing_json = ?, updated_at = datetime('now')
@@ -111,19 +92,13 @@ router.put('/:id', requireAuth, (req, res) => {
 });
 
 // PATCH /api/surveys/:id/active — toggle survey active/inactive
-router.patch('/:id/active', requireAuth, (req, res) => {
+router.patch('/:id/active', requireAuth, loadOwnedSurvey, (req, res) => {
   const { isActive } = req.body;
   if (typeof isActive !== 'boolean') {
     return res.status(400).json({ success: false, error: 'isActive (boolean) is required' });
   }
 
   const db = getDb();
-  const existing = db.prepare('SELECT id FROM surveys WHERE id = ? AND user_id = ?')
-    .get(req.params.id, req.user.userId);
-  if (!existing) {
-    return res.status(404).json({ success: false, error: 'Survey not found' });
-  }
-
   db.prepare(
     "UPDATE surveys SET is_active = ?, updated_at = datetime('now') WHERE id = ? AND user_id = ?"
   ).run(isActive ? 1 : 0, req.params.id, req.user.userId);
