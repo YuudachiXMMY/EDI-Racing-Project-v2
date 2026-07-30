@@ -33,6 +33,10 @@ export default function useRoomStatus({ poll = false, onFinished } = {}) {
     clearTimeout(debounceRef.current);
     clearInterval(pollRef.current);
     setRoomStatus(null);
+    // Clear any stale in-flight spinner: an aborted fetch or a sub-min-length
+    // code change would otherwise leave `checking` stuck true. fetchStatus
+    // re-sets it to true when a real check actually starts.
+    setChecking(false);
 
     async function fetchStatus(code) {
       if (abortRef.current) return;
