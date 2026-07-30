@@ -99,7 +99,7 @@ public class RaceFinishPanel : MonoBehaviour
             for (int i = 0; i < count; i++)
             {
                 var car = ranked[i];
-                string color = i == 0 ? "yellow" : i == 1 ? "#C0C0C0" : i == 2 ? "#CD7F32" : "white";
+                string color = LeaderboardFormatter.RankHex(i);
                 sb.AppendLine($"<color={color}>{i + 1}. {car.TeamName}  (Lap {car.CurrentLap})</color>");
             }
         }

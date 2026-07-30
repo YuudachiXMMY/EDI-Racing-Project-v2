@@ -52,18 +52,7 @@ public static class ResultsExporter
             sb.Append($"{car.Rank},{EscapeCsv(car.TeamName)}");
             foreach (var key in allKeys)
             {
-                string val = "";
-                if (car.Attributes != null)
-                {
-                    for (int i = 0; i < car.Attributes.Length; i++)
-                    {
-                        if (string.Equals(car.Attributes[i].Key, key, System.StringComparison.OrdinalIgnoreCase))
-                        {
-                            val = car.Attributes[i].Value;
-                            break;
-                        }
-                    }
-                }
+                string val = car.Attributes.Get(key, "");
                 sb.Append($",{EscapeCsv(val)}");
             }
             sb.AppendLine($",{car.LapsCompleted},{car.CheckpointsPassed},{car.TotalTime:F2}");

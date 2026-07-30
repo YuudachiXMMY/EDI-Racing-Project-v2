@@ -183,10 +183,8 @@ public struct CarResult
     {
         get
         {
-            if (Attributes == null) return 0;
-            for (int i = 0; i < Attributes.Length; i++)
-                if (string.Equals(Attributes[i].Key, "colorIndex", System.StringComparison.OrdinalIgnoreCase))
-                    if (int.TryParse(Attributes[i].Value, out int val)) return val;
+            string value = Attributes.Get("colorIndex", null);
+            if (value != null && int.TryParse(value, out int val)) return val;
             return 0;
         }
     }

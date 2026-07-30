@@ -325,7 +325,7 @@ public class NetworkSync : MonoBehaviour
                     foreach (var mat in r.materials)
                     {
                         mat.EnableKeyword("_EMISSION");
-                        mat.SetColor("_EmissionColor", new Color(1f, 0.84f, 0f) * 0.3f);
+                        mat.SetColor("_EmissionColor", LeaderboardFormatter.Gold * 0.3f);
                     }
                 }
             }

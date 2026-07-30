@@ -49,15 +49,7 @@ public static class SurveyResponseMapper
 
     private static string FindResponse(AttributeEntry[] responses, string questionId)
     {
-        if (responses == null || string.IsNullOrEmpty(questionId))
-            return null;
-
-        for (int i = 0; i < responses.Length; i++)
-        {
-            if (string.Equals(responses[i].Key, questionId, StringComparison.OrdinalIgnoreCase))
-                return responses[i].Value;
-        }
-        return null;
+        return responses.Get(questionId, null);
     }
 
     private static string ApplyTransform(string responseValue, AttributeMapping mapping)
@@ -85,12 +77,7 @@ public static class SurveyResponseMapper
         if (lookupEntries == null || lookupEntries.Length == 0)
             return responseValue;
 
-        for (int i = 0; i < lookupEntries.Length; i++)
-        {
-            if (string.Equals(lookupEntries[i].Key, responseValue, StringComparison.OrdinalIgnoreCase))
-                return lookupEntries[i].Value;
-        }
-
-        return defaultValue ?? responseValue;
+        string match = lookupEntries.Get(responseValue, null);
+        return match ?? (defaultValue ?? responseValue);
     }
 }

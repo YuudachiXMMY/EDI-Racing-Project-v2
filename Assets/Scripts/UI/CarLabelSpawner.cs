@@ -78,7 +78,7 @@ public class CarLabelSpawner : MonoBehaviour
             if (identity.IsOwnCar)
             {
                 text.text = $">> {identity.TeamName} <<";
-                text.color = new Color(1f, 0.84f, 0f); // gold
+                text.color = LeaderboardFormatter.Gold;
                 text.fontStyle = FontStyle.Bold;
             }
             else

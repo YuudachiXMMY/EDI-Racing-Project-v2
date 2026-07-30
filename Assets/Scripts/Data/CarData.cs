@@ -42,11 +42,7 @@ public struct CarData
 
     public string GetAttribute(string key, string defaultValue = "")
     {
-        if (Attributes == null) return defaultValue;
-        for (int i = 0; i < Attributes.Length; i++)
-            if (string.Equals(Attributes[i].Key, key, StringComparison.OrdinalIgnoreCase))
-                return Attributes[i].Value;
-        return defaultValue;
+        return Attributes.Get(key, defaultValue);
     }
 
     public int GetIntAttribute(string key, int defaultValue = 0)
@@ -65,11 +61,7 @@ public struct CarData
 
     public bool HasAttribute(string key)
     {
-        if (Attributes == null) return false;
-        for (int i = 0; i < Attributes.Length; i++)
-            if (string.Equals(Attributes[i].Key, key, StringComparison.OrdinalIgnoreCase))
-                return true;
-        return false;
+        return Attributes.Has(key);
     }
 
     public string[] GetAttributeKeys()
