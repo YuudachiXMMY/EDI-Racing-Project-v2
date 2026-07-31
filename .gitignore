@@ -130,6 +130,13 @@ InitTestScene*.unity*
 *.dll
 *.so
 *.dylib
+
+# Singularity Group Hot Reload — editor-only dev tool. Its bundled dependency
+# DLLs (Newtonsoft/Harmony/MonoMod/...) match *.dll above and are never committed,
+# so a clean CI checkout cannot compile the package (CS0234) and the WebGL build
+# fails. It has no place in a player build — keep it local-only and untracked.
+# See docs/deployment/prod-ithaca-ci.md.
+Packages/com.singularitygroup.hotreload/
 bin/
 out/
 dist/
