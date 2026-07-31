@@ -1,0 +1,111 @@
+name: Prod Ithaca — WebGL Build & Release
+
+# Builds the Unity WebGL player on GitHub's runners and publishes it as a
+# GitHub Release so the Ithaca server can pull a ready-made build instead of
+# building Unity locally.
+#
+# Trigger: every push to prod/ithaca (i.e. after a PR is merged into it).
+# Output:  a rolling release tagged `prod-ithaca-latest` with a single asset
+#          `ediracing-webgl.zip` containing the contents of Deploy/webgl-build/.
+#
+# Server pull (see docs/deployment/prod-ithaca-ci.md):
+#   gh release download prod-ithaca-latest -p 'ediracing-webgl.zip' -D /tmp
+#   rm -rf Deploy/webgl-build && mkdir -p Deploy/webgl-build
+#   unzip -q /tmp/ediracing-webgl.zip -d Deploy/webgl-build
+#   docker compose -f Deploy/docker-compose.yml build && docker compose ... up -d
+
+on:
+  push:
+    branches: [prod/ithaca]
+  workflow_dispatch: {}   # allow manual re-runs from the Actions tab
+
+# Creating/moving the release tag requires write access to repo contents.
+permissions:
+  contents: write
+
+# A newer push supersedes an in-flight build; don't waste runner minutes.
+concurrency:
+  group: prod-ithaca-build
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build WebGL & Publish Release
+    runs-on: ubuntu-latest
+    steps:
+      # Fail early with an actionable message if no Unity license is configured,
+      # instead of a cryptic failure deep inside unity-builder.
+      - name: Verify Unity license is configured
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+        run: |
+          if [ -z "$UNITY_LICENSE" ] && [ -z "$UNITY_SERIAL" ]; then
+            echo "::error::No Unity license configured. Set the UNITY_LICENSE secret (Personal) or UNITY_SERIAL + UNITY_EMAIL + UNITY_PASSWORD (Plus/Pro). See docs/deployment/prod-ithaca-ci.md for the one-time setup."
+            exit 1
+          fi
+
+      # WebGL builds are large; reclaim runner disk before pulling the Unity image.
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+          df -h /
+
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      # Cache the imported Library folder to cut minutes off subsequent builds.
+      - name: Cache Unity Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-WebGL-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: |
+            Library-WebGL-
+            Library-
+
+      # unity-builder auto-detects the editor version from ProjectSettings and
+      # calls our existing BuildScript.BuildWebGL (writes to Deploy/webgl-build,
+      # runs its own post-build artifact verification, exits non-zero on failure).
+      - name: Build WebGL
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_SERIAL: ${{ secrets.UNITY_SERIAL }}
+        with:
+          targetPlatform: WebGL
+          buildMethod: BuildScript.BuildWebGL
+          # Our BuildScript owns the output path/name, so unity-builder's default
+          # build step is bypassed. allowDirtyBuild avoids a false failure if the
+          # container leaves the working tree slightly dirty.
+          allowDirtyBuild: true
+
+      # Files written inside the Unity Docker container may be root-owned; grant
+      # read/traverse so the runner user can zip them, then package.
+      - name: Package build
+        run: |
+          sudo chmod -R a+rX Deploy/webgl-build
+          test -f Deploy/webgl-build/index.html || { echo "::error::index.html missing — build produced no player"; exit 1; }
+          mkdir -p dist
+          ( cd Deploy/webgl-build && zip -rq "$GITHUB_WORKSPACE/dist/ediracing-webgl.zip" . )
+          echo "Packaged asset:"; ls -lh dist/
+
+      # Publish (or refresh) a rolling release so the server always has one stable
+      # download URL. Deleting + recreating with --target re-points the tag at the
+      # new commit; --cleanup-tag removes the old git tag first.
+      - name: Publish rolling release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="prod-ithaca-latest"
+          printf 'Automated WebGL build for the Ithaca server.\n\n- Commit: %s\n- Run: #%s\n- Branch: %s\n\nPull with:\n```\ngh release download %s -p ediracing-webgl.zip\n```\n' \
+            "${{ github.sha }}" "${{ github.run_number }}" "${{ github.ref_name }}" "$TAG" > notes.md
+          gh release delete "$TAG" --cleanup-tag --yes 2>/dev/null || true
+          gh release create "$TAG" dist/ediracing-webgl.zip \
+            --title "Prod Ithaca — WebGL (build #${{ github.run_number }})" \
+            --notes-file notes.md \
+            --target "${{ github.sha }}"
