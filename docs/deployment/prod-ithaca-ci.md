@@ -5,7 +5,6 @@ locally. GitHub Actions builds the WebGL player and publishes it as a **rolling
 GitHub Release**; the server downloads that release and rebuilds its Docker image.
 
 - Build workflow: [`.github/workflows/prod-ithaca-build.yml`](../../.github/workflows/prod-ithaca-build.yml)
-- License helper: [`.github/workflows/unity-activation.yml`](../../.github/workflows/unity-activation.yml)
 - Build entry point: [`Assets/Scripts/Editor/BuildScript.cs`](../../Assets/Scripts/Editor/BuildScript.cs) → `BuildScript.BuildWebGL`
 
 ---
@@ -43,22 +42,33 @@ a normal `git` checkout of `prod/ithaca`.
 
 ### Option A — Free Personal license (recommended for this project)
 
-1. In GitHub → **Actions** tab → run **"Unity — Request Activation File
-   (one-time)"** (`workflow_dispatch`).
-2. Open the finished run, download the **`Unity_v2026.x.alf`** artifact, and unzip
-   it to get the `.alf` file.
-3. Go to <https://license.unity3d.com/manual>, sign in, upload the `.alf`, answer
-   the survey (Personal / non-commercial as appropriate), and download the
-   returned **`.ulf`** file.
-4. In GitHub → **Settings → Secrets and variables → Actions → New repository
-   secret**, create:
-   - `UNITY_LICENSE` = the **entire contents** of the `.ulf` file (open it in a
-     text editor and paste everything, including the XML header).
-   - `UNITY_EMAIL` = your Unity account email.
-   - `UNITY_PASSWORD` = your Unity account password.
+GameCI's old `unity-request-activation-file` action is **deprecated**. The current
+method activates the license **locally in Unity Hub** and copies the resulting
+`.ulf` into a secret. Since this machine already has Unity Hub + the editor, this
+is a two-minute, one-time task.
 
-> A Personal `.ulf` is tied to the account and machine class. If builds later fail
-> with a license error, re-run the activation workflow to refresh it.
+1. Open **Unity Hub** → **Settings/Preferences → Licenses** → **Add** →
+   **"Get a free personal license"**. Sign in with your Unity account if prompted.
+2. Locate the generated `.ulf` file (Unity writes it on activation):
+   - macOS: `/Library/Application Support/Unity/Unity_lic.ulf`
+   - Windows: `C:\ProgramData\Unity\Unity_lic.ulf`
+   - Linux: `~/.local/share/unity3d/Unity/Unity_lic.ulf`
+3. Store the secrets (from the repo root, `gh` authenticated):
+   ```bash
+   gh secret set UNITY_LICENSE < "/Library/Application Support/Unity/Unity_lic.ulf"
+   gh secret set UNITY_EMAIL --body "your-unity-email"
+   gh secret set UNITY_PASSWORD --body "your-unity-password"
+   ```
+   Or via UI: **Settings → Secrets and variables → Actions → New repository
+   secret**, pasting the **entire contents** of the `.ulf` (including the XML
+   header) into `UNITY_LICENSE`.
+
+> Reference: <https://game.ci/docs/github/activation>. A Personal `.ulf` is tied to
+> the account; if builds later fail with a license error, re-activate in Unity Hub
+> and refresh the `UNITY_LICENSE` secret.
+>
+> **Note:** a `.ulf` may not exist even if Unity Hub shows an active license — you
+> must complete the "Get a free personal license" flow above to materialize the file.
 
 ### Option B — Plus / Pro seat
 
