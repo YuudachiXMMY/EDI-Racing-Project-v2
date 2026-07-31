@@ -32,6 +32,10 @@ jobs:
   build:
     name: Build WebGL & Publish Release
     runs-on: ubuntu-latest
+    # A cold (uncached) WebGL build runs ~105 min on the 2-CPU GameCI container;
+    # 180 gives headroom while still failing fast if a build truly hangs (default
+    # is 6h). Warm-cache builds are much faster.
+    timeout-minutes: 180
     steps:
       # Fail early with an actionable message if no Unity license is configured,
       # instead of a cryptic failure deep inside unity-builder.
