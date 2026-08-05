@@ -694,7 +694,7 @@ public class TrackSetupEditor : EditorWindow
                 new Vector2(10, -10), new Vector2(-10, 10));
 
         if (setup.StartDefaultButton == null)
-            setup.StartDefaultButton = FindOrCreateButton(panel, "StartDefaultBtn", "Start Race (Default CSV)",
+            setup.StartDefaultButton = FindOrCreateButton(panel, "StartDefaultBtn", "Start Game",
                 new Vector2(0.5f, 0), new Vector2(0.5f, 0),
                 new Vector2(-150, 60), new Vector2(150, 95));
 
