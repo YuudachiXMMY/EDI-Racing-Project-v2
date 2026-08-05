@@ -35,7 +35,9 @@ services:
     healthcheck:
       # 127.0.0.1 (not localhost): nginx listens on IPv4 0.0.0.0:80 only, while
       # `localhost` resolves to IPv6 ::1 first inside the container -> false unhealthy.
-      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:80"]
+      # /healthz is served locally by nginx (not proxied to web-app), so the game container
+      # stays healthy on its own even in a solo smoke test where web-app is absent.
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:80/healthz"]
       interval: 10s
       timeout: 5s
       retries: 3

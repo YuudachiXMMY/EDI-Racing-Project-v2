@@ -77,12 +77,14 @@ export function mintHostToken(surveyId = null, now = Date.now()) {
 }
 
 /**
- * Verify a host token. Never throws.
+ * Verify the signature, version, and expiry of a token in the shared wire format and
+ * return its decoded payload. Never throws. Used by both verifyHostToken and
+ * verifyGameAccess so the two credentials share one hardened parse/verify path.
  * @param {string} token
- * @param {number} now - epoch ms; injectable for deterministic tests.
- * @returns {{ valid: boolean, surveyId?: number|null, error?: string }}
+ * @param {number} now - epoch ms.
+ * @returns {{ valid: true, payload: object } | { valid: false, error: string }}
  */
-export function verifyHostToken(token, now = Date.now()) {
+function verifySignedToken(token, now) {
   if (typeof token !== 'string' || token.length === 0) {
     return { valid: false, error: 'missing token' };
   }
@@ -119,5 +121,57 @@ export function verifyHostToken(token, now = Date.now()) {
   if (typeof payload.exp !== 'number' || payload.exp <= now) {
     return { valid: false, error: 'expired' };
   }
-  return { valid: true, surveyId: payload.sid ?? null };
+  return { valid: true, payload };
+}
+
+/**
+ * Verify a host token. Never throws.
+ * @param {string} token
+ * @param {number} now - epoch ms; injectable for deterministic tests.
+ * @returns {{ valid: boolean, surveyId?: number|null, error?: string }}
+ */
+export function verifyHostToken(token, now = Date.now()) {
+  const sig = verifySignedToken(token, now);
+  if (!sig.valid) return sig;
+  return { valid: true, surveyId: sig.payload.sid ?? null };
+}
+
+// ── Game-access cookie ─────────────────────────────────────────────────────────
+// A DIFFERENT credential from the host token above. The host token authorizes creating a
+// WS room (checked by Server/server.js). The game-access token authorizes *loading the
+// Unity build at all*: /api/game/enter mints it once the caller proves they may enter
+// (valid host token, or a live room), it rides the HttpOnly `game_access` cookie, and
+// nginx's auth_request checks it via /api/game/gate before serving any /game/ asset.
+// Longer-lived than the host token because it must outlast a whole class session, not just
+// the create_room handshake. Same b64url+HMAC wire format, but NOT mirrored in
+// Server/server.js — only the web-app mints it and (behind nginx) verifies it.
+//   payload = { v:1, role:'host'|'play', room:<code|null>, sid:<surveyId|null>, iat, exp }
+const ACCESS_TTL_MS = parseInt(process.env.GAME_ACCESS_TTL_MS || '14400000', 10); // 4h
+
+/**
+ * Mint a game-access token for the /game/ build gate.
+ * @param {{ role: 'host'|'play', room?: string|null, surveyId?: number|null }} claims
+ * @param {number} now - epoch ms; injectable for deterministic tests.
+ * @returns {{ token: string, expiresAt: number }}
+ */
+export function mintGameAccess({ role, room = null, surveyId = null }, now = Date.now()) {
+  const payload = { v: 1, role, room, sid: surveyId, iat: now, exp: now + ACCESS_TTL_MS };
+  const payloadB64 = b64url(Buffer.from(JSON.stringify(payload)));
+  return { token: payloadB64 + '.' + sign(payloadB64), expiresAt: payload.exp };
+}
+
+/**
+ * Verify a game-access token. Never throws.
+ * @param {string} token
+ * @param {number} now - epoch ms; injectable for deterministic tests.
+ * @returns {{ valid: boolean, role?: string, room?: string|null, surveyId?: number|null, error?: string }}
+ */
+export function verifyGameAccess(token, now = Date.now()) {
+  const sig = verifySignedToken(token, now);
+  if (!sig.valid) return sig;
+  const { payload } = sig;
+  if (payload.role !== 'host' && payload.role !== 'play') {
+    return { valid: false, error: 'bad role' };
+  }
+  return { valid: true, role: payload.role, room: payload.room ?? null, surveyId: payload.sid ?? null };
 }
