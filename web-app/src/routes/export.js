@@ -3,8 +3,6 @@ import XLSX from 'xlsx';
 import { getDb } from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { loadOwnedSurvey } from '../middleware/loadOwnedSurvey.js';
-import { normalizeRoomCode } from '../config.js';
-import { sendToGameRoom } from '../lib/gameSocket.js';
 
 const router = Router();
 
@@ -163,17 +161,6 @@ function buildCarData(survey) {
   return carData;
 }
 
-// GET /api/surveys/:id/export — export survey data for Unity
-router.get('/:id/export', requireAuth, loadOwnedSurvey, (req, res) => {
-  const survey = req.survey;
-
-  const carData = buildCarData(survey);
-  const eventRules = JSON.parse(survey.rules_json);
-  const mappings = JSON.parse(survey.mappings_json);
-
-  res.json({ success: true, data: { configName: survey.config_name, carData, mappings, eventRules } });
-});
-
 // GET /api/surveys/:id/export-csv — export as vehicleGroupData.csv format
 router.get('/:id/export-csv', requireAuth, loadOwnedSurvey, (req, res) => {
   const survey = req.survey;
@@ -233,85 +220,6 @@ router.get('/:id/export-excel', requireAuth, loadOwnedSurvey, (req, res) => {
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', `attachment; filename="${safeName}.xlsx"`);
   res.send(Buffer.from(buf));
-});
-
-// POST /api/surveys/:id/send-to-game — send survey data directly to Unity via WebSocket
-router.post('/:id/send-to-game', requireAuth, loadOwnedSurvey, (req, res) => {
-  const rc = normalizeRoomCode(req.body.roomCode);
-  if (!rc.ok) {
-    return res.status(400).json({ success: false, error: rc.error });
-  }
-
-  const survey = req.survey;
-  const carData = buildCarData(survey);
-  const mappings = JSON.parse(survey.mappings_json);
-  const eventRules = JSON.parse(survey.rules_json);
-
-  if (carData.length === 0) {
-    return res.status(400).json({ success: false, error: 'No responses to send. Share the survey with students first.' });
-  }
-
-  const exportPayload = {
-    configName: survey.config_name,
-    carData,
-    mappings,
-    eventRules,
-  };
-  const exportJson = JSON.stringify(exportPayload);
-
-  sendToGameRoom(res, {
-    code: rc.code,
-    onRoomJoined: (ws) => {
-      ws.send(JSON.stringify({ type: 'survey_import', configName: survey.config_name, exportJson }));
-    },
-    handleAck: (msg, res, ws, done) => {
-      if (msg.type === 'survey_import_ack') {
-        done();
-        return res.json({ success: true, data: { carsCount: carData.length, rulesCount: eventRules.length } });
-      }
-    },
-  });
-});
-
-// POST /api/surveys/:id/send-config-to-game — send raw survey config to Unity
-router.post('/:id/send-config-to-game', requireAuth, loadOwnedSurvey, (req, res) => {
-  const rc = normalizeRoomCode(req.body.roomCode);
-  if (!rc.ok) {
-    return res.status(400).json({ success: false, error: rc.error });
-  }
-
-  const survey = req.survey;
-
-  // Build Unity-compatible SurveyConfig (PascalCase fields for JsonUtility)
-  const configPayload = {
-    ConfigName: survey.config_name,
-    Description: survey.description || '',
-    CreatedAt: survey.created_at,
-    Version: '1.0',
-    Questions: JSON.parse(survey.questions_json),
-    Mappings: JSON.parse(survey.mappings_json),
-    Rules: JSON.parse(survey.rules_json),
-  };
-
-  sendToGameRoom(res, {
-    code: rc.code,
-    onRoomJoined: (ws) => {
-      ws.send(JSON.stringify({
-        type: 'config_import',
-        configName: survey.config_name,
-        configJson: JSON.stringify(configPayload),
-      }));
-    },
-    handleAck: (msg, res, ws, done) => {
-      if (msg.type === 'config_sync_ack') {
-        done();
-        if (msg.success) {
-          return res.json({ success: true, data: { configName: survey.config_name } });
-        }
-        return res.status(400).json({ success: false, error: msg.error || 'Config sync failed' });
-      }
-    },
-  });
 });
 
 export default router;
