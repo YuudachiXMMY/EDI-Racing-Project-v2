@@ -91,6 +91,30 @@ router.put('/:id', requireAuth, loadOwnedSurvey, (req, res) => {
   res.json({ success: true });
 });
 
+// POST /api/surveys/:id/duplicate — clone a survey's config into a new draft (no responses).
+// The copy is created inactive with a fresh share code so it never collides with the original.
+router.post('/:id/duplicate', requireAuth, loadOwnedSurvey, (req, res) => {
+  const db = getDb();
+  const src = req.survey;
+  const shareCode = generateShareCode();
+
+  const result = db.prepare(
+    `INSERT INTO surveys (user_id, config_name, description, questions_json, mappings_json, rules_json, post_processing_json, share_code)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    req.user.userId,
+    `${src.config_name} (Copy)`,
+    src.description || '',
+    src.questions_json,
+    src.mappings_json,
+    src.rules_json,
+    src.post_processing_json || '[]',
+    shareCode
+  );
+
+  res.status(201).json({ success: true, data: { id: Number(result.lastInsertRowid), shareCode } });
+});
+
 // PATCH /api/surveys/:id/active — toggle survey active/inactive
 router.patch('/:id/active', requireAuth, loadOwnedSurvey, (req, res) => {
   const { isActive } = req.body;

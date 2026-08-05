@@ -34,6 +34,16 @@ button { cursor: pointer; border: none; border-radius: 4px; padding: 8px 16px; f
 .btn-secondary:hover { background: var(--border); }
 .btn-danger { background: var(--danger); color: #fff; }
 .btn-small { padding: 4px 8px; font-size: 12px; }
+/* Quiet tertiary danger: reads as a low-emphasis action until hovered, so Delete never
+   competes with the primary "主持游戏" action for attention. */
+.btn-ghost-danger { background: transparent; color: var(--danger); border: 1px solid transparent; }
+.btn-ghost-danger:hover { background: rgba(224, 64, 64, .12); border-color: rgba(224, 64, 64, .35); }
+
+/* Segmented export group: the two export buttons read as one control, visually subordinate
+   to the primary host action beside them. */
+.toolbar-group { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.toolbar-group .btn-secondary { border: none; border-radius: 0; }
+.toolbar-group .btn-secondary + .btn-secondary { border-left: 1px solid var(--border); }
 
 /* --- Inputs --- */
 input, select, textarea {
@@ -75,10 +85,14 @@ label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; co
 
 /* --- Editor --- */
 .editor-page { display: flex; flex-direction: column; height: 100vh; }
-.editor-header { display: flex; align-items: center; gap: 12px; padding: 10px 16px; border-bottom: 1px solid var(--border); }
-.survey-name-input { flex: 1; font-size: 16px; font-weight: 500; background: transparent; border: 1px solid transparent; color: var(--text); padding: 6px 10px; border-radius: 4px; }
+.editor-header { display: flex; align-items: center; gap: 16px; padding: 10px 16px; border-bottom: 1px solid var(--border); }
+.survey-name-input { flex: 1; min-width: 120px; font-size: 16px; font-weight: 500; background: transparent; border: 1px solid transparent; color: var(--text); padding: 6px 10px; border-radius: 4px; }
 .survey-name-input:focus { border-color: var(--accent); background: var(--bg-input); }
-.save-status { font-size: 12px; color: var(--text-dim); min-width: 100px; text-align: right; }
+/* Read-only status/meta, right-aligned and separated from the action cluster by a hairline
+   divider so "what state am I in" and "what can I do" are two distinct zones. */
+.editor-meta { display: flex; align-items: center; gap: 12px; white-space: nowrap; }
+.editor-actions { display: flex; align-items: center; gap: 10px; padding-left: 16px; border-left: 1px solid var(--border); }
+.save-status { font-size: 12px; color: var(--text-dim); min-width: 88px; text-align: right; }
 .tab-bar { display: flex; border-bottom: 1px solid var(--border); }
 .tab-btn { background: none; color: var(--text-dim); padding: 10px 24px; border-radius: 0; border-bottom: 2px solid transparent; }
 .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
@@ -137,13 +151,6 @@ label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; co
   .student-card { padding: 20px 16px; }
 }
 
-/* --- Export Panel --- */
-.export-panel { background: #f8f9fa; border: 1px solid var(--border); border-radius: 6px; padding: 16px; margin-bottom: 16px; }
-.export-header { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
-.export-header h3 { margin: 0; flex: 1; }
-.export-warning { color: var(--warning, #e67e22); font-style: italic; margin-bottom: 12px; }
-.export-actions { display: flex; gap: 8px; margin-bottom: 12px; }
-.export-preview { width: 100%; font-family: monospace; font-size: 12px; resize: vertical; border: 1px solid var(--border); border-radius: 4px; padding: 8px; background: #fff; }
 .response-count { color: var(--text-dim); font-size: 13px; }
 
 /* --- Share Panel --- */
@@ -161,6 +168,10 @@ label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; co
 .card-title-row h3 { margin: 0; }
 .card-share-row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
 .share-url-mini { flex: 1; font-size: 12px; padding: 4px 8px; background: var(--bg-input); cursor: text; }
+/* Card actions: primary (主持游戏) + Duplicate group left, Delete pushed to the far right so
+   the destructive action is spatially separated from the everyday ones. */
+.card-actions { display: flex; align-items: center; gap: 8px; }
+.card-actions .btn-ghost-danger { margin-left: auto; }
 
 /* --- Responses Tab --- */
 .responses-tab { padding: 0; }

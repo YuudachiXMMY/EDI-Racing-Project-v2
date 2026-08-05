@@ -1,15 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getSurveys, createSurvey, deleteSurvey, getTemplates, toggleSurveyActive, logout, clearToken, requestHostToken } from '../api.js';
+import { getSurveys, createSurvey, deleteSurvey, duplicateSurvey, getTemplates, toggleSurveyActive, logout, clearToken, requestHostToken } from '../api.js';
 import { buildHostLaunchUrl, buildShareUrl } from '../gameLaunch.js';
-import SendToGameModal from '../components/SendToGameModal.jsx';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
   const [surveys, setSurveys] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [sendModalSurveyId, setSendModalSurveyId] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -57,6 +55,13 @@ export default function DashboardPage() {
     if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
     const result = await deleteSurvey(id);
     if (result.success) setSurveys(prev => prev.filter(s => s.id !== id));
+  }
+
+  async function handleDuplicate(id, e) {
+    e.stopPropagation();
+    const result = await duplicateSurvey(id);
+    if (result.success) loadData();
+    else alert(`Failed to duplicate: ${result.error || 'unknown error'}`);
   }
 
   // Launch the game in professor host mode: mint a host token, then open the Unity build
@@ -158,16 +163,14 @@ export default function DashboardPage() {
                     主持游戏
                   </button>
                 )}
-                {(s.response_count ?? 0) > 0 && (
-                  <button
-                    className="btn-primary btn-small"
-                    onClick={e => { e.stopPropagation(); setSendModalSurveyId(s.id); }}
-                  >
-                    Send to Game
-                  </button>
-                )}
                 <button
-                  className="btn-danger btn-small"
+                  className="btn-secondary btn-small"
+                  onClick={e => handleDuplicate(s.id, e)}
+                >
+                  Duplicate
+                </button>
+                <button
+                  className="btn-ghost-danger btn-small"
                   onClick={e => { e.stopPropagation(); handleDelete(s.id, s.config_name); }}
                 >
                   Delete
@@ -177,8 +180,6 @@ export default function DashboardPage() {
           ))}
         </div>
       )}
-
-      {sendModalSurveyId && <SendToGameModal surveyId={sendModalSurveyId} onClose={() => setSendModalSurveyId(null)} />}
     </div>
   );
 }
