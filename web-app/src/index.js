@@ -65,12 +65,15 @@ app.get('/api/health', (req, res) => {
   res.json({ success: true, data: { status: 'ok' } });
 });
 
-// Serve client build in production (base path matches Vite config base: '/survey/')
+// Serve the client build at the site root (Vite base: '/'). The Unity game is served
+// separately by nginx at /game/, so the SPA owns everything else. HashRouter means the
+// server only ever sees '/', but the '*' fallback also covers any non-hash deep path;
+// it skips /api so unmatched API routes still 404 as JSON instead of returning HTML.
 const clientDist = join(__dirname, '..', 'client', 'dist');
 if (existsSync(clientDist)) {
-  app.use('/survey', express.static(clientDist));
-  app.get('/', (req, res) => res.redirect('/survey/'));
-  app.get('/survey/*', (req, res) => {
+  app.use(express.static(clientDist));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api/')) return next();
     res.sendFile(join(clientDist, 'index.html'));
   });
 }

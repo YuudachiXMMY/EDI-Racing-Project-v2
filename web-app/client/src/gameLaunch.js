@@ -1,20 +1,23 @@
-// Single source of truth for the Unity WebGL game root. Same-origin root by default
-// (single-origin deploy: game at /, survey app at /survey/). Override with VITE_GAME_URL.
-const GAME_ROOT = import.meta.env?.VITE_GAME_URL || '/';
+// Single source of truth for the web-app -> Unity build launch links. The build is served
+// gated at /game/; you never link there directly. Every launch goes through the web-app
+// access gateway /api/game/enter, which verifies the caller, sets the HttpOnly game-access
+// cookie nginx checks, then 302-redirects into /game/#… (where Unity reads role/token/room).
 
-// Build the professor host-launch URL. Token + survey ride in the hash fragment so they
-// are never sent to the server, never logged by nginx/Traefik/Caddy, and never CDN-cached.
+// Build the professor host-launch URL: the gateway with role + host token + survey. The
+// gateway re-verifies the token before minting the cookie, and forwards the token into the
+// final /game/ hash so Unity can create the room. The token rides a query to the trusted
+// web-app only (over TLS), never to nginx static / a CDN.
 export function buildHostLaunchUrl(token, surveyId) {
   const params = new URLSearchParams({ role: 'host', token, survey: String(surveyId) });
-  return `${GAME_ROOT}#${params.toString()}`;
+  return `/api/game/enter?${params.toString()}`;
 }
 
-// Build the student 3D-join URL. Carries the room code and role=play only — NEVER a host
-// token — so opening it can join/watch but cannot create a room or trigger events. The hash
-// (client-only) keeps it out of server/CDN logs, consistent with the host-launch URL.
+// Build the student/audience 3D-join URL: the gateway with role=play + room only — NEVER a
+// host token — so it can join/watch but cannot create a room or trigger events. The gateway
+// admits only live rooms before minting the cookie.
 export function buildStudentPlayUrl(roomCode) {
-  const params = new URLSearchParams({ room: String(roomCode), role: 'play' });
-  return `${GAME_ROOT}#${params.toString()}`;
+  const params = new URLSearchParams({ role: 'play', room: String(roomCode) });
+  return `/api/game/enter?${params.toString()}`;
 }
 
 // Build the in-app path to the 2D spectator dashboard for a room. Returns a HashRouter-relative
@@ -26,9 +29,10 @@ export function buildSpectatorPath(roomCode) {
   return `/live/${String(roomCode).toUpperCase()}`;
 }
 
-// Build the shareable survey-response URL for a survey's share code. Points at the survey
-// app's HashRouter route (/survey/#/s/CODE) on the current origin. Single source of truth for
-// the share link used by SharePanel and the dashboard card (both direct copy and readonly input).
+// Build the shareable survey-response URL for a survey's share code. The survey app is now the
+// site root, so this points at its HashRouter route (/#/s/CODE) on the current origin. Single
+// source of truth for the share link used by SharePanel and the dashboard card (both direct
+// copy and readonly input).
 export function buildShareUrl(shareCode) {
-  return `${window.location.origin}/survey/#/s/${shareCode}`;
+  return `${window.location.origin}/#/s/${shareCode}`;
 }
