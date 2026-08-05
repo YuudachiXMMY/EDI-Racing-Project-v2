@@ -1,9 +1,11 @@
 # EDI-Racing unified Docker Compose — one command runs Game + WebSocket Server + Web App.
 #
 # Single origin: the game container's nginx (:80) is the edge and routes
-#   /            -> Unity WebGL (static, Brotli)
+#   /            -> Survey web app (web-app Express + SQLite on :3001; serves the React SPA + API)
+#   /game/       -> Unity WebGL (static, Brotli) — access-gated via /api/game/gate
 #   /ws          -> WebSocket relay (Server/server.js on :3000, in-container)
-#   /survey /api -> Survey web app (web-app Express + SQLite on :3001)
+#   /api         -> Survey web app API (:3001)
+#   /survey/     -> 301 redirect to / (back-compat for old links)
 #
 # Self-contained: `docker compose up --build` needs no external network.
 # Production TLS / edge routing is layered via docker-compose.prod.yml.
@@ -57,7 +59,7 @@ services:
       context: ../web-app
       dockerfile: Dockerfile
     container_name: edi-racing-api
-    # Not published to the host by default — reached through the nginx edge at /survey and /api.
+    # Not published to the host by default — reached through the nginx edge at / and /api.
     # Uncomment for direct debugging:
     # ports:
     #   - "${API_PORT:-3901}:3001"
