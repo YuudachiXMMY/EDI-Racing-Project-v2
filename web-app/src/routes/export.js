@@ -3,6 +3,8 @@ import XLSX from 'xlsx';
 import { getDb } from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { loadOwnedSurvey } from '../middleware/loadOwnedSurvey.js';
+import { normalizeRoomCode } from '../config.js';
+import { sendToGameRoom } from '../lib/gameSocket.js';
 
 const router = Router();
 
@@ -220,6 +222,50 @@ router.get('/:id/export-excel', requireAuth, loadOwnedSurvey, (req, res) => {
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   res.setHeader('Content-Disposition', `attachment; filename="${safeName}.xlsx"`);
   res.send(Buffer.from(buf));
+});
+
+// POST /api/surveys/:id/send-to-game — push a survey's processed responses straight into a
+// live Unity game room over the WS relay. This is the endpoint the Unity WebGL build calls
+// automatically on professor host launch (Assets/Plugins/WebGL/WebSocketBridge.jslib ->
+// WebSocketBridge_HostAutoInject); without it the game loads with "No active config" and the
+// students' survey data never becomes race cars. Builds the same double-serialized WebAppExport
+// the manual JSON import used (matching Unity's SurveyImportMessage.exportJson), then relays it
+// as a `survey_import` message the WS server forwards to the room's professor (Unity) client.
+router.post('/:id/send-to-game', requireAuth, loadOwnedSurvey, (req, res) => {
+  const rc = normalizeRoomCode(req.body.roomCode);
+  if (!rc.ok) {
+    return res.status(400).json({ success: false, error: rc.error });
+  }
+
+  const survey = req.survey;
+  const carData = buildCarData(survey);
+  const mappings = JSON.parse(survey.mappings_json);
+  const eventRules = JSON.parse(survey.rules_json);
+
+  if (carData.length === 0) {
+    return res.status(400).json({ success: false, error: 'No responses to send. Share the survey with students first.' });
+  }
+
+  const exportPayload = {
+    configName: survey.config_name,
+    carData,
+    mappings,
+    eventRules,
+  };
+  const exportJson = JSON.stringify(exportPayload);
+
+  sendToGameRoom(res, {
+    code: rc.code,
+    onRoomJoined: (ws) => {
+      ws.send(JSON.stringify({ type: 'survey_import', configName: survey.config_name, exportJson }));
+    },
+    handleAck: (msg, res, ws, done) => {
+      if (msg.type === 'survey_import_ack') {
+        done();
+        return res.json({ success: true, data: { carsCount: carData.length, rulesCount: eventRules.length } });
+      }
+    },
+  });
 });
 
 export default router;
