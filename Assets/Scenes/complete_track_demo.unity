@@ -751,7 +751,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d7de56547cf814d439a3933aa22920ab, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::JoinScreen
-  NetworkManager: {fileID: 0}
+  NetworkManager: {fileID: 1404780700}
   RoomCodeInput: {fileID: 199840012}
   TeamNameInput: {fileID: 368564335}
   JoinButton: {fileID: 1775104324}
@@ -1586,7 +1586,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0887b58f78ab04f8bab1de50e5168134, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CarLabelSpawner
-  RaceManager: {fileID: 0}
+  RaceManager: {fileID: 607591796}
   FontSize: 24
   LabelHeight: 4
   MaxVisibleDistance: 80
@@ -2941,7 +2941,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9ec73d0f1eb09400bbd69912b33c1194, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EventPanel
-  EventManager: {fileID: 0}
+  EventManager: {fileID: 607591800}
   ContentParent: {fileID: 135148943}
   EventRowPrefab: {fileID: 7679708994339247549, guid: d63342f331b90457685375ec819d3aef, type: 3}
 --- !u!224 &390993380
@@ -4141,7 +4141,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a22b1ee050229435680163ffb25885d0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LeaderboardPanel
-  ScoreManager: {fileID: 0}
+  ScoreManager: {fileID: 607591801}
   ContentParent: {fileID: 1587315239}
   RowPrefab: {fileID: 6245057705971971554, guid: ba06c794e9ae748908ddcb0f6a6421f1, type: 3}
   UpdateInterval: 0.5
@@ -4388,7 +4388,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c4ddbba4081d041dfaf0df47b2b464ef, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SetupScreen
-  RaceManager: {fileID: 0}
+  RaceManager: {fileID: 607591796}
   StartDefaultButton: {fileID: 1555869349}
   LoadSessionButton: {fileID: 1269035023}
   InfoText: {fileID: 102719145}
@@ -4396,7 +4396,9 @@ MonoBehaviour:
   HostButton: {fileID: 245031901}
   RoomCodeText: {fileID: 729701072}
   StudentCountText: {fileID: 934177638}
-  SurveyConfigManager: {fileID: 0}
+  StudentLinkText: {fileID: 0}
+  CopyLinkButton: {fileID: 0}
+  SurveyConfigManager: {fileID: 1833288157}
   ActiveConfigText: {fileID: 215835145}
   NewSurveyButton: {fileID: 13621535}
   LoadConfigButton: {fileID: 857074484}
@@ -5323,11 +5325,11 @@ MonoBehaviour:
   RaceManager: {fileID: 607591796}
   CameraManager: {fileID: 1155417298}
   NetworkManager: {fileID: 1404780700}
-  Leaderboard: {fileID: 0}
-  Events: {fileID: 0}
-  Controls: {fileID: 0}
+  Leaderboard: {fileID: 667381311}
+  Events: {fileID: 390993379}
+  Controls: {fileID: 451570430}
   Setup: {fileID: 692145202}
-  JoinScreen: {fileID: 0}
+  JoinScreen: {fileID: 76890510}
 --- !u!114 &868943146
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -7993,7 +7995,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 46879e305e64f4edcadc71f178f7cf3d, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: EDIRacing.Runtime::HostLaunchBootstrap
   NetworkManager: {fileID: 1404780700}
   RaceUI: {fileID: 868943145}
@@ -8007,7 +8009,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fc2f71f0afbdc1f49898d8904314d4c3, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: EDIRacing.Runtime::StudentJoinBootstrap
   NetworkManager: {fileID: 1404780700}
   RaceUI: {fileID: 868943145}
@@ -11400,6 +11402,56 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!1 &1990010001
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1990010002}
+  - component: {fileID: 1990010003}
+  m_Layer: 0
+  m_Name: FinishPanel
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &1990010002
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1990010001}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 868943149}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 100, y: 100}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &1990010003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1990010001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 56377efdab6f34add88f03df15f3a432, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  RaceManager: {fileID: 607591796}
+  ScoreManager: {fileID: 607591801}
 --- !u!1 &2036857288
 GameObject:
   m_ObjectHideFlags: 0
@@ -14561,53 +14613,3 @@ SceneRoots:
   - {fileID: 1874963112}
   - {fileID: 607591797}
   - {fileID: 582052980}
---- !u!1 &1990010001
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1990010002}
-  - component: {fileID: 1990010003}
-  m_Layer: 0
-  m_Name: FinishPanel
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!224 &1990010002
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1990010001}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 868943149}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 100, y: 100}
-  m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &1990010003
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1990010001}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 56377efdab6f34add88f03df15f3a432, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
-  RaceManager: {fileID: 607591796}
-  ScoreManager: {fileID: 607591801}
