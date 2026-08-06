@@ -35,13 +35,13 @@ export default function SharePanel({ shareCode, isActive, onToggleActive }) {
           onClick={e => e.target.select()}
         />
         <button onClick={handleCopy} className="btn-secondary btn-small copy-btn">
-          {copied ? 'Copied!' : 'Copy Link'}
+          {copied ? '已复制!' : '复制链接'}
         </button>
         <button
           onClick={() => onToggleActive(!isActive)}
           className={`btn-small active-toggle ${isActive ? 'active' : 'inactive'}`}
         >
-          {isActive ? 'Active' : 'Inactive'}
+          {isActive ? '启用' : '停用'}
         </button>
       </div>
     </div>

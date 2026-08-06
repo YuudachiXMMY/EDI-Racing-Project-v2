@@ -32,7 +32,7 @@ export default function MappingsTab({ mappings, questions, onChange }) {
           disabled={mappings.length >= MAX_MAPPINGS}
           className="btn-primary"
         >
-          + Add Mapping
+          + 添加映射
         </button>
         {mappings.length >= MAX_MAPPINGS && (
           <span className="warning">Max {MAX_MAPPINGS} reached</span>

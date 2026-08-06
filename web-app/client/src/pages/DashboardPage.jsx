@@ -101,12 +101,12 @@ export default function DashboardPage() {
     <div className="dashboard-page">
       <header className="app-header">
         <h1>EDI Survey Dashboard</h1>
-        <button onClick={() => navigate('/history')} className="btn-secondary">Session History</button>
-        <button onClick={handleLogout} className="btn-secondary">Logout</button>
+        <button onClick={() => navigate('/history')} className="btn-secondary">场次历史</button>
+        <button onClick={handleLogout} className="btn-secondary">退出登录</button>
       </header>
 
       <div className="dashboard-actions">
-        <button onClick={handleCreate} className="btn-primary">+ New Survey</button>
+        <button onClick={handleCreate} className="btn-primary">+ 新建问卷</button>
 
         {templates.length > 0 && (
           <div className="template-dropdown">
@@ -134,7 +134,7 @@ export default function DashboardPage() {
                   className={`btn-small active-toggle ${s.is_active ? 'active' : 'inactive'}`}
                   onClick={e => { e.stopPropagation(); handleToggleActive(s.id, !s.is_active); }}
                 >
-                  {s.is_active ? 'Active' : 'Inactive'}
+                  {s.is_active ? '启用' : '停用'}
                 </button>
               </div>
               {s.description && <p className="description">{s.description}</p>}
@@ -147,7 +147,7 @@ export default function DashboardPage() {
                   onClick={e => e.target.select()}
                 />
                 <button className="btn-secondary btn-small" onClick={e => copyShareLink(s.share_code, e)}>
-                  Copy
+                  复制
                 </button>
               </div>
               <div className="card-meta">
@@ -167,13 +167,13 @@ export default function DashboardPage() {
                   className="btn-secondary btn-small"
                   onClick={e => handleDuplicate(s.id, e)}
                 >
-                  Duplicate
+                  复制
                 </button>
                 <button
                   className="btn-ghost-danger btn-small"
                   onClick={e => { e.stopPropagation(); handleDelete(s.id, s.config_name); }}
                 >
-                  Delete
+                  删除
                 </button>
               </div>
             </div>

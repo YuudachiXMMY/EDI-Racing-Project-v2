@@ -102,7 +102,7 @@ export default function RuleRow({ rule, index, onChange, onDelete }) {
           <div className="condition-list">
             {conditions.map((c, ci) => renderConditionRow(c, ci))}
           </div>
-          <button className="btn-small add-condition-btn" onClick={addCondition}>+ Add Condition</button>
+          <button className="btn-small add-condition-btn" onClick={addCondition}>+ 添加条件</button>
         </div>
       ) : (
         <div className="rule-condition">
@@ -130,7 +130,7 @@ export default function RuleRow({ rule, index, onChange, onDelete }) {
             disabled={isAll}
           />
           {!isAll && (
-            <button className="btn-small add-condition-btn" onClick={addCondition}>+ Add Condition</button>
+            <button className="btn-small add-condition-btn" onClick={addCondition}>+ 添加条件</button>
           )}
         </div>
       )}

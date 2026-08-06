@@ -55,3 +55,9 @@ a917c13 Merge pull request #63 from YuudachiXMMY/worktree-webapp-root-game-gate
 Packages/packages-lock.json
 ---
 
+## Session End: 20260806_143952
+### Commits
+6d528af Merge pull request #68 from YuudachiXMMY/fix-joinscreen-networkmanager-wiring
+928eb57 fix(unity): wire JoinScreen.NetworkManager so students can join the 3D race
+---
+
