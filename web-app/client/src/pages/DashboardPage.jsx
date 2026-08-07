@@ -2,12 +2,15 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSurveys, createSurvey, deleteSurvey, duplicateSurvey, getTemplates, toggleSurveyActive, logout, clearToken, requestHostToken } from '../api.js';
 import { buildHostLaunchUrl, buildShareUrl } from '../gameLaunch.js';
+import HostRoomPanel from '../components/HostRoomPanel.jsx';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
   const [surveys, setSurveys] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
+  // Survey whose Host Room panel (student link + QR) is open, or null when dismissed.
+  const [hostingSurveyId, setHostingSurveyId] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -89,6 +92,9 @@ export default function DashboardPage() {
       // Popup was blocked before the await; last-resort retry (may still be blocked).
       window.open(url, '_blank', 'noopener');
     }
+    // Surface the student join link + QR here in the dashboard. The panel polls the server for the
+    // room code the game tab is about to create (Unity owns room creation; the code isn't known yet).
+    setHostingSurveyId(surveyId);
   }
 
   async function handleLogout() {
@@ -179,6 +185,10 @@ export default function DashboardPage() {
             </div>
           ))}
         </div>
+      )}
+
+      {hostingSurveyId !== null && (
+        <HostRoomPanel surveyId={hostingSurveyId} onClose={() => setHostingSurveyId(null)} />
       )}
     </div>
   );

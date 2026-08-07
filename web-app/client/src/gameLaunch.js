@@ -29,6 +29,14 @@ export function buildSpectatorPath(roomCode) {
   return `/live/${String(roomCode).toUpperCase()}`;
 }
 
+// Build the public student join link for a live room: an absolute URL to the survey app's
+// no-auth landing route (/#/join/CODE, JoinLandingPage), where students pick 3D game or 2D
+// spectate. This is what the professor shares and what the QR code encodes after Host Game.
+// Absolute (origin-qualified) and upper-cased so it scans/pastes cleanly off any device.
+export function buildJoinLandingUrl(roomCode) {
+  return `${window.location.origin}/#/join/${String(roomCode).toUpperCase()}`;
+}
+
 // Build the shareable survey-response URL for a survey's share code. The survey app is now the
 // site root, so this points at its HashRouter route (/#/s/CODE) on the current origin. Single
 // source of truth for the share link used by SharePanel and the dashboard card (both direct

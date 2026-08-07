@@ -266,3 +266,25 @@ label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; co
   border: none; border-radius: 10px; text-decoration: none; cursor: pointer; }
 .join-choice-title { font-size: 20px; font-weight: 700; }
 .join-choice-sub { font-size: 13px; opacity: 0.85; }
+
+/* Host Room panel — student join link + QR, shown after "Host Game" (HostRoomPanel.jsx) */
+.host-room-overlay { position: fixed; inset: 0; background: rgba(0, 0, 0, 0.6);
+  display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.host-room-panel { position: relative; background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 12px; padding: 28px 32px; width: 360px; max-width: calc(100vw - 32px); text-align: center; }
+.host-room-panel h2 { margin: 0 0 16px; font-size: 20px; }
+.host-room-close { position: absolute; top: 10px; right: 12px; background: none; border: none;
+  color: var(--text-dim); font-size: 24px; line-height: 1; cursor: pointer; padding: 4px; }
+.host-room-close:hover { color: var(--text); }
+.host-room-waiting { display: flex; flex-direction: column; align-items: center; gap: 14px;
+  color: var(--text-dim); font-size: 14px; padding: 12px 0; }
+.host-room-spinner { width: 32px; height: 32px; border: 3px solid var(--border);
+  border-top-color: var(--accent); border-radius: 50%; animation: host-room-spin 0.8s linear infinite; }
+@keyframes host-room-spin { to { transform: rotate(360deg); } }
+.host-room-ready { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+.host-room-code { font-size: 15px; color: var(--text-dim); margin: 0; }
+.host-room-code strong { color: var(--text); font-size: 22px; letter-spacing: 2px; margin-left: 6px; }
+.host-room-qr { background: #fff; padding: 10px; border-radius: 8px; }
+.host-room-hint { font-size: 13px; color: var(--text-dim); margin: 0; }
+.host-room-link-row { display: flex; gap: 8px; width: 100%; }
+.host-room-url { flex: 1; font-size: 13px; background: var(--bg-input); cursor: text; min-width: 0; }

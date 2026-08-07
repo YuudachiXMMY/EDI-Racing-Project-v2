@@ -136,6 +136,14 @@ export async function requestHostToken(surveyId) {
   });
 }
 
+// Poll for the live room a just-launched host session created. The WS server owns room-code
+// generation and the prebuilt Unity client never reports it back, so the web-app discovers the
+// code by asking the server which room this survey is currently hosting.
+// Backend: GET /api/game/survey-room/:surveyId (requireAuth) -> { success, data: { exists, roomCode? } }.
+export async function getSurveyRoom(surveyId) {
+  return request(`/game/survey-room/${surveyId}`);
+}
+
 // Race results read path — populates the Results tab. The write path (saveRaceResults) was
 // coupled to the removed Send-to-Game modal; a host-mode results hook can be added later.
 export async function getRaceResults(surveyId) {
