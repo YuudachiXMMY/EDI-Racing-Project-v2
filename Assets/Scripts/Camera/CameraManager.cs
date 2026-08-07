@@ -4,8 +4,8 @@ using UnityEngine.InputSystem;
 /// <summary>
 /// Switches between Free, Fixed, Spectator, and the two Auto Cam modes.
 /// Professor uses Free + Fixed (F1-F9) plus Auto Cam (the 'C' hotkey / Auto Cam button), which
-/// flips between AutoTopCars (chase cam cycling the top 3) and AutoAllCams (cycle every fixed
-/// camera aimed at the leader). Esc/F1-F9 exit Auto Cam. Student uses Spectator.
+/// flips between AutoTopCars (chase cam cycling the top 3) and AutoAllCams (park at the fixed
+/// camera second-closest to the leader, aimed at it). Esc/F1-F9 exit Auto Cam. Student uses Spectator.
 /// </summary>
 public class CameraManager : MonoBehaviour
 {
@@ -26,7 +26,7 @@ public class CameraManager : MonoBehaviour
 
     // Free/Fixed/Spectator: the original three modes. The two Auto Cam modes both reuse SpectatorCam:
     //   AutoTopCars  — chase cam cycling the top-N cars.
-    //   AutoAllCams  — cycle every fixed camera point, each aimed at the leader.
+    //   AutoAllCams  — park at the fixed camera second-closest to the leader, aimed at it.
     public enum CameraMode { Free, Fixed, Spectator, AutoTopCars, AutoAllCams }
 
     public CameraMode CurrentMode { get; private set; } = CameraMode.Free;
