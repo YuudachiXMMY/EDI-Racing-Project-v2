@@ -173,10 +173,13 @@ public class WeatherEffect : MonoBehaviour
         var main = snowParticles.main;
         main.loop = true;
         main.startLifetime = 5f;
-        main.startSpeed = 8f;
-        main.startSize = 0.3f;
+        // Vary fall speed so flakes don't move as a rigid sheet.
+        main.startSpeed = new ParticleSystem.MinMaxCurve(4f, 8f);
+        // Vary flake size for depth; small flakes read as distant snow.
+        main.startSize = new ParticleSystem.MinMaxCurve(0.15f, 0.5f);
+        main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
         main.maxParticles = 2000;
-        main.startColor = new Color(0.95f, 0.95f, 1f, 0.8f);
+        main.startColor = new Color(0.95f, 0.95f, 1f, 0.85f);
         main.simulationSpace = ParticleSystemSimulationSpace.World;
         main.gravityModifier = 0.3f;
 
@@ -187,17 +190,88 @@ public class WeatherEffect : MonoBehaviour
         shape.shapeType = ParticleSystemShapeType.Box;
         shape.scale = new Vector3(100f, 1f, 100f);
 
+        // Gentle turbulence so flakes drift and swirl instead of falling straight.
+        var noise = snowParticles.noise;
+        noise.enabled = true;
+        noise.strength = 0.5f;
+        noise.frequency = 0.2f;
+        noise.scrollSpeed = 0.3f;
+
         var renderer = snowObj.GetComponent<ParticleSystemRenderer>();
         var particleShader = Shader.Find("Universal Render Pipeline/Particles/Unlit")
                              ?? Shader.Find("Particles/Standard Unlit")
                              ?? Shader.Find("UI/Default");
         if (particleShader != null)
-            renderer.material = new Material(particleShader);
+        {
+            var mat = new Material(particleShader);
+            var flakeTex = CreateSnowflakeTexture();
+
+            // Assign the soft-dot texture under every base-map name the fallback
+            // shaders use, so flakes render as soft rounded points, not squares.
+            mat.mainTexture = flakeTex;
+            if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", flakeTex);
+            if (mat.HasProperty("_MainTex")) mat.SetTexture("_MainTex", flakeTex);
+
+            // Switch to alpha blending so the soft edges are translucent
+            // (URP Particles/Unlit defaults to Opaque, which ignores flake alpha).
+            if (mat.HasProperty("_Surface")) mat.SetFloat("_Surface", 1f); // 1 = Transparent
+            if (mat.HasProperty("_Blend")) mat.SetFloat("_Blend", 0f);     // 0 = Alpha
+            if (mat.HasProperty("_SrcBlend"))
+                mat.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            if (mat.HasProperty("_DstBlend"))
+                mat.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            if (mat.HasProperty("_ZWrite")) mat.SetFloat("_ZWrite", 0f);
+            mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            mat.DisableKeyword("_ALPHATEST_ON");
+            mat.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+            mat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+
+            renderer.material = mat;
+        }
         else
+        {
             Debug.LogWarning("[WeatherEffect] No suitable particle shader found; using default material");
+        }
         renderer.renderMode = ParticleSystemRenderMode.Billboard;
+        renderer.alignment = ParticleSystemRenderSpace.View;
 
         snowParticles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+    }
+
+    /// <summary>
+    /// Builds a soft radial-gradient "snowflake" sprite at runtime so the
+    /// particle billboards read as round, feathered flakes instead of hard
+    /// white squares. Avoids shipping a texture asset for a single effect.
+    /// </summary>
+    private static Texture2D CreateSnowflakeTexture()
+    {
+        const int size = 32;
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, false)
+        {
+            wrapMode = TextureWrapMode.Clamp,
+            filterMode = FilterMode.Bilinear,
+            name = "SnowflakeSoftDot"
+        };
+
+        float center = (size - 1) * 0.5f;
+        float radius = center;
+        var pixels = new Color[size * size];
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                float dx = (x - center) / radius;
+                float dy = (y - center) / radius;
+                float dist = Mathf.Sqrt(dx * dx + dy * dy);
+                // Smooth falloff: fully opaque at center, transparent at the rim.
+                float alpha = Mathf.Clamp01(1f - dist);
+                alpha *= alpha; // steeper edge → softer, rounder flake
+                pixels[y * size + x] = new Color(1f, 1f, 1f, alpha);
+            }
+        }
+        tex.SetPixels(pixels);
+        tex.Apply();
+        return tex;
     }
 
     private void LateUpdate()
