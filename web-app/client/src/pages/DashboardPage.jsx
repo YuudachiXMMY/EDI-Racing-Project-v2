@@ -70,7 +70,7 @@ export default function DashboardPage() {
   async function handleHostGame(surveyId) {
     // Open the game tab SYNCHRONOUSLY inside the click handler. If we opened it after the
     // `await` below, Safari (and Chrome under some settings) treat the popup as non-user-
-    // initiated and block it silently — the professor clicks "主持游戏" and nothing happens.
+    // initiated and block it silently — the professor clicks "Host Game" and nothing happens.
     // We can't pass 'noopener' here (that makes window.open return null, so we couldn't set
     // the URL after the token resolves); the target is same-origin, so opener access is not a
     // cross-origin tabnabbing vector, and we still null the back-reference defensively.
@@ -101,12 +101,12 @@ export default function DashboardPage() {
     <div className="dashboard-page">
       <header className="app-header">
         <h1>EDI Survey Dashboard</h1>
-        <button onClick={() => navigate('/history')} className="btn-secondary">场次历史</button>
-        <button onClick={handleLogout} className="btn-secondary">退出登录</button>
+        <button onClick={() => navigate('/history')} className="btn-secondary">Session History</button>
+        <button onClick={handleLogout} className="btn-secondary">Log Out</button>
       </header>
 
       <div className="dashboard-actions">
-        <button onClick={handleCreate} className="btn-primary">+ 新建问卷</button>
+        <button onClick={handleCreate} className="btn-primary">+ New Survey</button>
 
         {templates.length > 0 && (
           <div className="template-dropdown">
@@ -134,7 +134,7 @@ export default function DashboardPage() {
                   className={`btn-small active-toggle ${s.is_active ? 'active' : 'inactive'}`}
                   onClick={e => { e.stopPropagation(); handleToggleActive(s.id, !s.is_active); }}
                 >
-                  {s.is_active ? '启用' : '停用'}
+                  {s.is_active ? 'Active' : 'Inactive'}
                 </button>
               </div>
               {s.description && <p className="description">{s.description}</p>}
@@ -147,7 +147,7 @@ export default function DashboardPage() {
                   onClick={e => e.target.select()}
                 />
                 <button className="btn-secondary btn-small" onClick={e => copyShareLink(s.share_code, e)}>
-                  复制
+                  Copy
                 </button>
               </div>
               <div className="card-meta">
@@ -160,20 +160,20 @@ export default function DashboardPage() {
                     className="btn-primary btn-small"
                     onClick={e => { e.stopPropagation(); handleHostGame(s.id); }}
                   >
-                    主持游戏
+                    Host Game
                   </button>
                 )}
                 <button
                   className="btn-secondary btn-small"
                   onClick={e => handleDuplicate(s.id, e)}
                 >
-                  复制
+                  Duplicate
                 </button>
                 <button
                   className="btn-ghost-danger btn-small"
                   onClick={e => { e.stopPropagation(); handleDelete(s.id, s.config_name); }}
                 >
-                  删除
+                  Delete
                 </button>
               </div>
             </div>

@@ -47,7 +47,7 @@ export default function HistoryPage() {
     <div className="dashboard-page">
       <header className="app-header">
         <h1>Session History</h1>
-        <button onClick={() => navigate('/dashboard')} className="btn-secondary">← 返回仪表盘</button>
+        <button onClick={() => navigate('/dashboard')} className="btn-secondary">← Back to Dashboard</button>
       </header>
 
       {loading ? (
@@ -97,10 +97,10 @@ export default function HistoryPage() {
 
                       <div className="result-actions">
                         <button className="btn-primary btn-small" onClick={() => downloadCsv(session)}>
-                          下载 CSV
+                          Download CSV
                         </button>
                         <button className="btn-secondary btn-small" onClick={() => downloadJson(session)}>
-                          下载 JSON
+                          Download JSON
                         </button>
                       </div>
                     </>
@@ -111,7 +111,7 @@ export default function HistoryPage() {
           ))}
 
           <button className="btn-secondary" onClick={loadSessions} style={{ marginTop: '12px' }}>
-            刷新
+            Refresh
           </button>
         </div>
       )}

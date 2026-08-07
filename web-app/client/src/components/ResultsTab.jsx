@@ -60,10 +60,10 @@ export default function ResultsTab({ surveyId }) {
 
               <div className="result-actions">
                 <button className="btn-primary btn-small" onClick={() => downloadCsv(session)}>
-                  下载 CSV
+                  Download CSV
                 </button>
                 <button className="btn-secondary btn-small" onClick={() => downloadJson(session)}>
-                  下载 JSON
+                  Download JSON
                 </button>
               </div>
             </div>
@@ -72,7 +72,7 @@ export default function ResultsTab({ surveyId }) {
       ))}
 
       <button className="btn-secondary" onClick={loadResults} style={{ marginTop: '12px' }}>
-        刷新
+        Refresh
       </button>
     </div>
   );

@@ -35,7 +35,7 @@ export default function RulesTab({ rules, onChange }) {
           disabled={rules.length >= MAX_RULES}
           className="btn-primary"
         >
-          + 添加规则
+          + Add Rule
         </button>
         {rules.length >= MAX_RULES && (
           <span className="warning">Max {MAX_RULES} (keys 1-9)</span>
