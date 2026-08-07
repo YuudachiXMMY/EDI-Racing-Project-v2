@@ -50,6 +50,11 @@ public class SetupScreen : MonoBehaviour
     [Header("Web Response Sync (Optional)")]
     public Text WebResponseCountText;
 
+    [Header("Join Toast (Optional)")]
+    // Bottom-left transient "student joined" notice. Auto-resolved/created in Start() so it works
+    // with zero scene wiring; assign in the Editor to skin or reposition it.
+    public JoinToast JoinToast;
+
     // Web-app token data: survey responses pushed in via the WebSocket (survey_import) after a
     // gateway host launch. Cached here instead of auto-starting so the professor starts the race
     // by pressing the single Start Game button. See StartGame().
@@ -106,6 +111,14 @@ public class SetupScreen : MonoBehaviour
         RefreshActiveConfigDisplay();
 
         ConfigureSingleButtonMenu();
+
+        // Defensive auto-wire: use a scene-assigned toast if present, otherwise spawn a standalone
+        // one. Created on its own root GameObject (not under this panel) so it keeps ticking its
+        // fade coroutine after the Setup screen hides itself at race start.
+        if (JoinToast == null)
+            JoinToast = FindFirstObjectByType<JoinToast>(FindObjectsInactive.Include);
+        if (JoinToast == null)
+            JoinToast = global::JoinToast.CreateDefault();
     }
 
     // Collapse the setup menu to a single "Start Game" button (StartDefaultButton, reused). Every
@@ -297,9 +310,12 @@ public class SetupScreen : MonoBehaviour
 
         if (baseMsg.type == "student_joined")
         {
+            // Route joins to the bottom-left toast instead of overwriting InfoText: with up to ~500
+            // students the info line would thrash, and the toast coalesces + auto-dissolves. The
+            // running total still lives in StudentCountText (OnStudentCountChanged / student_list).
             var joinMsg = JsonUtility.FromJson<StudentJoinedMessage>(json);
-            if (InfoText != null)
-                InfoText.text = $"'{joinMsg.teamName}' joined ({joinMsg.count} student(s))";
+            if (JoinToast != null)
+                JoinToast.Show(JoinToastText.Format(joinMsg.teamName, joinMsg.count));
             return;
         }
 
