@@ -4,7 +4,11 @@ using System.Linq;
 using UnityEngine;
 
 /// <summary>
-/// Ranks cars by race progress: most checkpoints passed, then least time.
+/// Ranks cars by race progress: most checkpoints passed first, then — for cars
+/// tied on checkpoint count — the one that has travelled furthest into the
+/// current segment. CheckpointTime resets to 0 each time a car passes a
+/// checkpoint and then counts up, so a LARGER CheckpointTime means the car has
+/// spent longer approaching the next checkpoint and is physically ahead on track.
 /// </summary>
 public class ScoreManager : MonoBehaviour
 {
@@ -19,7 +23,7 @@ public class ScoreManager : MonoBehaviour
     {
         return cars
             .OrderByDescending(c => c.TotalCheckpointsPassed)
-            .ThenBy(c => c.CheckpointTime)
+            .ThenByDescending(c => c.CheckpointTime)
             .ToList();
     }
 
