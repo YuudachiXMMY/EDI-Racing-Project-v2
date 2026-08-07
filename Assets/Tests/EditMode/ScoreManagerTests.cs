@@ -57,18 +57,46 @@ public class ScoreManagerTests
     }
 
     [Test]
-    public void GetRankedCars_TiedCheckpoints_LowerTimeWins()
+    public void GetRankedCars_TiedCheckpoints_FurtherIntoSegmentWins()
     {
-        var car1 = CreateCar("SlowTime", 10, 30f);
-        var car2 = CreateCar("FastTime", 10, 15f);
+        // CheckpointTime resets to 0 at each checkpoint then counts up, so among
+        // cars tied on checkpoint count the one with the LARGER CheckpointTime has
+        // travelled further toward the next checkpoint and is physically ahead.
+        // Arrange
+        var carBehind = CreateCar("JustPassedCheckpoint", 10, 5f);
+        var carAhead = CreateCar("NearNextCheckpoint", 10, 25f);
 
-        scoreManager.RegisterCar(car1);
-        scoreManager.RegisterCar(car2);
+        scoreManager.RegisterCar(carBehind);
+        scoreManager.RegisterCar(carAhead);
 
+        // Act
         var ranked = scoreManager.GetRankedCars();
 
-        Assert.AreEqual("FastTime", ranked[0].TeamName);
-        Assert.AreEqual("SlowTime", ranked[1].TeamName);
+        // Assert
+        Assert.AreEqual("NearNextCheckpoint", ranked[0].TeamName);
+        Assert.AreEqual("JustPassedCheckpoint", ranked[1].TeamName);
+    }
+
+    [Test]
+    public void GetRankedCars_LeaderJustPassedCheckpoint_StillRanksFirst()
+    {
+        // Regression: the actual race leader (most checkpoints passed) must rank #1
+        // even immediately after crossing a checkpoint, when its CheckpointTime has
+        // just reset to ~0 while a trailing car's timer is still large. Previously the
+        // tiebreaker's direction was inverted, so this leader dropped below the trailer.
+        // Arrange
+        var leader = CreateCar("Leader", 11, 0.1f, lap: 2);   // one more checkpoint = ahead
+        var trailer = CreateCar("Trailer", 10, 28f, lap: 2);  // fewer checkpoints, large timer
+
+        scoreManager.RegisterCar(trailer);
+        scoreManager.RegisterCar(leader);
+
+        // Act
+        var ranked = scoreManager.GetRankedCars();
+
+        // Assert
+        Assert.AreEqual("Leader", ranked[0].TeamName);
+        Assert.AreEqual("Trailer", ranked[1].TeamName);
     }
 
     [Test]
