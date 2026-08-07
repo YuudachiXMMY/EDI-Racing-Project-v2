@@ -23,6 +23,14 @@ public class RaceControlPanel : MonoBehaviour
 
     private void Start()
     {
+        // Defensive auto-wire: RaceManager is a unique scene singleton. Its serialized
+        // reference here has been lost to {fileID: 0} before (the panel's own button refs
+        // survive serialization, but the cross-object RaceManager link can drop), which
+        // silently breaks Pause/Save/Export because every handler early-returns on a null
+        // RaceManager. Re-resolve by type when unset. Mirrors RaceUI.ResolveMissingReferences.
+        if (RaceManager == null)
+            RaceManager = FindFirstObjectByType<RaceManager>(FindObjectsInactive.Include);
+
         if (PauseResumeButton != null)
             PauseResumeButton.onClick.AddListener(TogglePause);
         if (SaveButton != null)

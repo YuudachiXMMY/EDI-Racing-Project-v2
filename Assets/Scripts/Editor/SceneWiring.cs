@@ -148,6 +148,16 @@ public static class SceneWiring
             Wire(ref eventPanel.EventManager, eventManager, "EventPanel.EventManager");
             EditorUtility.SetDirty(eventPanel);
         }
+        // RaceControlPanel.RaceManager is the professor's Pause/Save/Export hook. Its
+        // cross-object link to the RaceManager singleton has dropped to {fileID: 0} in
+        // serialization before (button refs survive, this one doesn't), silently killing
+        // every control — every handler early-returns on a null RaceManager. Re-wire here
+        // so "Wire All References" repairs it, mirroring RaceUI.ResolveMissingReferences.
+        if (controlPanel != null)
+        {
+            Wire(ref controlPanel.RaceManager, raceManager, "RaceControlPanel.RaceManager");
+            EditorUtility.SetDirty(controlPanel);
+        }
 
         // ═══════════════════════════════════════════════════════
         // WIRE: SetupScreen
