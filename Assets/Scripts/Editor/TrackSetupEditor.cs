@@ -408,7 +408,7 @@ public class TrackSetupEditor : EditorWindow
         // --- CarSpawner wiring ---
         carSpawner.CarPrefabs = LoadOrCreateCarPrefabs();
 
-        var waypointPath = Object.FindFirstObjectByType<WaypointPath>();
+        var waypointPath = Object.FindFirstObjectByType<WaypointPath>(FindObjectsInactive.Include);
         if (waypointPath != null)
             carSpawner.WaypointPath = waypointPath;
 
@@ -490,7 +490,7 @@ public class TrackSetupEditor : EditorWindow
         var cameraManager = camObj.AddComponent<CameraManager>();
 
         // Wire or create main camera components
-        var mainCam = Object.FindFirstObjectByType<Camera>();
+        var mainCam = Object.FindFirstObjectByType<Camera>(FindObjectsInactive.Include);
         GameObject mainCamObj = mainCam != null ? mainCam.gameObject : null;
 
         if (mainCamObj == null)
@@ -537,7 +537,7 @@ public class TrackSetupEditor : EditorWindow
         carLabelSpawner.RaceManager = raceManager;
 
         // --- EventSystem ---
-        if (Object.FindFirstObjectByType<EventSystem>() == null)
+        if (Object.FindFirstObjectByType<EventSystem>(FindObjectsInactive.Include) == null)
         {
             var esObj = new GameObject("EventSystem");
             esObj.AddComponent<EventSystem>();
@@ -546,7 +546,7 @@ public class TrackSetupEditor : EditorWindow
 
         // --- UI (Canvas + panels) ---
         // Reuse existing Canvas or create one
-        var existingCanvas = Object.FindFirstObjectByType<Canvas>();
+        var existingCanvas = Object.FindFirstObjectByType<Canvas>(FindObjectsInactive.Include);
         GameObject canvasObj;
         if (existingCanvas != null)
         {
@@ -654,7 +654,7 @@ public class TrackSetupEditor : EditorWindow
 
     private SetupScreen WireOrCreateSetupScreen(Transform canvasRoot, RaceManager rm, NetworkManager nm)
     {
-        var existing = Object.FindFirstObjectByType<SetupScreen>();
+        var existing = Object.FindFirstObjectByType<SetupScreen>(FindObjectsInactive.Include);
         if (existing != null)
         {
             if (existing.NetworkManager == null)
@@ -786,7 +786,7 @@ public class TrackSetupEditor : EditorWindow
 
     private LeaderboardPanel WireOrCreateLeaderboard(Transform canvasRoot, ScoreManager sm)
     {
-        var existing = Object.FindFirstObjectByType<LeaderboardPanel>();
+        var existing = Object.FindFirstObjectByType<LeaderboardPanel>(FindObjectsInactive.Include);
         if (existing != null) return existing;
 
         var panel = CreateUIPanel(canvasRoot, "LeaderboardPanel",
@@ -831,7 +831,7 @@ public class TrackSetupEditor : EditorWindow
 
     private EventPanel WireOrCreateEventPanel(Transform canvasRoot, EventManager em)
     {
-        var existing = Object.FindFirstObjectByType<EventPanel>();
+        var existing = Object.FindFirstObjectByType<EventPanel>(FindObjectsInactive.Include);
         if (existing != null) return existing;
 
         var panel = CreateUIPanel(canvasRoot, "EventPanel",
@@ -876,7 +876,7 @@ public class TrackSetupEditor : EditorWindow
 
     private RaceControlPanel WireOrCreateControlPanel(Transform canvasRoot, RaceManager rm)
     {
-        var existing = Object.FindFirstObjectByType<RaceControlPanel>();
+        var existing = Object.FindFirstObjectByType<RaceControlPanel>(FindObjectsInactive.Include);
         if (existing != null) return existing;
 
         var panel = CreateUIPanel(canvasRoot, "RaceControlPanel",
@@ -913,7 +913,10 @@ public class TrackSetupEditor : EditorWindow
 
     private JoinScreen WireOrCreateJoinScreen(Transform canvasRoot, NetworkManager nm)
     {
-        var existing = Object.FindFirstObjectByType<JoinScreen>();
+        // FindObjectsInactive.Include: the JoinScreen ends up inactive (SetActive(false) below,
+        // shown for Student only), so re-running Setup Track must find and reuse the existing
+        // one instead of building a duplicate panel.
+        var existing = Object.FindFirstObjectByType<JoinScreen>(FindObjectsInactive.Include);
         if (existing != null) return existing;
 
         var panel = CreateUIPanel(canvasRoot, "JoinScreen",

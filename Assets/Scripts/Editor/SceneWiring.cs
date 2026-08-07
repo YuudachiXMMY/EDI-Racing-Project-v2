@@ -23,33 +23,38 @@ public static class SceneWiring
 
         Debug.Log("[WireAll] ═══ Starting full scene wiring check ═══");
 
+        // All lookups below use FindObjectsInactive.Include because several UI panels start
+        // inactive (JoinScreen/EventPanel/RaceControlPanel/LeaderboardPanel are SetActive(false)
+        // for role/state gating). Without Include, re-running wiring can't see an existing
+        // inactive panel — it leaves RaceUI references dangling and FindOrCreate duplicates
+        // components. Mirrors RaceUI.ResolveMissingReferences.
         // Locate core singletons
-        var raceManager = Object.FindFirstObjectByType<RaceManager>();
+        var raceManager = Object.FindFirstObjectByType<RaceManager>(FindObjectsInactive.Include);
         if (raceManager == null)
         {
             Debug.LogError("[WireAll] No RaceManager in scene. Run 'EDI Racing > Setup Track' first.");
             return;
         }
 
-        var networkManager = Object.FindFirstObjectByType<NetworkManager>();
-        var networkSync = Object.FindFirstObjectByType<NetworkSync>();
-        var scoreManager = Object.FindFirstObjectByType<ScoreManager>();
-        var carSpawner = Object.FindFirstObjectByType<CarSpawner>();
-        var lapTracker = Object.FindFirstObjectByType<LapTracker>();
-        var eventManager = Object.FindFirstObjectByType<EventManager>();
-        var sessionManager = Object.FindFirstObjectByType<SessionManager>();
-        var weatherEffect = Object.FindFirstObjectByType<WeatherEffect>();
-        var cameraManager = Object.FindFirstObjectByType<CameraManager>();
-        var waypointPath = Object.FindFirstObjectByType<WaypointPath>();
+        var networkManager = Object.FindFirstObjectByType<NetworkManager>(FindObjectsInactive.Include);
+        var networkSync = Object.FindFirstObjectByType<NetworkSync>(FindObjectsInactive.Include);
+        var scoreManager = Object.FindFirstObjectByType<ScoreManager>(FindObjectsInactive.Include);
+        var carSpawner = Object.FindFirstObjectByType<CarSpawner>(FindObjectsInactive.Include);
+        var lapTracker = Object.FindFirstObjectByType<LapTracker>(FindObjectsInactive.Include);
+        var eventManager = Object.FindFirstObjectByType<EventManager>(FindObjectsInactive.Include);
+        var sessionManager = Object.FindFirstObjectByType<SessionManager>(FindObjectsInactive.Include);
+        var weatherEffect = Object.FindFirstObjectByType<WeatherEffect>(FindObjectsInactive.Include);
+        var cameraManager = Object.FindFirstObjectByType<CameraManager>(FindObjectsInactive.Include);
+        var waypointPath = Object.FindFirstObjectByType<WaypointPath>(FindObjectsInactive.Include);
         var configManager = FindOrCreate<SurveyConfigManager>(raceManager.gameObject, "SurveyConfigManager");
 
         // UI singletons
-        var raceUI = Object.FindFirstObjectByType<RaceUI>();
-        var setupScreen = Object.FindFirstObjectByType<SetupScreen>();
-        var joinScreen = Object.FindFirstObjectByType<JoinScreen>();
-        var leaderboard = Object.FindFirstObjectByType<LeaderboardPanel>();
-        var eventPanel = Object.FindFirstObjectByType<EventPanel>();
-        var controlPanel = Object.FindFirstObjectByType<RaceControlPanel>();
+        var raceUI = Object.FindFirstObjectByType<RaceUI>(FindObjectsInactive.Include);
+        var setupScreen = Object.FindFirstObjectByType<SetupScreen>(FindObjectsInactive.Include);
+        var joinScreen = Object.FindFirstObjectByType<JoinScreen>(FindObjectsInactive.Include);
+        var leaderboard = Object.FindFirstObjectByType<LeaderboardPanel>(FindObjectsInactive.Include);
+        var eventPanel = Object.FindFirstObjectByType<EventPanel>(FindObjectsInactive.Include);
+        var controlPanel = Object.FindFirstObjectByType<RaceControlPanel>(FindObjectsInactive.Include);
 
         // ═══════════════════════════════════════════════════════
         // WIRE: RaceManager
@@ -311,8 +316,8 @@ public static class SceneWiring
         // ═══════════════════════════════════════════════════════
         if (cameraManager != null)
         {
-            var freeCam = Object.FindFirstObjectByType<RaceCameraController>();
-            var spectatorCam = Object.FindFirstObjectByType<SpectatorCamera>();
+            var freeCam = Object.FindFirstObjectByType<RaceCameraController>(FindObjectsInactive.Include);
+            var spectatorCam = Object.FindFirstObjectByType<SpectatorCamera>(FindObjectsInactive.Include);
             if (freeCam != null && cameraManager.FreeCamera == null)
             {
                 cameraManager.FreeCamera = freeCam;
@@ -333,7 +338,7 @@ public static class SceneWiring
         }
 
         // CarLabelSpawner
-        var carLabelSpawner = Object.FindFirstObjectByType<CarLabelSpawner>();
+        var carLabelSpawner = Object.FindFirstObjectByType<CarLabelSpawner>(FindObjectsInactive.Include);
         if (carLabelSpawner != null)
         {
             Wire(ref carLabelSpawner.RaceManager, raceManager, "CarLabelSpawner.RaceManager");
@@ -368,7 +373,7 @@ public static class SceneWiring
 
     private static T FindOrCreate<T>(GameObject host, string label) where T : Component
     {
-        var existing = Object.FindFirstObjectByType<T>();
+        var existing = Object.FindFirstObjectByType<T>(FindObjectsInactive.Include);
         if (existing != null) return existing;
 
         var component = host.AddComponent<T>();
