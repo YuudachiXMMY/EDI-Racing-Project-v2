@@ -65,9 +65,16 @@ public class LeaderboardPanel : MonoBehaviour
     private readonly List<GameObject> rowPool = new List<GameObject>();
     private float timer;
 
+    // Row height as a multiple of the row font size, used in the zoomed modes so each row is tall
+    // enough for its enlarged text (the row prefab's LayoutElement pins height to 25px and its Text
+    // clips vertical overflow — at 34/48px that clips the whole line, which is why the zoomed
+    // leaderboard rendered blank before this factor was applied).
+    private const float RowHeightFactor = 1.4f;
+
     // --- Display-mode state -------------------------------------------------
     private DisplayMode currentMode = DisplayMode.Normal;
     private int currentRowFontSize;
+    private float currentRowHeight;
 
     private RectTransform panelRect;
     private Image background;
@@ -79,6 +86,9 @@ public class LeaderboardPanel : MonoBehaviour
     private Vector2 normContentOffsetMin, normContentOffsetMax;
     private float normBgAlpha;
     private int normTitleFontSize;
+    // Row prefab defaults, captured from the pool so Normal restores the shipped look exactly.
+    private float normRowPreferredHeight = 25f;
+    private VerticalWrapMode normRowVerticalOverflow = VerticalWrapMode.Truncate;
 
     private void Start()
     {
@@ -102,6 +112,23 @@ public class LeaderboardPanel : MonoBehaviour
             row.SetActive(false);
             rowPool.Add(row);
         }
+
+        CaptureRowDefaults();
+    }
+
+    // Snapshot the row prefab's height / overflow from the first pooled instance so Normal restores
+    // the exact shipped look, while the zoomed modes can safely grow both to fit larger fonts.
+    private void CaptureRowDefaults()
+    {
+        if (rowPool.Count == 0) return;
+
+        var le = rowPool[0].GetComponent<LayoutElement>();
+        if (le != null && le.preferredHeight > 0f) normRowPreferredHeight = le.preferredHeight;
+
+        var text = rowPool[0].GetComponent<Text>();
+        if (text != null) normRowVerticalOverflow = text.verticalOverflow;
+
+        currentRowHeight = normRowPreferredHeight;
     }
 
     // Resolve and snapshot the objects the zoom modes mutate. All are optional — the panel still
@@ -182,6 +209,7 @@ public class LeaderboardPanel : MonoBehaviour
         {
             case DisplayMode.Enlarged:
                 currentRowFontSize = EnlargedRowFontSize;
+                currentRowHeight = EnlargedRowFontSize * RowHeightFactor;
                 // Tall panel on the left half of the screen — big enough to read from the back of
                 // the room without covering the whole race view.
                 ApplyStretchRect(new Vector2(0.03f, 0.08f), new Vector2(0.45f, 0.95f));
@@ -192,6 +220,7 @@ public class LeaderboardPanel : MonoBehaviour
 
             case DisplayMode.Fullscreen:
                 currentRowFontSize = FullscreenRowFontSize;
+                currentRowHeight = FullscreenRowFontSize * RowHeightFactor;
                 ApplyStretchRect(Vector2.zero, Vector2.one);
                 ApplyContentInsets(new Vector2(48f, 24f), new Vector2(-48f, -(FullscreenTitleFontSize + 36f)));
                 SetBackgroundAlpha(0.95f);
@@ -200,6 +229,7 @@ public class LeaderboardPanel : MonoBehaviour
 
             default: // Normal — restore the exact scene-authored layout captured at Start.
                 currentRowFontSize = NormalRowFontSize;
+                currentRowHeight = normRowPreferredHeight;
                 RestoreNormalLayout();
                 break;
         }
@@ -322,14 +352,26 @@ public class LeaderboardPanel : MonoBehaviour
 
     private void SetRow(int index, string label, int rankZeroBased)
     {
-        rowPool[index].SetActive(true);
-        var text = rowPool[index].GetComponent<Text>();
+        GameObject row = rowPool[index];
+        row.SetActive(true);
+
+        var text = row.GetComponent<Text>();
         if (text != null)
         {
             text.text = label;
             text.fontSize = currentRowFontSize;
+            // Zoomed rows must not clip: the prefab clips vertical overflow, which hides an
+            // enlarged line entirely. Normal keeps the prefab's original overflow behaviour.
+            text.verticalOverflow = currentMode == DisplayMode.Normal
+                ? normRowVerticalOverflow
+                : VerticalWrapMode.Overflow;
             // Highlight top 3
             text.color = LeaderboardFormatter.RankColor(rankZeroBased);
         }
+
+        // Grow the row's laid-out height with the font so the VerticalLayoutGroup gives each line
+        // enough space (and rows don't overlap) in the projector modes.
+        var le = row.GetComponent<LayoutElement>();
+        if (le != null) le.preferredHeight = currentRowHeight;
     }
 }
