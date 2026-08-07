@@ -31,6 +31,14 @@ public class LeaderboardPanel : MonoBehaviour
     /// <summary>Projector-visibility presets cycled by <see cref="ToggleKey"/>.</summary>
     public enum DisplayMode { Normal, Enlarged, Fullscreen }
 
+    /// <summary>
+    /// Raised whenever the display mode changes; the argument is true when the new mode is
+    /// <see cref="DisplayMode.Fullscreen"/>. RaceUI subscribes to this to hide the EventPanel
+    /// behind the full-screen leaderboard and restore it once the leaderboard shrinks back.
+    /// The leaderboard itself stays deliberately unaware of the EventPanel.
+    /// </summary>
+    public event System.Action<bool> OnFullscreenChanged;
+
     /// <summary>Columns used by the Fullscreen layout (rank-ordered, filled top-to-bottom).</summary>
     public const int ColumnCount = 3;
 
@@ -276,6 +284,10 @@ public class LeaderboardPanel : MonoBehaviour
         ApplyModeLayout();
         lastLayoutSignature = -1; // force a re-parent/re-distribute on the next render
         RefreshLeaderboard();
+
+        // Notify listeners (RaceUI) so the EventPanel can hide behind the full-screen leaderboard
+        // and reappear when it shrinks back. Fired on every mode change; the handler is idempotent.
+        OnFullscreenChanged?.Invoke(currentMode == DisplayMode.Fullscreen);
     }
 
     private void ApplyModeLayout()

@@ -40,6 +40,8 @@ public class RaceUI : MonoBehaviour
             RaceManager.OnStateChanged += OnStateChanged;
         if (NetworkManager != null)
             NetworkManager.OnRoomCreated += HandleRoomCreated;
+        if (Leaderboard != null)
+            Leaderboard.OnFullscreenChanged += HandleLeaderboardFullscreenChanged;
 
         ApplyRole();
         OnStateChanged(RaceManager != null ? RaceManager.CurrentState : GameState.Setup);
@@ -75,6 +77,23 @@ public class RaceUI : MonoBehaviour
             RaceManager.OnStateChanged -= OnStateChanged;
         if (NetworkManager != null)
             NetworkManager.OnRoomCreated -= HandleRoomCreated;
+        if (Leaderboard != null)
+            Leaderboard.OnFullscreenChanged -= HandleLeaderboardFullscreenChanged;
+    }
+
+    // True while the leaderboard is in its full-screen mode, which covers the whole race view.
+    // The EventPanel is hidden behind it and restored (if we're still racing as professor) when
+    // the leaderboard shrinks back — see OnStateChanged, which folds this into the same rule.
+    private bool leaderboardFullscreen;
+
+    // The leaderboard raises this whenever the professor cycles its size with Tab. Hide the
+    // EventPanel behind the full-screen leaderboard, and bring it back when the board shrinks.
+    private void HandleLeaderboardFullscreenChanged(bool fullscreen)
+    {
+        leaderboardFullscreen = fullscreen;
+        // Re-run the standard visibility rule so the panel returns only when it otherwise should
+        // (racing + professor), rather than being force-shown here.
+        OnStateChanged(RaceManager != null ? RaceManager.CurrentState : GameState.Setup);
     }
 
     // Any successful room creation (Dashboard host launch OR manual in-game Host) locks the
@@ -129,6 +148,15 @@ public class RaceUI : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Whether the professor's EventPanel should be visible. It shows only while racing (never in
+    /// Setup/Finished), is professor-only, and hides behind a full-screen leaderboard — which
+    /// covers the whole race view — returning as soon as the leaderboard shrinks back to a smaller
+    /// mode. Pure so the visibility rule can be unit-tested without a live scene.
+    /// </summary>
+    public static bool ShouldShowEventPanel(bool isProfessor, bool isRacing, bool leaderboardFullscreen)
+        => isProfessor && isRacing && !leaderboardFullscreen;
+
     private void OnStateChanged(GameState state)
     {
         bool isSetup = state == GameState.Setup;
@@ -143,7 +171,10 @@ public class RaceUI : MonoBehaviour
 
         if (isProfessor)
         {
-            if (Events != null) Events.gameObject.SetActive(isRacing);
+            // The EventPanel hides behind a full-screen leaderboard and returns once it shrinks
+            // back — the fullscreen flag is toggled by HandleLeaderboardFullscreenChanged.
+            if (Events != null)
+                Events.gameObject.SetActive(ShouldShowEventPanel(isProfessor, isRacing, leaderboardFullscreen));
             if (Controls != null) Controls.gameObject.SetActive(isRacing);
 
             // The keyboard-shortcut hint only matters to the professor (free/fixed camera + event
