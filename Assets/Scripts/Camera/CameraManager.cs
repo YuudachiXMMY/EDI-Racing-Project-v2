@@ -2,8 +2,9 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 /// <summary>
-/// Switches between Free, Fixed, and Spectator camera modes.
-/// Professor uses Free + Fixed (F1-F9); Student uses Spectator.
+/// Switches between Free, Fixed, Spectator, and AutoSwitch camera modes.
+/// Professor uses Free + Fixed (F1-F9) plus AutoSwitch (the 'C' hotkey / Auto Cam button),
+/// an auto-switching chase cam that cycles through the top-3 cars; Student uses Spectator.
 /// </summary>
 public class CameraManager : MonoBehaviour
 {
@@ -15,7 +16,16 @@ public class CameraManager : MonoBehaviour
     [Tooltip("Discovered at startup via FindObjectsByType")]
     public FixedCameraPoint[] FixedPoints;
 
-    public enum CameraMode { Free, Fixed, Spectator }
+    [Header("Auto-Switch (top-3 chase cam)")]
+    [Tooltip("How many top-ranked cars the auto-switch camera cycles through")]
+    public int AutoSwitchCarCount = 3;
+
+    [Tooltip("Key the professor presses to toggle the auto-switch top-3 chase cam")]
+    public Key AutoSwitchKey = Key.C;
+
+    // Free/Fixed/Spectator: the original three modes. AutoSwitch reuses SpectatorCam but tells it
+    // to cycle through the top-N field instead of locking onto the leader.
+    public enum CameraMode { Free, Fixed, Spectator, AutoSwitch }
 
     public CameraMode CurrentMode { get; private set; } = CameraMode.Free;
 
@@ -35,6 +45,13 @@ public class CameraManager : MonoBehaviour
         if (CurrentMode == CameraMode.Spectator) return;
         if (Keyboard.current == null) return;
 
+        // Toggle the auto-switching top-3 chase cam (professor hotkey, default 'C').
+        if (Keyboard.current[AutoSwitchKey].wasPressedThisFrame)
+        {
+            ToggleAutoSwitch();
+            return;
+        }
+
         // F1-F9 for fixed positions
         for (int i = 0; i < 9; i++)
         {
@@ -53,15 +70,30 @@ public class CameraManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Toggle the auto-switching top-3 chase cam on/off. Turning it off returns to the free camera.
+    /// Safe to call from a UI button or the keyboard hotkey.
+    /// </summary>
+    public void ToggleAutoSwitch()
+    {
+        SetMode(CurrentMode == CameraMode.AutoSwitch ? CameraMode.Free : CameraMode.AutoSwitch);
+    }
+
     public void SetMode(CameraMode mode, int fixedIndex = 0)
     {
         CurrentMode = mode;
 
         bool isFree = mode == CameraMode.Free;
-        bool isSpectator = mode == CameraMode.Spectator;
+        // Both Spectator (student leader-follow) and AutoSwitch (professor top-N cycle) drive the
+        // SpectatorCamera component — they differ only in how many cars it cycles through.
+        bool useSpectatorCam = mode == CameraMode.Spectator || mode == CameraMode.AutoSwitch;
 
         if (FreeCamera != null) FreeCamera.enabled = isFree;
-        if (SpectatorCam != null) SpectatorCam.enabled = isSpectator;
+        if (SpectatorCam != null)
+        {
+            SpectatorCam.FollowCount = mode == CameraMode.AutoSwitch ? Mathf.Max(1, AutoSwitchCarCount) : 1;
+            SpectatorCam.enabled = useSpectatorCam;
+        }
 
         if (mode == CameraMode.Fixed)
         {

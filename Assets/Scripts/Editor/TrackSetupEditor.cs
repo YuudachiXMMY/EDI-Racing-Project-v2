@@ -574,7 +574,7 @@ public class TrackSetupEditor : EditorWindow
         raceUI.Setup = WireOrCreateSetupScreen(canvasObj.transform, raceManager, networkManager);
         raceUI.Leaderboard = WireOrCreateLeaderboard(canvasObj.transform, scoreManager);
         raceUI.Events = WireOrCreateEventPanel(canvasObj.transform, eventManager);
-        raceUI.Controls = WireOrCreateControlPanel(canvasObj.transform, raceManager);
+        raceUI.Controls = WireOrCreateControlPanel(canvasObj.transform, raceManager, cameraManager);
         raceUI.JoinScreen = WireOrCreateJoinScreen(canvasObj.transform, networkManager);
 
         EditorUtility.SetDirty(canvasObj);
@@ -874,17 +874,19 @@ public class TrackSetupEditor : EditorWindow
         return ep;
     }
 
-    private RaceControlPanel WireOrCreateControlPanel(Transform canvasRoot, RaceManager rm)
+    private RaceControlPanel WireOrCreateControlPanel(Transform canvasRoot, RaceManager rm, CameraManager cm)
     {
         var existing = Object.FindFirstObjectByType<RaceControlPanel>(FindObjectsInactive.Include);
         if (existing != null) return existing;
 
+        // Widened to 560px to make room for the fourth (Auto Cam) button alongside the status text.
         var panel = CreateUIPanel(canvasRoot, "RaceControlPanel",
             new Vector2(0.5f, 0), new Vector2(0.5f, 0),
-            new Vector2(-220, 10), new Vector2(220, 60));
+            new Vector2(-280, 10), new Vector2(280, 60));
 
         var cp = panel.AddComponent<RaceControlPanel>();
         cp.RaceManager = rm;
+        cp.CameraManager = cm;
 
         // Pause/Resume button
         cp.PauseResumeButton = CreateUIButton(panel.transform, "PauseResumeBtn", "Pause",
@@ -901,6 +903,12 @@ public class TrackSetupEditor : EditorWindow
         cp.ExportButton = CreateUIButton(panel.transform, "ExportBtn", "Export",
             new Vector2(0, 0.5f), new Vector2(0, 0.5f),
             new Vector2(250, -17), new Vector2(360, 17));
+
+        // Auto Cam button (toggles the auto-switching top-3 chase cam; mirrors the 'C' hotkey)
+        cp.AutoCamButton = CreateUIButton(panel.transform, "AutoCamBtn", "Auto Cam",
+            new Vector2(0, 0.5f), new Vector2(0, 0.5f),
+            new Vector2(370, -17), new Vector2(480, 17));
+        cp.AutoCamLabel = cp.AutoCamButton.GetComponentInChildren<Text>();
 
         // Status text
         cp.StatusText = CreateLabel(panel.transform, "StatusText", "", 14, TextAnchor.MiddleRight,
