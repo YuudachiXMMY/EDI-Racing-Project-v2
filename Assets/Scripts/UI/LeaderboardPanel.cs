@@ -15,16 +15,24 @@ using UnityEngine.UI;
 ///     always empty — the leaderboard MUST come from the network instead.
 ///
 /// Display size: press <see cref="ToggleKey"/> (Tab) to cycle Normal → Enlarged → Fullscreen.
-/// The two zoomed modes grow the panel, background, and fonts so the leaderboard is legible on
-/// a projector, and trim the list to the top <see cref="ZoomedMaxRows"/> (default 10). The panel's
-/// own RectTransform / background Image / "Title" label / Content parent are reconfigured at
-/// runtime, so no scene wiring is required — the Normal layout captured at Start is restored
-/// exactly when cycling back.
+///   • Normal     — the scene-authored top-left HUD panel, top <see cref="MaxRows"/> (15).
+///   • Enlarged   — large single-column panel, top <see cref="EnlargedMaxRows"/> (20).
+///   • Fullscreen — full-screen panel, the whole field up to <see cref="FullscreenMaxRows"/> (60)
+///                  laid out in <see cref="ColumnCount"/> (3) rank-ordered columns.
+///
+/// Rows are pooled and re-parented between one column (Normal/Enlarged) and three columns
+/// (Fullscreen) via a HorizontalLayoutGroup of VerticalLayoutGroups, so column widths split
+/// evenly with no pixel math. The panel's own RectTransform / background Image / "Title" label /
+/// Content parent are reconfigured at runtime, so no scene wiring is required — the Normal layout
+/// captured at Start is restored exactly when cycling back.
 /// </summary>
 public class LeaderboardPanel : MonoBehaviour
 {
     /// <summary>Projector-visibility presets cycled by <see cref="ToggleKey"/>.</summary>
     public enum DisplayMode { Normal, Enlarged, Fullscreen }
+
+    /// <summary>Columns used by the Fullscreen layout (rank-ordered, filled top-to-bottom).</summary>
+    public const int ColumnCount = 3;
 
     [Header("References")]
     public ScoreManager ScoreManager;
@@ -43,32 +51,36 @@ public class LeaderboardPanel : MonoBehaviour
     [Tooltip("Update interval in seconds")]
     public float UpdateInterval = 0.5f;
 
-    [Tooltip("Maximum rows to display in Normal mode")]
+    [Header("Row counts per mode")]
+    [Tooltip("Normal mode: top N rows (single column)")]
     public int MaxRows = 15;
+
+    [Tooltip("Enlarged mode: top N rows (single column)")]
+    public int EnlargedMaxRows = 20;
+
+    [Tooltip("Fullscreen mode: whole field, up to N rows across three columns")]
+    public int FullscreenMaxRows = 60;
 
     [Header("Display Modes (Tab to cycle)")]
     [Tooltip("Key that cycles Normal → Enlarged → Fullscreen leaderboard sizes")]
     public Key ToggleKey = Key.Tab;
 
-    [Tooltip("Rows shown in the Enlarged / Fullscreen projector modes (top N)")]
-    public int ZoomedMaxRows = 10;
-
     [Tooltip("Row font size in Normal / Enlarged / Fullscreen")]
     public int NormalRowFontSize = 16;
-    public int EnlargedRowFontSize = 34;
-    public int FullscreenRowFontSize = 48;
+    public int EnlargedRowFontSize = 30;
+    public int FullscreenRowFontSize = 28;
 
     [Tooltip("Title font size in Enlarged / Fullscreen (Normal keeps the scene value)")]
-    public int EnlargedTitleFontSize = 44;
-    public int FullscreenTitleFontSize = 64;
+    public int EnlargedTitleFontSize = 40;
+    public int FullscreenTitleFontSize = 48;
 
     private readonly List<GameObject> rowPool = new List<GameObject>();
     private float timer;
 
     // Row height as a multiple of the row font size, used in the zoomed modes so each row is tall
     // enough for its enlarged text (the row prefab's LayoutElement pins height to 25px and its Text
-    // clips vertical overflow — at 34/48px that clips the whole line, which is why the zoomed
-    // leaderboard rendered blank before this factor was applied).
+    // clips vertical overflow — at the larger fonts that clips the whole line, which is why a zoomed
+    // leaderboard would render blank without this).
     private const float RowHeightFactor = 1.4f;
 
     // --- Display-mode state -------------------------------------------------
@@ -76,10 +88,18 @@ public class LeaderboardPanel : MonoBehaviour
     private int currentRowFontSize;
     private float currentRowHeight;
 
+    // Re-parenting rows across columns is only needed when the mode or the visible-row count
+    // changes; this signature detects that so per-tick refreshes just restyle in place.
+    private int lastLayoutSignature = -1;
+
     private RectTransform panelRect;
     private Image background;
     private Text titleText;
     private RectTransform contentRect;
+
+    // Column containers built under ContentParent. columns[0] is used alone in Normal/Enlarged;
+    // all three are used in Fullscreen.
+    private readonly RectTransform[] columns = new RectTransform[ColumnCount];
 
     // Normal-layout snapshot captured at Start, restored verbatim when cycling back to Normal.
     private Vector2 normAnchorMin, normAnchorMax, normPivot, normOffsetMin, normOffsetMax;
@@ -102,33 +122,20 @@ public class LeaderboardPanel : MonoBehaviour
             NetworkSync = FindFirstObjectByType<NetworkSync>(FindObjectsInactive.Include);
 
         CacheDisplayModeTargets();
+        BuildColumns();
 
-        // Pre-instantiate row pool. Size it to the largest mode so a zoomed mode that shows more
-        // rows than Normal (if someone raises ZoomedMaxRows) never indexes past the pool.
-        int poolSize = Mathf.Max(MaxRows, ZoomedMaxRows);
+        // Pre-instantiate row pool, sized to the largest mode. Rows start in column 0 and are
+        // re-parented per mode by the refresh.
+        int poolSize = Mathf.Max(Mathf.Max(MaxRows, EnlargedMaxRows), FullscreenMaxRows);
+        Transform rowParent = columns[0] != null ? columns[0] : ContentParent;
         for (int i = 0; i < poolSize; i++)
         {
-            GameObject row = Instantiate(RowPrefab, ContentParent);
+            GameObject row = Instantiate(RowPrefab, rowParent);
             row.SetActive(false);
             rowPool.Add(row);
         }
 
         CaptureRowDefaults();
-    }
-
-    // Snapshot the row prefab's height / overflow from the first pooled instance so Normal restores
-    // the exact shipped look, while the zoomed modes can safely grow both to fit larger fonts.
-    private void CaptureRowDefaults()
-    {
-        if (rowPool.Count == 0) return;
-
-        var le = rowPool[0].GetComponent<LayoutElement>();
-        if (le != null && le.preferredHeight > 0f) normRowPreferredHeight = le.preferredHeight;
-
-        var text = rowPool[0].GetComponent<Text>();
-        if (text != null) normRowVerticalOverflow = text.verticalOverflow;
-
-        currentRowHeight = normRowPreferredHeight;
     }
 
     // Resolve and snapshot the objects the zoom modes mutate. All are optional — the panel still
@@ -162,6 +169,66 @@ public class LeaderboardPanel : MonoBehaviour
         currentRowFontSize = NormalRowFontSize;
     }
 
+    // Build a HorizontalLayoutGroup of ColumnCount VerticalLayoutGroups that fills ContentParent.
+    // The scene's own VerticalLayoutGroup on ContentParent is disabled so it doesn't fight this.
+    // childForceExpandWidth splits the columns evenly (no pixel math); rows keep natural, top-
+    // aligned heights within each column.
+    private void BuildColumns()
+    {
+        if (ContentParent == null) return;
+
+        var sceneVlg = ContentParent.GetComponent<VerticalLayoutGroup>();
+        if (sceneVlg != null) sceneVlg.enabled = false;
+
+        var rootGO = new GameObject("ColumnsRoot", typeof(RectTransform));
+        var rootRT = rootGO.GetComponent<RectTransform>();
+        rootRT.SetParent(ContentParent, false);
+        rootRT.anchorMin = Vector2.zero;
+        rootRT.anchorMax = Vector2.one;
+        rootRT.offsetMin = Vector2.zero;
+        rootRT.offsetMax = Vector2.zero;
+
+        var hlg = rootGO.AddComponent<HorizontalLayoutGroup>();
+        hlg.spacing = 24f;
+        hlg.childControlWidth = true;
+        hlg.childControlHeight = true;
+        hlg.childForceExpandWidth = true;
+        hlg.childForceExpandHeight = true;
+        hlg.childAlignment = TextAnchor.UpperLeft;
+
+        for (int c = 0; c < ColumnCount; c++)
+        {
+            var colGO = new GameObject("Column" + c, typeof(RectTransform));
+            var colRT = colGO.GetComponent<RectTransform>();
+            colRT.SetParent(rootRT, false);
+
+            var vlg = colGO.AddComponent<VerticalLayoutGroup>();
+            vlg.spacing = 2f;
+            vlg.childControlWidth = true;
+            vlg.childControlHeight = true;
+            vlg.childForceExpandWidth = true;
+            vlg.childForceExpandHeight = false;
+            vlg.childAlignment = TextAnchor.UpperLeft;
+
+            columns[c] = colRT;
+        }
+    }
+
+    // Snapshot the row prefab's height / overflow from the first pooled instance so Normal restores
+    // the exact shipped look, while the zoomed modes can safely grow both to fit larger fonts.
+    private void CaptureRowDefaults()
+    {
+        if (rowPool.Count == 0) return;
+
+        var le = rowPool[0].GetComponent<LayoutElement>();
+        if (le != null && le.preferredHeight > 0f) normRowPreferredHeight = le.preferredHeight;
+
+        var text = rowPool[0].GetComponent<Text>();
+        if (text != null) normRowVerticalOverflow = text.verticalOverflow;
+
+        currentRowHeight = normRowPreferredHeight;
+    }
+
     private void Update()
     {
         HandleToggleInput();
@@ -188,18 +255,26 @@ public class LeaderboardPanel : MonoBehaviour
         _ => DisplayMode.Normal
     };
 
-    /// <summary>Rows actually drawn: full <see cref="MaxRows"/> in Normal, trimmed to the top
-    /// <see cref="ZoomedMaxRows"/> in the projector modes.</summary>
-    private int EffectiveMaxRows => currentMode == DisplayMode.Normal ? MaxRows : ZoomedMaxRows;
+    /// <summary>Rows actually drawn for the current mode.</summary>
+    private int EffectiveMaxRows => currentMode switch
+    {
+        DisplayMode.Enlarged => EnlargedMaxRows,
+        DisplayMode.Fullscreen => FullscreenMaxRows,
+        _ => MaxRows
+    };
+
+    /// <summary>Columns used for the current mode (Fullscreen spreads across three).</summary>
+    private int ActiveColumnCount => currentMode == DisplayMode.Fullscreen ? ColumnCount : 1;
 
     /// <summary>
     /// Switch projector size. Reconfigures the panel layout/fonts and refreshes immediately so the
-    /// row count and font update on the same frame instead of after the next 0.5s tick.
+    /// row count, columns and font update on the same frame instead of after the next 0.5s tick.
     /// </summary>
     public void SetDisplayMode(DisplayMode mode)
     {
         currentMode = mode;
         ApplyModeLayout();
+        lastLayoutSignature = -1; // force a re-parent/re-distribute on the next render
         RefreshLeaderboard();
     }
 
@@ -210,10 +285,10 @@ public class LeaderboardPanel : MonoBehaviour
             case DisplayMode.Enlarged:
                 currentRowFontSize = EnlargedRowFontSize;
                 currentRowHeight = EnlargedRowFontSize * RowHeightFactor;
-                // Tall panel on the left half of the screen — big enough to read from the back of
+                // Tall single-column panel on the left of the screen — readable from the back of
                 // the room without covering the whole race view.
-                ApplyStretchRect(new Vector2(0.03f, 0.08f), new Vector2(0.45f, 0.95f));
-                ApplyContentInsets(new Vector2(12f, 12f), new Vector2(-12f, -(EnlargedTitleFontSize + 24f)));
+                ApplyStretchRect(new Vector2(0.03f, 0.03f), new Vector2(0.42f, 0.97f));
+                ApplyContentInsets(new Vector2(12f, 12f), new Vector2(-12f, -(EnlargedTitleFontSize + 20f)));
                 SetBackgroundAlpha(0.85f);
                 SetTitleFontSize(EnlargedTitleFontSize);
                 break;
@@ -222,7 +297,7 @@ public class LeaderboardPanel : MonoBehaviour
                 currentRowFontSize = FullscreenRowFontSize;
                 currentRowHeight = FullscreenRowFontSize * RowHeightFactor;
                 ApplyStretchRect(Vector2.zero, Vector2.one);
-                ApplyContentInsets(new Vector2(48f, 24f), new Vector2(-48f, -(FullscreenTitleFontSize + 36f)));
+                ApplyContentInsets(new Vector2(40f, 20f), new Vector2(-40f, -(FullscreenTitleFontSize + 28f)));
                 SetBackgroundAlpha(0.95f);
                 SetTitleFontSize(FullscreenTitleFontSize);
                 break;
@@ -308,13 +383,15 @@ public class LeaderboardPanel : MonoBehaviour
 
         List<CarIdentity> ranked = ScoreManager.GetRankedCars();
         int displayCount = Mathf.Min(Mathf.Min(ranked.Count, EffectiveMaxRows), rowPool.Count);
+        bool replace = BeginLayout(displayCount, out int rowsPerColumn);
 
         for (int i = 0; i < rowPool.Count; i++)
         {
             if (i < displayCount)
             {
+                if (replace) PlaceRow(i, rowsPerColumn);
                 var car = ranked[i];
-                SetRow(i, $"{i + 1}. [{car.CurrentLap}] {car.TeamName}", i);
+                StyleRow(i, $"{i + 1}. [{car.CurrentLap}] {car.TeamName}", i);
             }
             else
             {
@@ -335,13 +412,15 @@ public class LeaderboardPanel : MonoBehaviour
         int displayCount = rankings != null
             ? Mathf.Min(Mathf.Min(rankings.Length, EffectiveMaxRows), rowPool.Count)
             : 0;
+        bool replace = BeginLayout(displayCount, out int rowsPerColumn);
 
         for (int i = 0; i < rowPool.Count; i++)
         {
             if (i < displayCount)
             {
+                if (replace) PlaceRow(i, rowsPerColumn);
                 var entry = rankings[i];
-                SetRow(i, $"{entry.rank}. [{entry.lap}] {entry.name}", i);
+                StyleRow(i, $"{entry.rank}. [{entry.lap}] {entry.name}", i);
             }
             else
             {
@@ -350,7 +429,39 @@ public class LeaderboardPanel : MonoBehaviour
         }
     }
 
-    private void SetRow(int index, string label, int rankZeroBased)
+    // Decide the column layout for this many rows. Activates the columns in use, returns the rows
+    // per column, and reports whether rows need re-parenting (mode or count changed since last time).
+    private bool BeginLayout(int displayCount, out int rowsPerColumn)
+    {
+        int cols = ActiveColumnCount;
+        rowsPerColumn = Mathf.Max(1, Mathf.CeilToInt(displayCount / (float)cols));
+
+        int signature = ((int)currentMode * 1000000) + displayCount;
+        if (signature == lastLayoutSignature) return false;
+        lastLayoutSignature = signature;
+
+        for (int c = 0; c < ColumnCount; c++)
+        {
+            if (columns[c] != null)
+                columns[c].gameObject.SetActive(c < cols);
+        }
+        return true;
+    }
+
+    // Column-major placement: rows 0..rpc-1 fill column 0 (ranks 1-20), the next rpc fill column 1,
+    // and so on, so each column stays rank-ordered top-to-bottom.
+    private void PlaceRow(int index, int rowsPerColumn)
+    {
+        int col = Mathf.Min(index / rowsPerColumn, ColumnCount - 1);
+        int slot = index - (col * rowsPerColumn);
+
+        Transform parent = columns[col] != null ? columns[col] : ContentParent;
+        Transform rowTf = rowPool[index].transform;
+        if (rowTf.parent != parent) rowTf.SetParent(parent, false);
+        rowTf.SetSiblingIndex(slot);
+    }
+
+    private void StyleRow(int index, string label, int rankZeroBased)
     {
         GameObject row = rowPool[index];
         row.SetActive(true);
