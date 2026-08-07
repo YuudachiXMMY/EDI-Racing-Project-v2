@@ -2,9 +2,10 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 /// <summary>
-/// Switches between Free, Fixed, Spectator, and AutoSwitch camera modes.
-/// Professor uses Free + Fixed (F1-F9) plus AutoSwitch (the 'C' hotkey / Auto Cam button),
-/// an auto-switching chase cam that cycles through the top-3 cars; Student uses Spectator.
+/// Switches between Free, Fixed, Spectator, and the two Auto Cam modes.
+/// Professor uses Free + Fixed (F1-F9) plus Auto Cam (the 'C' hotkey / Auto Cam button), which
+/// flips between AutoTopCars (chase cam cycling the top 3) and AutoAllCams (cycle every fixed
+/// camera aimed at the leader). Esc/F1-F9 exit Auto Cam. Student uses Spectator.
 /// </summary>
 public class CameraManager : MonoBehaviour
 {
@@ -16,16 +17,17 @@ public class CameraManager : MonoBehaviour
     [Tooltip("Discovered at startup via FindObjectsByType")]
     public FixedCameraPoint[] FixedPoints;
 
-    [Header("Auto-Switch (top-3 chase cam)")]
-    [Tooltip("How many top-ranked cars the auto-switch camera cycles through")]
+    [Header("Auto Cam")]
+    [Tooltip("How many top-ranked cars the AutoTopCars chase cam cycles through")]
     public int AutoSwitchCarCount = 3;
 
-    [Tooltip("Key the professor presses to toggle the auto-switch top-3 chase cam")]
+    [Tooltip("Key the professor presses to toggle / flip the Auto Cam modes")]
     public Key AutoSwitchKey = Key.C;
 
-    // Free/Fixed/Spectator: the original three modes. AutoSwitch reuses SpectatorCam but tells it
-    // to cycle through the top-N field instead of locking onto the leader.
-    public enum CameraMode { Free, Fixed, Spectator, AutoSwitch }
+    // Free/Fixed/Spectator: the original three modes. The two Auto Cam modes both reuse SpectatorCam:
+    //   AutoTopCars  — chase cam cycling the top-N cars.
+    //   AutoAllCams  — cycle every fixed camera point, each aimed at the leader.
+    public enum CameraMode { Free, Fixed, Spectator, AutoTopCars, AutoAllCams }
 
     public CameraMode CurrentMode { get; private set; } = CameraMode.Free;
 
@@ -35,6 +37,11 @@ public class CameraManager : MonoBehaviour
     {
         if (FixedPoints == null || FixedPoints.Length == 0)
             FixedPoints = FindObjectsByType<FixedCameraPoint>(FindObjectsSortMode.None);
+
+        // Order by PointIndex so AutoAllCams cuts through the cameras in the same F1→F9 order the
+        // professor sees, instead of the arbitrary FindObjectsByType order.
+        if (FixedPoints != null)
+            System.Array.Sort(FixedPoints, (a, b) => a.PointIndex.CompareTo(b.PointIndex));
 
         mainCamera = Camera.main;
         SetMode(CameraMode.Free);
@@ -71,12 +78,13 @@ public class CameraManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Toggle the auto-switching top-3 chase cam on/off. Turning it off returns to the free camera.
-    /// Safe to call from a UI button or the keyboard hotkey.
+    /// Cycle the Auto Cam modes. Entering from Free/Fixed starts on AutoTopCars (top-3 chase);
+    /// once in an Auto Cam mode it flips to the other. It never turns Auto Cam off — use Esc or
+    /// F1-F9 for that. Safe to call from a UI button or the keyboard hotkey.
     /// </summary>
     public void ToggleAutoSwitch()
     {
-        SetMode(CurrentMode == CameraMode.AutoSwitch ? CameraMode.Free : CameraMode.AutoSwitch);
+        SetMode(CurrentMode == CameraMode.AutoTopCars ? CameraMode.AutoAllCams : CameraMode.AutoTopCars);
     }
 
     public void SetMode(CameraMode mode, int fixedIndex = 0)
@@ -84,14 +92,29 @@ public class CameraManager : MonoBehaviour
         CurrentMode = mode;
 
         bool isFree = mode == CameraMode.Free;
-        // Both Spectator (student leader-follow) and AutoSwitch (professor top-N cycle) drive the
-        // SpectatorCamera component — they differ only in how many cars it cycles through.
-        bool useSpectatorCam = mode == CameraMode.Spectator || mode == CameraMode.AutoSwitch;
+        // Spectator (student leader-follow) and both Auto Cam modes all drive the SpectatorCamera
+        // component — they differ only in its follow behaviour, configured below.
+        bool useSpectatorCam = mode == CameraMode.Spectator
+                               || mode == CameraMode.AutoTopCars
+                               || mode == CameraMode.AutoAllCams;
 
         if (FreeCamera != null) FreeCamera.enabled = isFree;
         if (SpectatorCam != null)
         {
-            SpectatorCam.FollowCount = mode == CameraMode.AutoSwitch ? Mathf.Max(1, AutoSwitchCarCount) : 1;
+            if (mode == CameraMode.AutoTopCars)
+            {
+                SpectatorCam.FixedPoints = FixedPoints;
+                SpectatorCam.SetFollowMode(SpectatorCamera.FollowMode.ChaseTopN, Mathf.Max(1, AutoSwitchCarCount));
+            }
+            else if (mode == CameraMode.AutoAllCams)
+            {
+                SpectatorCam.FixedPoints = FixedPoints;
+                SpectatorCam.SetFollowMode(SpectatorCamera.FollowMode.FixedPointsOnLeader, 1);
+            }
+            else if (mode == CameraMode.Spectator)
+            {
+                SpectatorCam.SetFollowMode(SpectatorCamera.FollowMode.ChaseTopN, 1);
+            }
             SpectatorCam.enabled = useSpectatorCam;
         }
 

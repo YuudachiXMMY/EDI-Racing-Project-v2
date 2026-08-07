@@ -56,9 +56,17 @@ public class RaceControlPanel : MonoBehaviour
         if (CameraManager == null) return;
         CameraManager.ToggleAutoSwitch();
 
-        bool on = CameraManager.CurrentMode == CameraManager.CameraMode.AutoSwitch;
-        if (AutoCamLabel != null) AutoCamLabel.text = on ? "Auto Cam: On" : "Auto Cam";
-        ShowStatus(on ? "Auto camera: following top 3" : "Auto camera off");
+        // The button never turns Auto Cam off — it flips between the two auto modes (Esc/F1-F9 exit).
+        if (CameraManager.CurrentMode == CameraManager.CameraMode.AutoAllCams)
+        {
+            if (AutoCamLabel != null) AutoCamLabel.text = "Auto: All Cam";
+            ShowStatus("Auto camera: all cams on leader");
+        }
+        else
+        {
+            if (AutoCamLabel != null) AutoCamLabel.text = "Auto: Top 3";
+            ShowStatus("Auto camera: following top 3");
+        }
     }
 
     private void TogglePause()
