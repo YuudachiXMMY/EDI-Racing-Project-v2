@@ -92,6 +92,30 @@ router.get('/room-results/:code', async (req, res) => {
   }
 });
 
+// GET /api/game/survey-room/:surveyId — resolve the live room a professor's survey is currently
+// hosting. The web-app polls this right after "Host Game" to discover the room code (the WS
+// server owns code generation; the prebuilt Unity client never reports it back), then renders the
+// student join link + QR. Auth + ownership: a professor may only look up their own survey's room.
+router.get('/survey-room/:surveyId', requireAuth, async (req, res) => {
+  const n = Number(req.params.surveyId);
+  if (!Number.isInteger(n) || n <= 0) {
+    return res.status(400).json({ success: false, error: 'surveyId must be a positive integer' });
+  }
+  const owned = getDb()
+    .prepare('SELECT id FROM surveys WHERE id = ? AND user_id = ?')
+    .get(n, req.user.userId);
+  if (!owned) {
+    return res.status(404).json({ success: false, error: 'Survey not found' });
+  }
+  try {
+    const response = await fetch(`${GAME_HTTP_URL}/api/survey-room/${n}`);
+    const data = await response.json();
+    res.json({ success: true, data });
+  } catch {
+    res.json({ success: true, data: { exists: false, error: 'Game server unreachable' } });
+  }
+});
+
 // GET /api/game/enter — the access gateway for the gated Unity build. It proves the caller
 // may load the build, mints the HttpOnly game-access cookie nginx checks, then 302-redirects
 // into /game/ with role/token/room in the hash (where Unity reads them). Two roles:

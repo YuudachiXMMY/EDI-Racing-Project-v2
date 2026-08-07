@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { buildHostLaunchUrl, buildStudentPlayUrl, buildSpectatorPath } from '../client/src/gameLaunch.js';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { buildHostLaunchUrl, buildStudentPlayUrl, buildSpectatorPath, buildJoinLandingUrl } from '../client/src/gameLaunch.js';
 
 // The Unity build is gated at /game/; launch links go through the same-origin access
 // gateway /api/game/enter (which sets the game-access cookie and redirects into /game/).
@@ -57,5 +57,25 @@ describe('buildSpectatorPath', () => {
     expect(p.startsWith('/live/')).toBe(true);
     expect(p).not.toContain('#');
     expect(p).not.toContain('token');
+  });
+});
+
+// The student join link shown after "Host Game" — this is what the QR code encodes.
+describe('buildJoinLandingUrl', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('builds an absolute URL to the no-auth join landing route', () => {
+    vi.stubGlobal('window', { location: { origin: 'https://race.example.edu' } });
+    expect(buildJoinLandingUrl('A1B2C3')).toBe('https://race.example.edu/#/join/A1B2C3');
+  });
+
+  it('upper-cases the room code so QR, URL, and JoinLandingPage all agree', () => {
+    vi.stubGlobal('window', { location: { origin: 'https://race.example.edu' } });
+    expect(buildJoinLandingUrl('abc123')).toBe('https://race.example.edu/#/join/ABC123');
+  });
+
+  it('carries no host token (audience link grants no host authority)', () => {
+    vi.stubGlobal('window', { location: { origin: 'https://race.example.edu' } });
+    expect(buildJoinLandingUrl('R1')).not.toContain('token');
   });
 });

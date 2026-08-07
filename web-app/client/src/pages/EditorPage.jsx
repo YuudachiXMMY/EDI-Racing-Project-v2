@@ -8,6 +8,7 @@ import RulesTab from '../components/RulesTab.jsx';
 import ResponsesTab from '../components/ResponsesTab.jsx';
 import ResultsTab from '../components/ResultsTab.jsx';
 import SharePanel from '../components/SharePanel.jsx';
+import HostRoomPanel from '../components/HostRoomPanel.jsx';
 import { downloadBlobObject } from '../utils/csvExport.js';
 
 const TABS = ['Questions', 'Mappings', 'Rules', 'Responses', 'Results'];
@@ -21,6 +22,8 @@ export default function EditorPage() {
   const [saveStatus, setSaveStatus] = useState('');
   const [loading, setLoading] = useState(true);
   const [responseCount, setResponseCount] = useState(0);
+  // True while the Host Room panel (student link + QR) is open for this survey.
+  const [hostPanelOpen, setHostPanelOpen] = useState(false);
   const saveTimer = useRef(null);
   const latestData = useRef(null);
 
@@ -68,6 +71,8 @@ export default function EditorPage() {
     } else {
       window.open(url, '_blank', 'noopener');
     }
+    // Show the student join link + QR here; the panel polls for the room code the game creates.
+    setHostPanelOpen(true);
   }
 
   async function handleDuplicate() {
@@ -211,6 +216,10 @@ export default function EditorPage() {
           <ResultsTab surveyId={id} />
         )}
       </div>
+
+      {hostPanelOpen && (
+        <HostRoomPanel surveyId={id} onClose={() => setHostPanelOpen(false)} />
+      )}
     </div>
   );
 }

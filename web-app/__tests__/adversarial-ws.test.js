@@ -238,6 +238,34 @@ describe('student cannot inject events (relay isolation)', () => {
   });
 });
 
+describe('survey -> room mapping (Host Game student-link discovery)', () => {
+  const roomStatusUrl = (surveyId) => `http://127.0.0.1:${PORT}/api/survey-room/${surveyId}`;
+
+  it('resolves the live room a survey is hosting after create_room', async () => {
+    // Unique surveyId so no other test's create_room can clobber this survey's mapping.
+    const { roomCode } = await hostARoom(777);
+    const res = await fetch(roomStatusUrl(777));
+    const data = await res.json();
+    expect(data.exists).toBe(true);
+    expect(data.roomCode).toBe(roomCode);
+  });
+
+  it('returns exists:false for a survey with no live room', async () => {
+    const res = await fetch(roomStatusUrl(999888));
+    const data = await res.json();
+    expect(data.exists).toBe(false);
+    expect(data.roomCode).toBeUndefined();
+  });
+
+  it('points at the newest room when a survey is re-hosted (latest wins)', async () => {
+    const first = await hostARoom(778);
+    const second = await hostARoom(778);
+    expect(second.roomCode).not.toBe(first.roomCode);
+    const data = await (await fetch(roomStatusUrl(778))).json();
+    expect(data.roomCode).toBe(second.roomCode);
+  });
+});
+
 describe('host-only messages are role-gated against a student', () => {
   it('rejects survey_import from a student', async () => {
     const { roomCode } = await hostARoom();
