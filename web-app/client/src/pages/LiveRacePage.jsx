@@ -30,7 +30,7 @@ export default function LiveRacePage() {
   return (
     <div className="live-race-page">
       <header className="live-header">
-        <Link className="live-back" to={`/join/${roomCode}`} aria-label="返回视图选择">← 返回</Link>
+        <Link className="live-back" to={`/join/${roomCode}`} aria-label="Back to view selection">← Back</Link>
         <h1>Live Race</h1>
         <div className="live-room-info">
           <span className="live-room-code">Room {roomCode?.toUpperCase()}</span>

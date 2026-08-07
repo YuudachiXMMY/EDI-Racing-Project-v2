@@ -35,7 +35,7 @@ export default function StudentSurveyPage() {
     const surveyJSON = unityQuestionsToSurveyJS(result.data.questions || []);
     const model = new Model(surveyJSON);
     model.showCompletedPage = false;
-    model.completeText = '提交问卷';
+    model.completeText = 'Submit Survey';
     model.onComplete.add((sender) => {
       handleSubmit(sender.data);
     });

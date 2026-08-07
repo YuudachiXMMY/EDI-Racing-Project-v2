@@ -35,7 +35,7 @@ button { cursor: pointer; border: none; border-radius: 4px; padding: 8px 16px; f
 .btn-danger { background: var(--danger); color: #fff; }
 .btn-small { padding: 4px 8px; font-size: 12px; }
 /* Quiet tertiary danger: reads as a low-emphasis action until hovered, so Delete never
-   competes with the primary "主持游戏" action for attention. */
+   competes with the primary "Host Game" action for attention. */
 .btn-ghost-danger { background: transparent; color: var(--danger); border: 1px solid transparent; }
 .btn-ghost-danger:hover { background: rgba(224, 64, 64, .12); border-color: rgba(224, 64, 64, .35); }
 
@@ -168,7 +168,7 @@ label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; co
 .card-title-row h3 { margin: 0; }
 .card-share-row { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
 .share-url-mini { flex: 1; font-size: 12px; padding: 4px 8px; background: var(--bg-input); cursor: text; }
-/* Card actions: primary (主持游戏) + Duplicate group left, Delete pushed to the far right so
+/* Card actions: primary (Host Game) + Duplicate group left, Delete pushed to the far right so
    the destructive action is spatially separated from the everyday ones. */
 .card-actions { display: flex; align-items: center; gap: 8px; }
 .card-actions .btn-ghost-danger { margin-left: auto; }

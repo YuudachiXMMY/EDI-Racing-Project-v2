@@ -10,7 +10,7 @@ import ResultsTab from '../components/ResultsTab.jsx';
 import SharePanel from '../components/SharePanel.jsx';
 import { downloadBlobObject } from '../utils/csvExport.js';
 
-const TABS = ['问题', '映射', '规则', '回复', '结果'];
+const TABS = ['Questions', 'Mappings', 'Rules', 'Responses', 'Results'];
 const SAVE_DELAY = 2000;
 
 export default function EditorPage() {
@@ -131,7 +131,7 @@ export default function EditorPage() {
   return (
     <div className="editor-page">
       <header className="editor-header">
-        <button onClick={() => navigate('/dashboard')} className="btn-secondary">← 返回仪表盘</button>
+        <button onClick={() => navigate('/dashboard')} className="btn-secondary">← Back to Dashboard</button>
         <input
           type="text"
           className="survey-name-input"
@@ -150,18 +150,18 @@ export default function EditorPage() {
             disabled={responseCount === 0}
             title={responseCount === 0 ? 'Collect at least one response before hosting' : 'Launch the game and host a room'}
           >
-            主持游戏
+            Host Game
           </button>
           <div className="toolbar-group" role="group" aria-label="Export data">
             <button onClick={handleExportExcel} className="btn-secondary" disabled={responseCount === 0}>
-              导出 Excel
+              Export Excel
             </button>
             <button onClick={handleExportCsv} className="btn-secondary" disabled={responseCount === 0}>
-              导出 CSV
+              Export CSV
             </button>
           </div>
           <button onClick={handleDuplicate} className="btn-secondary">
-            复制
+            Duplicate
           </button>
         </div>
       </header>

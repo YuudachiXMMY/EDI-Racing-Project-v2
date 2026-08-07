@@ -46,7 +46,7 @@ export default function ResponsesTab({ surveyId }) {
                   className="btn-secondary btn-small"
                   onClick={() => setExpandedId(expandedId === r.id ? null : r.id)}
                 >
-                  {expandedId === r.id ? '隐藏' : '查看'}
+                  {expandedId === r.id ? 'Hide' : 'View'}
                 </button>
                 {expandedId === r.id && (
                   <div className="answers-detail">

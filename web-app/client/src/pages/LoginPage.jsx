@@ -61,7 +61,7 @@ export default function LoginPage() {
           />
           {error && <p className="error">{error}</p>}
           <button type="submit" disabled={loading}>
-            {loading ? '请稍候...' : (isRegister ? '注册' : '登录')}
+            {loading ? 'Please wait...' : (isRegister ? 'Sign Up' : 'Log In')}
           </button>
         </form>
 
