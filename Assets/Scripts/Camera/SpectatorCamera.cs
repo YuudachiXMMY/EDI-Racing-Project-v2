@@ -6,8 +6,10 @@ using UnityEngine;
 /// Two behaviours, selected by <see cref="Mode"/>:
 ///   • ChaseTopN — trails behind and looks at the target car. FollowCount == 1 tracks the
 ///     leader (student view); FollowCount > 1 cycles through the top-N cars (professor top-3).
-///   • FixedPointsOnLeader — parks at each scene FixedCameraPoint in turn, always aimed at the
-///     leader (professor "all cams on leader" broadcast mode).
+///   • FixedPointsOnLeader — parks at the scene FixedCameraPoint that is second-closest to the
+///     leader, always aimed at it. As the leader laps the track the second-closest camera
+///     changes, so the active shot follows the car (professor "all cams on leader" broadcast
+///     mode). Re-selected on each timed cut so it never re-cuts faster than CycleInterval.
 /// </summary>
 public class SpectatorCamera : MonoBehaviour
 {
@@ -44,6 +46,7 @@ public class SpectatorCamera : MonoBehaviour
     public float CycleInterval = 4f;
 
     private Transform currentTarget;
+    private Transform currentFixedCam;
     private Vector3 velocity;
     private float leaderCheckTimer;
     private int cycleIndex;
@@ -68,6 +71,7 @@ public class SpectatorCamera : MonoBehaviour
         cycleIndex = 0;
         leaderCheckTimer = 0f;
         currentTarget = null;
+        currentFixedCam = null;
     }
 
     private bool HasFixedPoints => FixedPoints != null && FixedPoints.Length > 0;
@@ -75,8 +79,9 @@ public class SpectatorCamera : MonoBehaviour
     private void LateUpdate()
     {
         // Cycling modes advance on CycleInterval; a plain leader-follow just re-checks on the slower
-        // LeaderCheckInterval. FixedPointsOnLeader always cycles — it cuts between placed fixed
-        // cameras, or (when too few are placed) orbits the leader from several angles.
+        // LeaderCheckInterval. FixedPointsOnLeader re-evaluates on CycleInterval too — each cut
+        // re-picks the camera second-closest to the leader, or (when too few are placed) orbits the
+        // leader from several angles.
         bool cycling = (Mode == FollowMode.ChaseTopN && FollowCount > 1)
                        || (Mode == FollowMode.FixedPointsOnLeader);
         float switchInterval = cycling ? CycleInterval : LeaderCheckInterval;
@@ -97,11 +102,11 @@ public class SpectatorCamera : MonoBehaviour
 
         if (Mode == FollowMode.FixedPointsOnLeader)
         {
-            // Broadcast cut: jump to the current shot, then continuously aim at the leader.
-            // Prefer real placed fixed cameras; if fewer than two are placed (the default scene
-            // leaves FixedCam_F1..F9 stacked at the origin), orbit the leader so the cut is visible.
-            Transform cam = GetCurrentUsableFixedPoint();
-            transform.position = cam != null ? cam.position : GetOrbitPosition(currentTarget);
+            // Broadcast cut: park at the second-closest fixed camera (chosen on the last timed cut,
+            // see UpdateTarget) and continuously aim at the leader — the "auto rotation". If fewer
+            // than two cameras are placed (the default scene leaves FixedCam_F1..F9 stacked at the
+            // origin) currentFixedCam is null, so orbit the leader instead to keep the cut visible.
+            transform.position = currentFixedCam != null ? currentFixedCam.position : GetOrbitPosition(currentTarget);
             transform.LookAt(currentTarget.position + Vector3.up * 2f);
             return;
         }
@@ -122,11 +127,16 @@ public class SpectatorCamera : MonoBehaviour
         List<CarIdentity> ranked = ScoreManager.GetRankedCars();
         if (ranked.Count == 0) return;
 
-        // FixedPointsOnLeader always looks at the leader; cycleIndex selects the camera, not the car.
+        // FixedPointsOnLeader always looks at the leader; the shot is the camera second-closest to
+        // it, recomputed here on each timed cut so the active camera follows the car around the track.
         if (Mode == FollowMode.FixedPointsOnLeader)
         {
             Transform leader = ranked[0].transform;
-            if (leader != null) currentTarget = leader;
+            if (leader != null)
+            {
+                currentTarget = leader;
+                currentFixedCam = GetSecondClosestFixedPoint(leader);
+            }
             return;
         }
 
@@ -148,26 +158,32 @@ public class SpectatorCamera : MonoBehaviour
         return p != null && p.transform.position.sqrMagnitude > 0.25f;
     }
 
-    // Returns the current placed fixed camera, or null when fewer than two are placed (in which
-    // case the caller orbits the leader instead — a single or zero placed cam can't "switch").
-    private Transform GetCurrentUsableFixedPoint()
+    // Returns the placed fixed camera SECOND-closest to the leader, or null when fewer than two are
+    // placed (the caller then orbits the leader — a single or zero placed cam can't "switch").
+    // The nearest camera usually sits right on top of the passing car (whip-pan, poor framing), so
+    // the runner-up gives a cleaner medium shot of the leader approaching or receding.
+    private Transform GetSecondClosestFixedPoint(Transform leader)
     {
-        if (!HasFixedPoints) return null;
+        if (!HasFixedPoints || leader == null) return null;
 
-        int usable = 0;
-        for (int i = 0; i < FixedPoints.Length; i++)
-            if (IsUsable(FixedPoints[i])) usable++;
-        if (usable < 2) return null;
-
-        int target = cycleIndex % usable;
-        int seen = 0;
+        Transform closest = null, second = null;
+        float closestSq = float.MaxValue, secondSq = float.MaxValue;
         for (int i = 0; i < FixedPoints.Length; i++)
         {
             if (!IsUsable(FixedPoints[i])) continue;
-            if (seen == target) return FixedPoints[i].transform;
-            seen++;
+            float dSq = (FixedPoints[i].transform.position - leader.position).sqrMagnitude;
+            if (dSq < closestSq)
+            {
+                second = closest; secondSq = closestSq;
+                closest = FixedPoints[i].transform; closestSq = dSq;
+            }
+            else if (dSq < secondSq)
+            {
+                second = FixedPoints[i].transform; secondSq = dSq;
+            }
         }
-        return null;
+        // Non-null only when at least two cameras are placed; otherwise the caller orbits the leader.
+        return second;
     }
 
     // Fallback broadcast rig: four evenly-spaced positions orbiting the leader (reusing the chase
