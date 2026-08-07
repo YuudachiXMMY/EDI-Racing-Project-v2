@@ -3234,7 +3234,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 363db12a026fc4745a5b77f1b65779f7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RaceControlPanel
-  RaceManager: {fileID: 0}
+  RaceManager: {fileID: 607591796}
   PauseResumeButton: {fileID: 1080817287}
   PauseResumeLabel: {fileID: 162441314}
   SaveButton: {fileID: 683201610}

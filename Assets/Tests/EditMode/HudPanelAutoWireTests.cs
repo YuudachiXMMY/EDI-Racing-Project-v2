@@ -104,4 +104,39 @@ public class HudPanelAutoWireTests
             "With no EventManager in the scene, Start must not throw (BuildEventRows early-returns on null).");
         Assert.IsNull(panel.EventManager, "No manager in scene → reference stays null, panel stays safely empty.");
     }
+
+    [Test]
+    public void RaceControlPanel_Start_ResolvesRaceManager_WhenUnset()
+    {
+        // Regression: the scene shipped RaceControlPanel.RaceManager as {fileID: 0}, so
+        // TogglePause/SaveSession/ExportResults all early-returned on the null RaceManager
+        // and the Pause button silently did nothing. The fix auto-resolves it in Start().
+        var rmObj = NewObject("RaceManager");
+        var raceManager = rmObj.AddComponent<RaceManager>();
+
+        var panelObj = NewObject("RaceControlPanel");
+        var panel = panelObj.AddComponent<RaceControlPanel>();
+        panel.RaceManager = null;
+
+        panel.SendMessage("Start");
+
+        Assert.IsNotNull(panel.RaceManager, "RaceManager should be auto-resolved when left unset.");
+        Assert.AreSame(raceManager, panel.RaceManager, "Should resolve the RaceManager present in the scene.");
+    }
+
+    [Test]
+    public void RaceControlPanel_Start_ResolvesRaceManager_OnInactiveObject()
+    {
+        var rmObj = NewObject("RaceManager (inactive)", active: false);
+        var raceManager = rmObj.AddComponent<RaceManager>();
+
+        var panelObj = NewObject("RaceControlPanel");
+        var panel = panelObj.AddComponent<RaceControlPanel>();
+        panel.RaceManager = null;
+
+        panel.SendMessage("Start");
+
+        Assert.IsNotNull(panel.RaceManager, "RaceManager on an inactive object should still be resolved.");
+        Assert.AreSame(raceManager, panel.RaceManager);
+    }
 }
