@@ -75,9 +75,10 @@ public class SpectatorCamera : MonoBehaviour
     private void LateUpdate()
     {
         // Cycling modes advance on CycleInterval; a plain leader-follow just re-checks on the slower
-        // LeaderCheckInterval. FixedPointsOnLeader with no points falls back to leader-follow.
+        // LeaderCheckInterval. FixedPointsOnLeader always cycles — it cuts between placed fixed
+        // cameras, or (when too few are placed) orbits the leader from several angles.
         bool cycling = (Mode == FollowMode.ChaseTopN && FollowCount > 1)
-                       || (Mode == FollowMode.FixedPointsOnLeader && HasFixedPoints);
+                       || (Mode == FollowMode.FixedPointsOnLeader);
         float switchInterval = cycling ? CycleInterval : LeaderCheckInterval;
 
         leaderCheckTimer += Time.unscaledDeltaTime;
@@ -94,11 +95,13 @@ public class SpectatorCamera : MonoBehaviour
 
         if (currentTarget == null) return;
 
-        if (Mode == FollowMode.FixedPointsOnLeader && HasFixedPoints)
+        if (Mode == FollowMode.FixedPointsOnLeader)
         {
-            // Broadcast cut: snap to the current fixed camera, then continuously aim at the leader.
-            Transform cam = GetCurrentFixedPoint();
-            if (cam != null) transform.position = cam.position;
+            // Broadcast cut: jump to the current shot, then continuously aim at the leader.
+            // Prefer real placed fixed cameras; if fewer than two are placed (the default scene
+            // leaves FixedCam_F1..F9 stacked at the origin), orbit the leader so the cut is visible.
+            Transform cam = GetCurrentUsableFixedPoint();
+            transform.position = cam != null ? cam.position : GetOrbitPosition(currentTarget);
             transform.LookAt(currentTarget.position + Vector3.up * 2f);
             return;
         }
@@ -137,10 +140,44 @@ public class SpectatorCamera : MonoBehaviour
             currentTarget = target;
     }
 
-    private Transform GetCurrentFixedPoint()
+    // A fixed camera counts only once it has actually been positioned in the scene. Setup Track
+    // spawns FixedCam_F1..F9 at the origin as placeholders, so ignore any still sitting there —
+    // otherwise the "cut" would jump between identical origin shots and look frozen.
+    private static bool IsUsable(FixedCameraPoint p)
+    {
+        return p != null && p.transform.position.sqrMagnitude > 0.25f;
+    }
+
+    // Returns the current placed fixed camera, or null when fewer than two are placed (in which
+    // case the caller orbits the leader instead — a single or zero placed cam can't "switch").
+    private Transform GetCurrentUsableFixedPoint()
     {
         if (!HasFixedPoints) return null;
-        FixedCameraPoint point = FixedPoints[cycleIndex % FixedPoints.Length];
-        return point != null ? point.transform : null;
+
+        int usable = 0;
+        for (int i = 0; i < FixedPoints.Length; i++)
+            if (IsUsable(FixedPoints[i])) usable++;
+        if (usable < 2) return null;
+
+        int target = cycleIndex % usable;
+        int seen = 0;
+        for (int i = 0; i < FixedPoints.Length; i++)
+        {
+            if (!IsUsable(FixedPoints[i])) continue;
+            if (seen == target) return FixedPoints[i].transform;
+            seen++;
+        }
+        return null;
+    }
+
+    // Fallback broadcast rig: four evenly-spaced positions orbiting the leader (reusing the chase
+    // distance/height), so each cut shows the leader from a distinctly different angle.
+    private Vector3 GetOrbitPosition(Transform target)
+    {
+        const int shots = 4;
+        int i = cycleIndex % shots;
+        float angle = i * (360f / shots);
+        Vector3 dir = Quaternion.Euler(0f, angle, 0f) * Vector3.back;
+        return target.position + dir * FollowDistance + Vector3.up * FollowHeight;
     }
 }
