@@ -170,7 +170,7 @@ public class RaceUI : MonoBehaviour
 
         var text = obj.AddComponent<Text>();
         text.text = "Camera:  WASD move  |  Right-drag look  |  Q/E up-down  |  Scroll speed\n"
-                  + "F1-F9 fixed cams  |  C auto-cam (top 3)  |  Esc free cam  |  Keys 1-9 trigger events";
+                  + "F1-F9 fixed cams  |  C auto-cam (top 3 / all cams)  |  Esc free cam  |  Keys 1-9 trigger events";
         text.fontSize = 15;
         text.alignment = TextAnchor.LowerLeft;
         text.color = new Color(1f, 1f, 1f, 0.75f);
