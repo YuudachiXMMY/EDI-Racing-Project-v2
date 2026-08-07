@@ -156,6 +156,7 @@ public static class SceneWiring
         if (controlPanel != null)
         {
             Wire(ref controlPanel.RaceManager, raceManager, "RaceControlPanel.RaceManager");
+            Wire(ref controlPanel.CameraManager, cameraManager, "RaceControlPanel.CameraManager");
             EditorUtility.SetDirty(controlPanel);
         }
 

@@ -3,19 +3,24 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Professor-only controls: Pause/Resume toggle, Save Session, Export Results.
-/// Status text provides feedback and fades after 3 seconds.
+/// Professor-only controls: Pause/Resume toggle, Save Session, Export Results, and the
+/// Auto Cam toggle (auto-switching top-3 chase camera). Status text provides feedback and
+/// fades after 3 seconds.
 /// </summary>
 public class RaceControlPanel : MonoBehaviour
 {
     [Header("References")]
     public RaceManager RaceManager;
+    [Tooltip("Drives the Auto Cam button. Auto-resolved if unset.")]
+    public CameraManager CameraManager;
 
     [Header("UI Elements")]
     public Button PauseResumeButton;
     public Text PauseResumeLabel;
     public Button SaveButton;
     public Button ExportButton;
+    public Button AutoCamButton;
+    public Text AutoCamLabel;
     public Text StatusText;
 
     private bool isPaused;
@@ -30,6 +35,8 @@ public class RaceControlPanel : MonoBehaviour
         // RaceManager. Re-resolve by type when unset. Mirrors RaceUI.ResolveMissingReferences.
         if (RaceManager == null)
             RaceManager = FindFirstObjectByType<RaceManager>(FindObjectsInactive.Include);
+        if (CameraManager == null)
+            CameraManager = FindFirstObjectByType<CameraManager>(FindObjectsInactive.Include);
 
         if (PauseResumeButton != null)
             PauseResumeButton.onClick.AddListener(TogglePause);
@@ -37,9 +44,21 @@ public class RaceControlPanel : MonoBehaviour
             SaveButton.onClick.AddListener(SaveSession);
         if (ExportButton != null)
             ExportButton.onClick.AddListener(ExportResults);
+        if (AutoCamButton != null)
+            AutoCamButton.onClick.AddListener(ToggleAutoCam);
 
         if (StatusText != null)
             StatusText.text = "";
+    }
+
+    private void ToggleAutoCam()
+    {
+        if (CameraManager == null) return;
+        CameraManager.ToggleAutoSwitch();
+
+        bool on = CameraManager.CurrentMode == CameraManager.CameraMode.AutoSwitch;
+        if (AutoCamLabel != null) AutoCamLabel.text = on ? "Auto Cam: On" : "Auto Cam";
+        ShowStatus(on ? "Auto camera: following top 3" : "Auto camera off");
     }
 
     private void TogglePause()
