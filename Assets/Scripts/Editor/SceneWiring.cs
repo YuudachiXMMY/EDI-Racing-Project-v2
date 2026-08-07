@@ -157,6 +157,28 @@ public static class SceneWiring
         {
             Wire(ref controlPanel.RaceManager, raceManager, "RaceControlPanel.RaceManager");
             Wire(ref controlPanel.CameraManager, cameraManager, "RaceControlPanel.CameraManager");
+
+            // Scenes built before the Auto Cam feature only have Pause/Save/Export, so the button
+            // reference is null and the professor has no on-screen toggle (only the 'C' hotkey).
+            // Create + wire it here so "Wire All References" upgrades an existing scene, matching
+            // the layout TrackSetupEditor uses for freshly-created panels.
+            if (controlPanel.AutoCamButton == null)
+            {
+                var panelRt = controlPanel.GetComponent<RectTransform>();
+                if (panelRt != null && (panelRt.offsetMax.x - panelRt.offsetMin.x) < 500f)
+                {
+                    // Widen the panel so the fourth button sits on its background instead of past it.
+                    panelRt.offsetMin = new Vector2(-250f, panelRt.offsetMin.y);
+                    panelRt.offsetMax = new Vector2(250f, panelRt.offsetMax.y);
+                }
+
+                controlPanel.AutoCamButton = CreateButton(controlPanel.transform, "AutoCamBtn", "Auto Cam",
+                    new Vector2(0, 0.5f), new Vector2(0, 0.5f),
+                    new Vector2(370, -17), new Vector2(480, 17));
+                controlPanel.AutoCamLabel = controlPanel.AutoCamButton.GetComponentInChildren<Text>();
+                createdCount++;
+            }
+
             EditorUtility.SetDirty(controlPanel);
         }
 
