@@ -133,6 +133,23 @@ public static class SceneWiring
         }
 
         // ═══════════════════════════════════════════════════════
+        // WIRE: HUD panel data sources
+        // The panels are visible via RaceUI, but stay empty unless their own manager
+        // reference is set — WireAll previously wired RaceUI.Leaderboard/Events but not
+        // the ScoreManager/EventManager the panels read from.
+        // ═══════════════════════════════════════════════════════
+        if (leaderboard != null)
+        {
+            Wire(ref leaderboard.ScoreManager, scoreManager, "LeaderboardPanel.ScoreManager");
+            EditorUtility.SetDirty(leaderboard);
+        }
+        if (eventPanel != null)
+        {
+            Wire(ref eventPanel.EventManager, eventManager, "EventPanel.EventManager");
+            EditorUtility.SetDirty(eventPanel);
+        }
+
+        // ═══════════════════════════════════════════════════════
         // WIRE: SetupScreen
         // ═══════════════════════════════════════════════════════
         if (setupScreen != null)

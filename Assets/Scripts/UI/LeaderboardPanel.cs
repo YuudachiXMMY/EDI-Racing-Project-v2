@@ -30,6 +30,12 @@ public class LeaderboardPanel : MonoBehaviour
 
     private void Start()
     {
+        // Defensive auto-wire: SceneWiring/TrackSetupEditor do not re-assign this on an
+        // already-existing panel, so a scene can ship with ScoreManager unset — which leaves the
+        // leaderboard visible but permanently empty (RefreshLeaderboard early-returns on null).
+        if (ScoreManager == null)
+            ScoreManager = FindFirstObjectByType<ScoreManager>(FindObjectsInactive.Include);
+
         // Pre-instantiate row pool
         for (int i = 0; i < MaxRows; i++)
         {

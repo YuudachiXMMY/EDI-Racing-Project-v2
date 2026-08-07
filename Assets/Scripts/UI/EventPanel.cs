@@ -23,6 +23,12 @@ public class EventPanel : MonoBehaviour
 
     private void Start()
     {
+        // Defensive auto-wire: SceneWiring/TrackSetupEditor do not re-assign this on an
+        // already-existing panel, so a scene can ship with EventManager unset — which leaves the
+        // panel visible but empty (BuildEventRows early-returns on null).
+        if (EventManager == null)
+            EventManager = FindFirstObjectByType<EventManager>(FindObjectsInactive.Include);
+
         BuildEventRows();
     }
 
