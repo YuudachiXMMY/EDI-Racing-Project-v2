@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getSurvey, updateSurvey, exportExcel, exportCsv, getResponseCount, toggleSurveyActive, requestHostToken, duplicateSurvey } from '../api.js';
-import { buildHostLaunchUrl } from '../gameLaunch.js';
+import { submitHostLaunch } from '../gameLaunch.js';
 import QuestionsTab from '../components/QuestionsTab.jsx';
 import MappingsTab from '../components/MappingsTab.jsx';
 import RulesTab from '../components/RulesTab.jsx';
@@ -52,10 +52,11 @@ export default function EditorPage() {
     return () => clearInterval(timer);
   }, [id]);
 
-  // Launch the game in professor host mode: mint a host token, then open the Unity build with
-  // role/token/survey in the URL hash. Mirrors the dashboard's host flow — the game tab is opened
-  // synchronously inside the click handler so the browser treats it as user-initiated (not a
-  // blocked popup); the token is fetched after, then the tab is pointed at the launch URL.
+  // Launch the game in professor host mode: mint a host token, then POST it to the access gateway
+  // (/api/game/enter), which sets the game-access cookie and redirects into /game/#role/token/survey.
+  // Mirrors the dashboard's host flow — the game tab is opened synchronously inside the click handler
+  // so the browser treats it as user-initiated (not a blocked popup); the token is fetched after, then
+  // submitted via a form POST (never a URL query, so it stays out of access logs / browser history).
   async function handleHostGame() {
     const gameTab = window.open('about:blank', '_blank');
     const result = await requestHostToken(id);
@@ -64,13 +65,11 @@ export default function EditorPage() {
       alert(`Failed to start host session: ${result.error || 'unknown error'}`);
       return;
     }
-    const url = buildHostLaunchUrl(result.data.token, id);
     if (gameTab) {
       try { gameTab.opener = null; } catch { /* some browsers disallow; harmless */ }
-      gameTab.location.href = url;
-    } else {
-      window.open(url, '_blank', 'noopener');
     }
+    // Popup-blocked case (gameTab null): submitHostLaunch falls back to a new '_blank' tab.
+    submitHostLaunch(result.data.token, id, gameTab);
     // Show the student join link + QR here; the panel polls for the room code the game creates.
     setHostPanelOpen(true);
   }

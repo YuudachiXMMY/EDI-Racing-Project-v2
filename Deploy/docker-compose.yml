@@ -28,11 +28,14 @@ services:
       - PORT=3000
       # Cross-container session archive -> web-app (Server/server.js posts here)
       - API_URL=http://web-app:3001
-      - INTERNAL_SECRET=${INTERNAL_SECRET:-edi-internal-default}
-      # When true, create_room requires a valid host token (minted by web-app).
-      # Default false keeps local `docker compose up` working without a secret; the Dashboard
-      # host-launch (PRD phase 2) now supplies the token, so production ENABLES enforcement via
-      # docker-compose.prod.yml (REQUIRE_HOST_TOKEN=true + a required strong INTERNAL_SECRET).
+      # Required (no public default): the web-app's /game/ access gate ALWAYS trusts this secret
+      # to verify the game_access cookie, so the committed default would let anyone forge one and
+      # bypass the gate. `:?` fails compose fast with a clear message. Generate once:
+      #   export INTERNAL_SECRET=$(openssl rand -hex 32)
+      # Must match the web-app service's value byte-for-byte (same signing key across processes).
+      - INTERNAL_SECRET=${INTERNAL_SECRET:?INTERNAL_SECRET must be set (e.g. openssl rand -hex 32); the /game/ access gate is never safe with the public default}
+      # When true, create_room also requires a valid host token (minted by web-app). Default false
+      # keeps local WS testing simple; production ENABLES it via docker-compose.prod.yml.
       - REQUIRE_HOST_TOKEN=${REQUIRE_HOST_TOKEN:-false}
     healthcheck:
       # 127.0.0.1 (not localhost): nginx listens on IPv4 0.0.0.0:80 only, while
@@ -69,7 +72,9 @@ services:
       - API_PORT=3001
       - DB_PATH=/app/data/edi-survey.db
       - WS_GAME_URL=ws://edi-racing-game:3000
-      - INTERNAL_SECRET=${INTERNAL_SECRET:-edi-internal-default}
+      # Required — see the edi-racing service above. This process serves the /game/ access gate,
+      # which is fatal on the public default. Must equal the game container's INTERNAL_SECRET.
+      - INTERNAL_SECRET=${INTERNAL_SECRET:?INTERNAL_SECRET must be set (e.g. openssl rand -hex 32); the /game/ access gate is never safe with the public default}
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3001/api/health"]
       interval: 10s

@@ -18,10 +18,15 @@ const PORT = parseInt(process.env.API_PORT || '3001', 10);
 
 // Boot guard — refuse to start (or warn) if the host-token secret is misconfigured.
 // Runs before app.listen so a fatal config never binds the port. Mirrored in Server/server.js.
+// gameAccessGate:true — this process serves /api/game/gate, an ALWAYS-on auth boundary nginx
+// checks on every /game/ asset, so a default/public secret is never safe here (it would let
+// anyone forge a game_access cookie). The guard is therefore fatal on the default regardless
+// of REQUIRE_HOST_TOKEN.
 const REQUIRE_HOST_TOKEN = (process.env.REQUIRE_HOST_TOKEN || 'false').toLowerCase() === 'true';
 const secretCheck = checkSecretConfig({
   secret: process.env.INTERNAL_SECRET,
   requireHostToken: REQUIRE_HOST_TOKEN,
+  gameAccessGate: true,
 });
 if (secretCheck.level === 'fatal') {
   console.error(`[Auth] FATAL: ${secretCheck.message}`);

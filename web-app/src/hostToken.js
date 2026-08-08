@@ -28,19 +28,28 @@ const TTL_MS = parseInt(process.env.HOST_TOKEN_TTL_MS || '300000', 10); // 5 min
  * Decide whether the current secret configuration is safe to boot with. Pure —
  * never reads process.env or exits; the entry point acts on the returned level.
  * Mirrored in Server/server.js — keep the decision logic in lockstep.
- * @param {{ secret: string|undefined, requireHostToken: boolean }} cfg
+ *
+ * A default/public secret is fatal when EITHER boundary that trusts it is active:
+ *   - requireHostToken: the WS relay enforces host tokens on create_room.
+ *   - gameAccessGate:   the web-app serves the /api/game/gate that nginx's auth_request hits
+ *                       on every /game/ asset. This boundary is ALWAYS on in the web-app, so
+ *                       the public default lets anyone forge a `game_access` cookie and load
+ *                       the gated build. The web-app therefore passes gameAccessGate:true and
+ *                       refuses to boot on the default; the WS relay leaves it false (its only
+ *                       token boundary is the conditional host-token check).
+ * @param {{ secret: string|undefined, requireHostToken: boolean, gameAccessGate?: boolean }} cfg
  * @returns {{ level: 'ok'|'warn'|'fatal', message: string }}
  */
-export function checkSecretConfig({ secret, requireHostToken }) {
+export function checkSecretConfig({ secret, requireHostToken, gameAccessGate = false }) {
   const isDefault = !secret || secret === DEFAULT_INTERNAL_SECRET;
   if (!isDefault) return { level: 'ok', message: '' };
-  if (requireHostToken) {
+  if (requireHostToken || gameAccessGate) {
     return {
       level: 'fatal',
       message:
-        'REQUIRE_HOST_TOKEN=true but INTERNAL_SECRET is unset or the public default. ' +
-        'Set a strong random INTERNAL_SECRET (e.g. `openssl rand -hex 32`) before enabling ' +
-        'host-token enforcement. Refusing to start.',
+        'INTERNAL_SECRET is unset or the public default while an auth boundary that trusts it ' +
+        'is active (host-token enforcement or the /game/ access gate). Set a strong random ' +
+        'INTERNAL_SECRET (e.g. `openssl rand -hex 32`) before starting. Refusing to start.',
     };
   }
   return {

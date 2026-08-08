@@ -16,16 +16,16 @@ const REQUIRE_HOST_TOKEN = (process.env.REQUIRE_HOST_TOKEN || 'false').toLowerCa
 // Boot guard — MUST match web-app/src/hostToken.js checkSecretConfig in lockstep.
 // Pure decision function: pass the RAW process.env.INTERNAL_SECRET (not the resolved
 // constant above, which already collapsed unset -> default) so "unset" is still flagged.
-function checkSecretConfig({ secret, requireHostToken }) {
+function checkSecretConfig({ secret, requireHostToken, gameAccessGate = false }) {
   const isDefault = !secret || secret === DEFAULT_INTERNAL_SECRET;
   if (!isDefault) return { level: 'ok', message: '' };
-  if (requireHostToken) {
+  if (requireHostToken || gameAccessGate) {
     return {
       level: 'fatal',
       message:
-        'REQUIRE_HOST_TOKEN=true but INTERNAL_SECRET is unset or the public default. ' +
-        'Set a strong random INTERNAL_SECRET (e.g. `openssl rand -hex 32`) before enabling ' +
-        'host-token enforcement. Refusing to start.',
+        'INTERNAL_SECRET is unset or the public default while an auth boundary that trusts it ' +
+        'is active (host-token enforcement or the /game/ access gate). Set a strong random ' +
+        'INTERNAL_SECRET (e.g. `openssl rand -hex 32`) before starting. Refusing to start.',
     };
   }
   return {
