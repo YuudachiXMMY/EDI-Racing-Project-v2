@@ -14,7 +14,7 @@ export default function JoinLandingPage() {
             auto-join from this hash and hide Host UI; for now it opens the game. */}
         <a className="btn-primary btn-choice" href={buildStudentPlayUrl(roomCode)}>
           <span className="join-choice-title">Enter 3D Game</span>
-          <span className="join-choice-sub">Watch your team.s car in the browser</span>
+          <span className="join-choice-sub">Watch your team's car in the browser</span>
         </a>
         {/* 2D: stays inside the survey app (HashRouter) — existing spectator view. */}
         <Link className="btn-primary btn-choice" to={buildSpectatorPath(roomCode)}>

@@ -260,6 +260,17 @@ const server = http.createServer((req, res) => {
   // room still exists (stale mappings are cleaned in destroyRoom).
   const surveyRoomMatch = req.url.match(/^\/api\/survey-room\/(\d+)$/);
   if (req.method === 'GET' && surveyRoomMatch) {
+    // Internal-only: the web-app proxies this after its own auth + ownership check, so the raw
+    // endpoint must not be callable by anything else that can reach the game server (previously it
+    // relied on Docker network isolation alone). Require the shared secret — constant-time compared
+    // so it cannot be probed byte-by-byte via timing — before disclosing any survey→room mapping.
+    const provided = Buffer.from(req.headers['x-internal-secret'] || '');
+    const expected = Buffer.from(INTERNAL_SECRET);
+    if (provided.length !== expected.length || !crypto.timingSafeEqual(provided, expected)) {
+      res.writeHead(403);
+      res.end(JSON.stringify({ error: 'Forbidden' }));
+      return;
+    }
     const surveyId = parseInt(surveyRoomMatch[1], 10);
     const code = surveyRooms.get(surveyId);
     if (!code || !rooms.has(code)) {

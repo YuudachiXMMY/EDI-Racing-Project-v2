@@ -7,9 +7,10 @@ using UnityEngine;
 /// The panels are made visible by RaceUI wiring, but read their content from a
 /// separate manager reference (ScoreManager / EventManager). When a scene shipped
 /// with that reference unset, the panel appeared but stayed permanently empty.
-/// The fix adds a defensive auto-resolve in each panel's Start(); these tests drive
-/// Start() directly (private, so via SendMessage — EditMode does not auto-run it) and
-/// assert the manager gets resolved from the scene.
+/// The fix adds a defensive auto-resolve in each panel's lifecycle (LeaderboardPanel /
+/// RaceControlPanel in Start(); EventPanel in Awake(), because its OnEnable subscribes to the
+/// manager and runs before Start). These tests drive the relevant hook directly (private, so via
+/// SendMessage — EditMode does not auto-run it) and assert the manager gets resolved from the scene.
 /// </summary>
 [TestFixture]
 public class HudPanelAutoWireTests
@@ -59,7 +60,7 @@ public class HudPanelAutoWireTests
     }
 
     [Test]
-    public void EventPanel_Start_ResolvesEventManager_WhenUnset()
+    public void EventPanel_Awake_ResolvesEventManager_WhenUnset()
     {
         var mgrObj = NewObject("EventManager");
         var eventManager = mgrObj.AddComponent<EventManager>();
@@ -68,15 +69,17 @@ public class HudPanelAutoWireTests
         var panel = panelObj.AddComponent<EventPanel>();
         panel.EventManager = null;
 
-        // Schedule is null, so BuildEventRows early-returns after the auto-wire — safe.
-        panel.SendMessage("Start");
+        // The auto-wire lives in Awake (not Start): OnEnable subscribes to OnEventTriggered and
+        // runs BEFORE Start, so wiring in Start would make the first OnEnable miss the manager and
+        // never subscribe. Driving Awake is what the runtime lifecycle does before OnEnable.
+        panel.SendMessage("Awake");
 
         Assert.IsNotNull(panel.EventManager, "EventManager should be auto-resolved when left unset.");
         Assert.AreSame(eventManager, panel.EventManager, "Should resolve the EventManager present in the scene.");
     }
 
     [Test]
-    public void EventPanel_Start_ResolvesEventManager_OnInactiveObject()
+    public void EventPanel_Awake_ResolvesEventManager_OnInactiveObject()
     {
         // FindObjectsInactive.Include is what lets the panel find a manager that
         // lives on a disabled GameObject — the exact reason the fix passes that flag.
@@ -87,21 +90,27 @@ public class HudPanelAutoWireTests
         var panel = panelObj.AddComponent<EventPanel>();
         panel.EventManager = null;
 
-        panel.SendMessage("Start");
+        panel.SendMessage("Awake");
 
         Assert.IsNotNull(panel.EventManager, "Manager on an inactive object should still be resolved.");
         Assert.AreSame(eventManager, panel.EventManager);
     }
 
     [Test]
-    public void EventPanel_Start_NoManagerInScene_LeavesNull_AndDoesNotThrow()
+    public void EventPanel_AwakeThenStart_NoManagerInScene_LeavesNull_AndDoesNotThrow()
     {
         var panelObj = NewObject("EventPanel");
         var panel = panelObj.AddComponent<EventPanel>();
         panel.EventManager = null;
 
-        Assert.DoesNotThrow(() => panel.SendMessage("Start"),
-            "With no EventManager in the scene, Start must not throw (BuildEventRows early-returns on null).");
+        // Drive the real lifecycle order: Awake (auto-wire) then Start (BuildEventRows). With no
+        // manager in the scene neither must throw — the wire leaves null and BuildEventRows
+        // early-returns on null.
+        Assert.DoesNotThrow(() =>
+        {
+            panel.SendMessage("Awake");
+            panel.SendMessage("Start");
+        }, "With no EventManager in the scene, Awake+Start must not throw.");
         Assert.IsNull(panel.EventManager, "No manager in scene → reference stays null, panel stays safely empty.");
     }
 

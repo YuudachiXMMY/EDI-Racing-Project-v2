@@ -3,8 +3,15 @@ import { requireAuth } from '../middleware/auth.js';
 import { mintHostToken, verifyHostToken, mintGameAccess, verifyGameAccess } from '../hostToken.js';
 import { getDb } from '../db.js';
 import { GAME_HTTP_URL, normalizeRoomCode } from '../config.js';
+import { DEFAULT_INTERNAL_SECRET } from '../hostToken.js';
 
 const router = Router();
+
+// Shared secret proving this proxy call originates from the trusted web-app backend, not an
+// arbitrary caller on the game server's network. The game server constant-time compares it before
+// disclosing a survey→room mapping (Server/server.js GET /api/survey-room). Same resolution rule
+// as everywhere else: unset falls back to the public default (fine while no strong secret is set).
+const INTERNAL_SECRET = process.env.INTERNAL_SECRET || DEFAULT_INTERNAL_SECRET;
 
 // The gated Unity build lives here (nginx serves /usr/share/nginx/html/game/ behind an
 // auth_request to /gate). /enter redirects into it with role/token/room in the hash.
@@ -108,7 +115,9 @@ router.get('/survey-room/:surveyId', requireAuth, async (req, res) => {
     return res.status(404).json({ success: false, error: 'Survey not found' });
   }
   try {
-    const response = await fetch(`${GAME_HTTP_URL}/api/survey-room/${n}`);
+    const response = await fetch(`${GAME_HTTP_URL}/api/survey-room/${n}`, {
+      headers: { 'x-internal-secret': INTERNAL_SECRET },
+    });
     const data = await response.json();
     res.json({ success: true, data });
   } catch {

@@ -21,14 +21,22 @@ public class EventPanel : MonoBehaviour
     private Text[] eventLabels;
     private bool initialized;
 
-    private void Start()
+    private void Awake()
     {
         // Defensive auto-wire: SceneWiring/TrackSetupEditor do not re-assign this on an
         // already-existing panel, so a scene can ship with EventManager unset — which leaves the
         // panel visible but empty (BuildEventRows early-returns on null).
+        //
+        // This MUST run in Awake, not Start: OnEnable fires between Awake and Start, and it is
+        // where we subscribe to OnEventTriggered. If the wire happened in Start, the first
+        // OnEnable would see EventManager == null, skip the subscription, and never re-subscribe —
+        // leaving button states frozen. Wiring in Awake guarantees OnEnable has a live reference.
         if (EventManager == null)
             EventManager = FindFirstObjectByType<EventManager>(FindObjectsInactive.Include);
+    }
 
+    private void Start()
+    {
         BuildEventRows();
     }
 
