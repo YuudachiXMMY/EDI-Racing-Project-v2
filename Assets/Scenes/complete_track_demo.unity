@@ -157,13 +157,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1729875}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.18301274, y: -0.6830127, z: 0.18301274, w: 0.6830127}
-  m_LocalPosition: {x: 310.3, y: 16.333313, z: -160.6}
+  m_LocalRotation: {x: 0.20762204, y: -0.67593867, z: 0.20762204, w: 0.67593867}
+  m_LocalPosition: {x: 307.67, y: 21.77, z: -157.66}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 30, y: -90, z: 0}
+  m_LocalEulerAnglesHint: {x: 34.15, y: -90, z: 0}
 --- !u!1 &2366786
 GameObject:
   m_ObjectHideFlags: 0
@@ -751,7 +751,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: d7de56547cf814d439a3933aa22920ab, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::JoinScreen
-  NetworkManager: {fileID: 0}
+  NetworkManager: {fileID: 1404780700}
   RoomCodeInput: {fileID: 199840012}
   TeamNameInput: {fileID: 368564335}
   JoinButton: {fileID: 1775104324}
@@ -1586,7 +1586,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0887b58f78ab04f8bab1de50e5168134, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CarLabelSpawner
-  RaceManager: {fileID: 0}
+  RaceManager: {fileID: 607591796}
   FontSize: 24
   LabelHeight: 4
   MaxVisibleDistance: 80
@@ -2484,10 +2484,14 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SpectatorCamera
   ScoreManager: {fileID: 607591801}
+  FixedPoints: []
   FollowDistance: 15
   FollowHeight: 8
-  SmoothTime: 0.5
+  SmoothTime: 1
   LeaderCheckInterval: 3
+  Mode: 0
+  FollowCount: 1
+  CycleInterval: 5
 --- !u!114 &354533041
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -2941,7 +2945,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9ec73d0f1eb09400bbd69912b33c1194, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::EventPanel
-  EventManager: {fileID: 0}
+  EventManager: {fileID: 607591800}
   ContentParent: {fileID: 135148943}
   EventRowPrefab: {fileID: 7679708994339247549, guid: d63342f331b90457685375ec819d3aef, type: 3}
 --- !u!224 &390993380
@@ -3234,11 +3238,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 363db12a026fc4745a5b77f1b65779f7, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::RaceControlPanel
-  RaceManager: {fileID: 0}
+  RaceManager: {fileID: 607591796}
+  CameraManager: {fileID: 1155417298}
   PauseResumeButton: {fileID: 1080817287}
   PauseResumeLabel: {fileID: 162441314}
   SaveButton: {fileID: 683201610}
   ExportButton: {fileID: 1695912750}
+  AutoCamButton: {fileID: 673360259}
+  AutoCamLabel: {fileID: 758854572}
   StatusText: {fileID: 1851896598}
 --- !u!224 &451570431
 RectTransform:
@@ -3256,12 +3263,13 @@ RectTransform:
   - {fileID: 683201607}
   - {fileID: 1695912747}
   - {fileID: 1851896600}
+  - {fileID: 673360258}
   m_Father: {fileID: 868943149}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0}
   m_AnchorMax: {x: 0.5, y: 0}
   m_AnchoredPosition: {x: 0, y: 10}
-  m_SizeDelta: {x: 440, y: 50}
+  m_SizeDelta: {x: 500, y: 50}
   m_Pivot: {x: 0.5, y: 0}
 --- !u!114 &451570432
 MonoBehaviour:
@@ -3610,10 +3618,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 15bf96ed8e22343a3afb18cb3769b7d3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: EDIRacing.Runtime::WeatherEffect
-  DaySkybox: {fileID: 0}
-  NightSkybox: {fileID: 0}
-  SnowSkybox: {fileID: 0}
-  SunsetSkybox: {fileID: 0}
+  DaySkybox: {fileID: 2100000, guid: 56113b3b655ab7349bab4d7d405c258a, type: 2}
+  NightSkybox: {fileID: 2100000, guid: 135a7036ca1a07b4e9e162d80e6b6e77, type: 2}
+  SnowSkybox: {fileID: 2100000, guid: ed1387202b1349540a5d6464f0f27488, type: 2}
+  SunsetSkybox: {fileID: 2100000, guid: 7ed994c1997814049b44c36a823bba6c, type: 2}
   DayCycleEnabled: 1
   DayCycleDuration: 90
   DayFraction: 0.6
@@ -4141,11 +4149,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a22b1ee050229435680163ffb25885d0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::LeaderboardPanel
-  ScoreManager: {fileID: 0}
+  ScoreManager: {fileID: 607591801}
+  NetworkSync: {fileID: 0}
   ContentParent: {fileID: 1587315239}
   RowPrefab: {fileID: 6245057705971971554, guid: ba06c794e9ae748908ddcb0f6a6421f1, type: 3}
   UpdateInterval: 0.5
   MaxRows: 15
+  EnlargedMaxRows: 20
+  FullscreenMaxRows: 60
+  ToggleKey: 3
+  NormalRowFontSize: 16
+  EnlargedRowFontSize: 34
+  FullscreenRowFontSize: 48
+  EnlargedTitleFontSize: 44
+  FullscreenTitleFontSize: 64
 --- !u!224 &667381312
 RectTransform:
   m_ObjectHideFlags: 0
@@ -4236,6 +4253,127 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1239141543}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &673360257
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 673360258}
+  - component: {fileID: 673360261}
+  - component: {fileID: 673360260}
+  - component: {fileID: 673360259}
+  m_Layer: 0
+  m_Name: AutoCamBtn
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &673360258
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 673360257}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 758854571}
+  m_Father: {fileID: 451570431}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0.5}
+  m_AnchorMax: {x: 0, y: 0.5}
+  m_AnchoredPosition: {x: 425, y: 0}
+  m_SizeDelta: {x: 110, y: 34}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &673360259
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 673360257}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4e29b1a8efbd4b44bb3f3716e73f07ff, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Button
+  m_Navigation:
+    m_Mode: 3
+    m_WrapAround: 0
+    m_SelectOnUp: {fileID: 0}
+    m_SelectOnDown: {fileID: 0}
+    m_SelectOnLeft: {fileID: 0}
+    m_SelectOnRight: {fileID: 0}
+  m_Transition: 1
+  m_Colors:
+    m_NormalColor: {r: 1, g: 1, b: 1, a: 1}
+    m_HighlightedColor: {r: 0.2, g: 0.45, b: 0.2, a: 1}
+    m_PressedColor: {r: 0.1, g: 0.2, b: 0.1, a: 1}
+    m_SelectedColor: {r: 0.9607843, g: 0.9607843, b: 0.9607843, a: 1}
+    m_DisabledColor: {r: 0.78431374, g: 0.78431374, b: 0.78431374, a: 0.5019608}
+    m_ColorMultiplier: 1
+    m_FadeDuration: 0.1
+  m_SpriteState:
+    m_HighlightedSprite: {fileID: 0}
+    m_PressedSprite: {fileID: 0}
+    m_SelectedSprite: {fileID: 0}
+    m_DisabledSprite: {fileID: 0}
+  m_AnimationTriggers:
+    m_NormalTrigger: Normal
+    m_HighlightedTrigger: Highlighted
+    m_PressedTrigger: Pressed
+    m_SelectedTrigger: Selected
+    m_DisabledTrigger: Disabled
+  m_Interactable: 1
+  m_TargetGraphic: {fileID: 673360260}
+  m_OnClick:
+    m_PersistentCalls:
+      m_Calls: []
+--- !u!114 &673360260
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 673360257}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fe87c0e1cc204ed48ad3b37840f39efc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Image
+  m_Material: {fileID: 0}
+  m_Color: {r: 0.15, g: 0.3, b: 0.15, a: 0.9}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_Sprite: {fileID: 0}
+  m_Type: 0
+  m_PreserveAspect: 0
+  m_FillCenter: 1
+  m_FillMethod: 4
+  m_FillAmount: 1
+  m_FillClockwise: 1
+  m_FillOrigin: 0
+  m_UseSpriteMesh: 0
+  m_PixelsPerUnitMultiplier: 1
+--- !u!222 &673360261
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 673360257}
+  m_CullTransparentMesh: 1
 --- !u!1 &683201606
 GameObject:
   m_ObjectHideFlags: 0
@@ -4388,7 +4526,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c4ddbba4081d041dfaf0df47b2b464ef, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SetupScreen
-  RaceManager: {fileID: 0}
+  RaceManager: {fileID: 607591796}
   StartDefaultButton: {fileID: 1555869349}
   LoadSessionButton: {fileID: 1269035023}
   InfoText: {fileID: 102719145}
@@ -4396,7 +4534,9 @@ MonoBehaviour:
   HostButton: {fileID: 245031901}
   RoomCodeText: {fileID: 729701072}
   StudentCountText: {fileID: 934177638}
-  SurveyConfigManager: {fileID: 0}
+  StudentLinkText: {fileID: 0}
+  CopyLinkButton: {fileID: 0}
+  SurveyConfigManager: {fileID: 1833288157}
   ActiveConfigText: {fileID: 215835145}
   NewSurveyButton: {fileID: 13621535}
   LoadConfigButton: {fileID: 857074484}
@@ -4408,6 +4548,7 @@ MonoBehaviour:
   ImportPanel: {fileID: 753608900}
   PushConfigButton: {fileID: 365087523}
   WebResponseCountText: {fileID: 954697733}
+  JoinToast: {fileID: 0}
 --- !u!224 &692145203
 RectTransform:
   m_ObjectHideFlags: 0
@@ -4737,6 +4878,85 @@ CanvasRenderer:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 753608900}
+  m_CullTransparentMesh: 1
+--- !u!1 &758854570
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 758854571}
+  - component: {fileID: 758854573}
+  - component: {fileID: 758854572}
+  m_Layer: 0
+  m_Name: Label
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &758854571
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 758854570}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 673360258}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 1, y: 1}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 0, y: 0}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &758854572
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 758854570}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f7201a12d95ffc409449d95f23cf332, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: UnityEngine.UI::UnityEngine.UI.Text
+  m_Material: {fileID: 0}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
+  m_RaycastTarget: 1
+  m_RaycastPadding: {x: 0, y: 0, z: 0, w: 0}
+  m_Maskable: 1
+  m_OnCullStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
+  m_FontData:
+    m_Font: {fileID: 10102, guid: 0000000000000000e000000000000000, type: 0}
+    m_FontSize: 14
+    m_FontStyle: 0
+    m_BestFit: 0
+    m_MinSize: 10
+    m_MaxSize: 40
+    m_Alignment: 4
+    m_AlignByGeometry: 0
+    m_RichText: 1
+    m_HorizontalOverflow: 0
+    m_VerticalOverflow: 0
+    m_LineSpacing: 1
+  m_Text: Auto Cam
+--- !u!222 &758854573
+CanvasRenderer:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 758854570}
   m_CullTransparentMesh: 1
 --- !u!1 &761397983
 GameObject:
@@ -5323,11 +5543,11 @@ MonoBehaviour:
   RaceManager: {fileID: 607591796}
   CameraManager: {fileID: 1155417298}
   NetworkManager: {fileID: 1404780700}
-  Leaderboard: {fileID: 0}
-  Events: {fileID: 0}
-  Controls: {fileID: 0}
+  Leaderboard: {fileID: 667381311}
+  Events: {fileID: 390993379}
+  Controls: {fileID: 451570430}
   Setup: {fileID: 692145202}
-  JoinScreen: {fileID: 0}
+  JoinScreen: {fileID: 76890510}
 --- !u!114 &868943146
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -6471,6 +6691,8 @@ MonoBehaviour:
   - {fileID: 1729876}
   - {fileID: 1817432219}
   - {fileID: 929802046}
+  AutoSwitchCarCount: 3
+  AutoSwitchKey: 17
 --- !u!1 &1156417428
 GameObject:
   m_ObjectHideFlags: 0
@@ -7993,7 +8215,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: 46879e305e64f4edcadc71f178f7cf3d, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: EDIRacing.Runtime::HostLaunchBootstrap
   NetworkManager: {fileID: 1404780700}
   RaceUI: {fileID: 868943145}
@@ -8007,7 +8229,7 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: fc2f71f0afbdc1f49898d8904314d4c3, type: 3}
-  m_Name:
+  m_Name: 
   m_EditorClassIdentifier: EDIRacing.Runtime::StudentJoinBootstrap
   NetworkManager: {fileID: 1404780700}
   RaceUI: {fileID: 868943145}
@@ -9593,7 +9815,7 @@ Transform:
   m_GameObject: {fileID: 1744770376}
   serializedVersion: 2
   m_LocalRotation: {x: 0.18301274, y: -0.6830127, z: 0.18301274, w: 0.6830127}
-  m_LocalPosition: {x: 263.5, y: 12.74998, z: -236.8}
+  m_LocalPosition: {x: 271.8, y: 12.74998, z: -242.4}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -10188,13 +10410,13 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1817432218}
   serializedVersion: 2
-  m_LocalRotation: {x: 0.045968577, y: -0.9505687, z: 0.25470433, w: 0.17155695}
-  m_LocalPosition: {x: 222.3, y: 17.9, z: -30.4}
+  m_LocalRotation: {x: 0.03222386, y: -0.9584101, z: 0.25680554, w: 0.12026103}
+  m_LocalPosition: {x: 226.1, y: 17.9, z: -23.89}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 30, y: -159.539, z: 0}
+  m_LocalEulerAnglesHint: {x: 30, y: -165.696, z: 0}
 --- !u!1 &1822781341
 GameObject:
   m_ObjectHideFlags: 0
@@ -11400,6 +11622,56 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls: []
+--- !u!1 &1990010001
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1990010002}
+  - component: {fileID: 1990010003}
+  m_Layer: 0
+  m_Name: FinishPanel
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &1990010002
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1990010001}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 868943149}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 100, y: 100}
+  m_Pivot: {x: 0.5, y: 0.5}
+--- !u!114 &1990010003
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1990010001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 56377efdab6f34add88f03df15f3a432, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  RaceManager: {fileID: 607591796}
+  ScoreManager: {fileID: 607591801}
 --- !u!1 &2036857288
 GameObject:
   m_ObjectHideFlags: 0
@@ -14561,53 +14833,3 @@ SceneRoots:
   - {fileID: 1874963112}
   - {fileID: 607591797}
   - {fileID: 582052980}
---- !u!1 &1990010001
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1990010002}
-  - component: {fileID: 1990010003}
-  m_Layer: 0
-  m_Name: FinishPanel
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!224 &1990010002
-RectTransform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1990010001}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 868943149}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.5, y: 0.5}
-  m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: 0, y: 0}
-  m_SizeDelta: {x: 100, y: 100}
-  m_Pivot: {x: 0.5, y: 0.5}
---- !u!114 &1990010003
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1990010001}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 56377efdab6f34add88f03df15f3a432, type: 3}
-  m_Name:
-  m_EditorClassIdentifier:
-  RaceManager: {fileID: 607591796}
-  ScoreManager: {fileID: 607591801}

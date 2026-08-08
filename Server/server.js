@@ -16,16 +16,16 @@ const REQUIRE_HOST_TOKEN = (process.env.REQUIRE_HOST_TOKEN || 'false').toLowerCa
 // Boot guard — MUST match web-app/src/hostToken.js checkSecretConfig in lockstep.
 // Pure decision function: pass the RAW process.env.INTERNAL_SECRET (not the resolved
 // constant above, which already collapsed unset -> default) so "unset" is still flagged.
-function checkSecretConfig({ secret, requireHostToken }) {
+function checkSecretConfig({ secret, requireHostToken, gameAccessGate = false }) {
   const isDefault = !secret || secret === DEFAULT_INTERNAL_SECRET;
   if (!isDefault) return { level: 'ok', message: '' };
-  if (requireHostToken) {
+  if (requireHostToken || gameAccessGate) {
     return {
       level: 'fatal',
       message:
-        'REQUIRE_HOST_TOKEN=true but INTERNAL_SECRET is unset or the public default. ' +
-        'Set a strong random INTERNAL_SECRET (e.g. `openssl rand -hex 32`) before enabling ' +
-        'host-token enforcement. Refusing to start.',
+        'INTERNAL_SECRET is unset or the public default while an auth boundary that trusts it ' +
+        'is active (host-token enforcement or the /game/ access gate). Set a strong random ' +
+        'INTERNAL_SECRET (e.g. `openssl rand -hex 32`) before starting. Refusing to start.',
     };
   }
   return {
@@ -89,6 +89,11 @@ function verifyHostToken(token, now = Date.now()) {
 const rooms = new Map();
 const clientRooms = new Map(); // WebSocket -> { roomCode, role, sessionId }
 const sessions = new Map();   // sessionId -> { roomCode, role }
+// surveyId -> roomCode. Populated on create_room from the host token's `sid` claim so the
+// web-app can discover the room it just launched (the WS server owns room-code generation,
+// and the prebuilt Unity client never reports the code back to the web-app). Latest room per
+// survey wins; the entry is removed in destroyRoom only when it still points at that room.
+const surveyRooms = new Map();
 
 function generateRoomCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no I/O/0/1 to avoid confusion
@@ -168,6 +173,10 @@ function destroyRoom(roomCode) {
   for (const [sid, info] of sessions) {
     if (info.roomCode === roomCode) sessions.delete(sid);
   }
+  // Drop the survey->room link only if it still points here; a newer re-host may already own it.
+  if (room.surveyId !== null && room.surveyId !== undefined && surveyRooms.get(room.surveyId) === roomCode) {
+    surveyRooms.delete(room.surveyId);
+  }
   rooms.delete(roomCode);
   console.log(`[Room ${roomCode}] Destroyed (archived)`);
 }
@@ -243,6 +252,34 @@ const server = http.createServer((req, res) => {
       gamePhase: room.gamePhase || 'Setup',
       raceStarted: room.raceStarted,
     }));
+    return;
+  }
+
+  // GET /api/survey-room/:surveyId — resolve the live room a survey is currently hosting, so the
+  // web-app can show the student join link + QR after launching. Returns the code only while the
+  // room still exists (stale mappings are cleaned in destroyRoom).
+  const surveyRoomMatch = req.url.match(/^\/api\/survey-room\/(\d+)$/);
+  if (req.method === 'GET' && surveyRoomMatch) {
+    // Internal-only: the web-app proxies this after its own auth + ownership check, so the raw
+    // endpoint must not be callable by anything else that can reach the game server (previously it
+    // relied on Docker network isolation alone). Require the shared secret — constant-time compared
+    // so it cannot be probed byte-by-byte via timing — before disclosing any survey→room mapping.
+    const provided = Buffer.from(req.headers['x-internal-secret'] || '');
+    const expected = Buffer.from(INTERNAL_SECRET);
+    if (provided.length !== expected.length || !crypto.timingSafeEqual(provided, expected)) {
+      res.writeHead(403);
+      res.end(JSON.stringify({ error: 'Forbidden' }));
+      return;
+    }
+    const surveyId = parseInt(surveyRoomMatch[1], 10);
+    const code = surveyRooms.get(surveyId);
+    if (!code || !rooms.has(code)) {
+      res.writeHead(200);
+      res.end(JSON.stringify({ exists: false }));
+      return;
+    }
+    res.writeHead(200);
+    res.end(JSON.stringify({ exists: true, roomCode: code }));
     return;
   }
 
@@ -330,14 +367,15 @@ wss.on('connection', (ws) => {
 
     switch (msg.type) {
       case 'create_room': {
-        if (REQUIRE_HOST_TOKEN) {
-          const result = verifyHostToken(msg.hostToken);
-          if (!result.valid) {
-            sendJSON(ws, { type: 'error', message: 'Host authorization required' });
-            console.log(`[Auth] Rejected create_room (${result.error || 'no token'})`);
-            return;
-          }
+        // Decode the host token even when enforcement is off: its `sid` claim is how the
+        // web-app links this room back to the survey it launched from (survey-room lookup).
+        const tokenResult = verifyHostToken(msg.hostToken);
+        if (REQUIRE_HOST_TOKEN && !tokenResult.valid) {
+          sendJSON(ws, { type: 'error', message: 'Host authorization required' });
+          console.log(`[Auth] Rejected create_room (${tokenResult.error || 'no token'})`);
+          return;
         }
+        const surveyId = tokenResult.valid ? tokenResult.surveyId ?? null : null;
         const roomCode = generateRoomCode();
         rooms.set(roomCode, {
           professor: ws,
@@ -352,9 +390,12 @@ wss.on('connection', (ws) => {
           surveyData: null,
           latestConfig: null,
           professorSessionId: msg.sessionId || null,
+          surveyId,
           graceTimer: null,
           createdAt: new Date().toISOString(),
         });
+        // Latest room per survey wins, so a re-host of the same survey supersedes the old code.
+        if (surveyId !== null) surveyRooms.set(surveyId, roomCode);
         const clientInfo = { roomCode, role: 'professor', sessionId: msg.sessionId || null };
         clientRooms.set(ws, clientInfo);
         if (msg.sessionId) {

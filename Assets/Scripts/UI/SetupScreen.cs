@@ -1,10 +1,15 @@
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
 /// Pre-race setup overlay. Shown during GameState.Setup.
-/// Allows starting race with default CSV data, loading a saved session,
-/// or importing data from the Web App.
+///
+/// The runtime menu is collapsed to a single "Start Game" button: when the game is launched
+/// from the web-app gateway (#role=host&token=…), the survey's responses are pushed in over
+/// the WebSocket (survey_import) and cached; pressing Start Game then starts the race with that
+/// token data. All other setup buttons (Load Session, Host, Survey Builder, manual JSON import,
+/// Push Config) are hidden at runtime but their fields and wiring are kept intact for the Editor.
 /// </summary>
 public class SetupScreen : MonoBehaviour
 {
@@ -45,6 +50,21 @@ public class SetupScreen : MonoBehaviour
     [Header("Web Response Sync (Optional)")]
     public Text WebResponseCountText;
 
+    [Header("Join Toast (Optional)")]
+    // Bottom-left transient "student joined" notice. Auto-resolved/created in Start() so it works
+    // with zero scene wiring; assign in the Editor to skin or reposition it.
+    public JoinToast JoinToast;
+
+    // Web-app token data: survey responses pushed in via the WebSocket (survey_import) after a
+    // gateway host launch. Cached here instead of auto-starting so the professor starts the race
+    // by pressing the single Start Game button. See StartGame().
+    private List<CarData> pendingCars;
+    private SavedEventRule[] pendingRules;
+
+    // True when the page was opened via the web gateway host launch (#role=host&token=…), so the
+    // race data arrives asynchronously and Start Game waits for it instead of using the default CSV.
+    private bool expectingTokenData;
+
     private void Start()
     {
         if (RaceManager == null)
@@ -55,7 +75,7 @@ public class SetupScreen : MonoBehaviour
         }
 
         if (StartDefaultButton != null)
-            StartDefaultButton.onClick.AddListener(StartWithDefaultData);
+            StartDefaultButton.onClick.AddListener(StartGame);
         if (LoadSessionButton != null)
             LoadSessionButton.onClick.AddListener(LoadLatestSession);
         if (HostButton != null)
@@ -88,10 +108,58 @@ public class SetupScreen : MonoBehaviour
             PushConfigButton.onClick.AddListener(OnPushConfig);
         }
 
-        if (InfoText != null)
-            InfoText.text = "Ready to start race.";
-
         RefreshActiveConfigDisplay();
+
+        ConfigureSingleButtonMenu();
+
+        // Defensive auto-wire: use a scene-assigned toast if present, otherwise spawn a standalone
+        // one. Created on its own root GameObject (not under this panel) so it keeps ticking its
+        // fade coroutine after the Setup screen hides itself at race start.
+        if (JoinToast == null)
+            JoinToast = FindFirstObjectByType<JoinToast>(FindObjectsInactive.Include);
+        if (JoinToast == null)
+            JoinToast = global::JoinToast.CreateDefault();
+    }
+
+    // Collapse the setup menu to a single "Start Game" button (StartDefaultButton, reused). Every
+    // other button is hidden at runtime; the fields and their listener wiring above are kept intact
+    // so the Editor auto-setup and manual flows still work.
+    private void ConfigureSingleButtonMenu()
+    {
+        // A web gateway host launch carries "#role=host&token=…". In that flow the race data is
+        // pushed in asynchronously (survey_import), so wait for it rather than the default CSV.
+        var launch = HostLaunchParams.ParseHash(WebSocketBridge.GetPageUrl());
+        expectingTokenData = launch.TryGetValue("role", out var role) && role == "host";
+
+        HideButton(LoadSessionButton);
+        HideButton(HostButton);
+        HideButton(CopyLinkButton);
+        HideButton(ImportJsonButton);
+        HideButton(ConfirmImportButton);
+        HideButton(PushConfigButton);
+        HideButton(NewSurveyButton);
+        HideButton(LoadConfigButton);
+        HideButton(TemplateButton);
+        HideButton(StartWithSurveyButton);
+
+        if (StartDefaultButton != null)
+        {
+            StartDefaultButton.gameObject.SetActive(true);
+            var label = StartDefaultButton.GetComponentInChildren<Text>();
+            if (label != null) label.text = "Start Game";
+            // Wait for token data before enabling in the web-launch flow; always ready otherwise.
+            StartDefaultButton.interactable = !expectingTokenData;
+        }
+
+        if (InfoText != null)
+            InfoText.text = expectingTokenData
+                ? "Waiting for data from web app..."
+                : "Ready to start race.";
+    }
+
+    private static void HideButton(Button button)
+    {
+        if (button != null) button.gameObject.SetActive(false);
     }
 
     private void OnEnable()
@@ -242,9 +310,12 @@ public class SetupScreen : MonoBehaviour
 
         if (baseMsg.type == "student_joined")
         {
+            // Route joins to the bottom-left toast instead of overwriting InfoText: with up to ~500
+            // students the info line would thrash, and the toast coalesces + auto-dissolves. The
+            // running total still lives in StudentCountText (OnStudentCountChanged / student_list).
             var joinMsg = JsonUtility.FromJson<StudentJoinedMessage>(json);
-            if (InfoText != null)
-                InfoText.text = $"'{joinMsg.teamName}' joined ({joinMsg.count} student(s))";
+            if (JoinToast != null)
+                JoinToast.Show(JoinToastText.Format(joinMsg.teamName, joinMsg.count));
             return;
         }
 
@@ -347,11 +418,15 @@ public class SetupScreen : MonoBehaviour
             return;
         }
 
-        Debug.Log($"[SetupScreen] Received {result.Cars.Count} cars, {result.EventRules.Length} rules from web app direct send");
-        if (InfoText != null) InfoText.text = $"Received from web app: {result.Cars.Count} cars, {result.EventRules.Length} rules. Starting race...";
+        Debug.Log($"[SetupScreen] Received {result.Cars.Count} cars, {result.EventRules.Length} rules from web app (token data)");
 
-        RaceManager.LoadAndStartRaceWithRules(result.Cars, result.EventRules);
-        gameObject.SetActive(false);
+        // Cache the token data and let the professor start the race by pressing Start Game,
+        // rather than auto-starting the moment the data arrives.
+        pendingCars = result.Cars;
+        pendingRules = result.EventRules;
+        if (InfoText != null)
+            InfoText.text = $"Data ready: {result.Cars.Count} cars, {result.EventRules.Length} rules. Press Start Game.";
+        if (StartDefaultButton != null) StartDefaultButton.interactable = true;
     }
 
     // --- Config Sync ---
@@ -419,6 +494,34 @@ public class SetupScreen : MonoBehaviour
     }
 
     // --- Race Start ---
+
+    // Single "Start Game" button handler. Prefers the web-app token data (survey responses pushed
+    // in via WebSocket); if launched via the gateway but that data has not arrived yet, it waits.
+    // In the Editor/standalone (no token launch) it starts the default CSV so local testing works.
+    private void StartGame()
+    {
+        if (RaceManager == null)
+        {
+            Debug.LogError("[SetupScreen] RaceManager is null! Cannot start race.");
+            if (InfoText != null) InfoText.text = "Error: RaceManager not found.";
+            return;
+        }
+
+        if (pendingCars != null && pendingCars.Count > 0)
+        {
+            RaceManager.LoadAndStartRaceWithRules(pendingCars, pendingRules);
+            gameObject.SetActive(false);
+            return;
+        }
+
+        if (expectingTokenData)
+        {
+            if (InfoText != null) InfoText.text = "Waiting for data from web app...";
+            return;
+        }
+
+        StartWithDefaultData();
+    }
 
     private void StartWithDefaultData()
     {

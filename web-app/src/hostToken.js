@@ -28,19 +28,28 @@ const TTL_MS = parseInt(process.env.HOST_TOKEN_TTL_MS || '300000', 10); // 5 min
  * Decide whether the current secret configuration is safe to boot with. Pure —
  * never reads process.env or exits; the entry point acts on the returned level.
  * Mirrored in Server/server.js — keep the decision logic in lockstep.
- * @param {{ secret: string|undefined, requireHostToken: boolean }} cfg
+ *
+ * A default/public secret is fatal when EITHER boundary that trusts it is active:
+ *   - requireHostToken: the WS relay enforces host tokens on create_room.
+ *   - gameAccessGate:   the web-app serves the /api/game/gate that nginx's auth_request hits
+ *                       on every /game/ asset. This boundary is ALWAYS on in the web-app, so
+ *                       the public default lets anyone forge a `game_access` cookie and load
+ *                       the gated build. The web-app therefore passes gameAccessGate:true and
+ *                       refuses to boot on the default; the WS relay leaves it false (its only
+ *                       token boundary is the conditional host-token check).
+ * @param {{ secret: string|undefined, requireHostToken: boolean, gameAccessGate?: boolean }} cfg
  * @returns {{ level: 'ok'|'warn'|'fatal', message: string }}
  */
-export function checkSecretConfig({ secret, requireHostToken }) {
+export function checkSecretConfig({ secret, requireHostToken, gameAccessGate = false }) {
   const isDefault = !secret || secret === DEFAULT_INTERNAL_SECRET;
   if (!isDefault) return { level: 'ok', message: '' };
-  if (requireHostToken) {
+  if (requireHostToken || gameAccessGate) {
     return {
       level: 'fatal',
       message:
-        'REQUIRE_HOST_TOKEN=true but INTERNAL_SECRET is unset or the public default. ' +
-        'Set a strong random INTERNAL_SECRET (e.g. `openssl rand -hex 32`) before enabling ' +
-        'host-token enforcement. Refusing to start.',
+        'INTERNAL_SECRET is unset or the public default while an auth boundary that trusts it ' +
+        'is active (host-token enforcement or the /game/ access gate). Set a strong random ' +
+        'INTERNAL_SECRET (e.g. `openssl rand -hex 32`) before starting. Refusing to start.',
     };
   }
   return {
@@ -77,12 +86,14 @@ export function mintHostToken(surveyId = null, now = Date.now()) {
 }
 
 /**
- * Verify a host token. Never throws.
+ * Verify the signature, version, and expiry of a token in the shared wire format and
+ * return its decoded payload. Never throws. Used by both verifyHostToken and
+ * verifyGameAccess so the two credentials share one hardened parse/verify path.
  * @param {string} token
- * @param {number} now - epoch ms; injectable for deterministic tests.
- * @returns {{ valid: boolean, surveyId?: number|null, error?: string }}
+ * @param {number} now - epoch ms.
+ * @returns {{ valid: true, payload: object } | { valid: false, error: string }}
  */
-export function verifyHostToken(token, now = Date.now()) {
+function verifySignedToken(token, now) {
   if (typeof token !== 'string' || token.length === 0) {
     return { valid: false, error: 'missing token' };
   }
@@ -119,5 +130,57 @@ export function verifyHostToken(token, now = Date.now()) {
   if (typeof payload.exp !== 'number' || payload.exp <= now) {
     return { valid: false, error: 'expired' };
   }
-  return { valid: true, surveyId: payload.sid ?? null };
+  return { valid: true, payload };
+}
+
+/**
+ * Verify a host token. Never throws.
+ * @param {string} token
+ * @param {number} now - epoch ms; injectable for deterministic tests.
+ * @returns {{ valid: boolean, surveyId?: number|null, error?: string }}
+ */
+export function verifyHostToken(token, now = Date.now()) {
+  const sig = verifySignedToken(token, now);
+  if (!sig.valid) return sig;
+  return { valid: true, surveyId: sig.payload.sid ?? null };
+}
+
+// ── Game-access cookie ─────────────────────────────────────────────────────────
+// A DIFFERENT credential from the host token above. The host token authorizes creating a
+// WS room (checked by Server/server.js). The game-access token authorizes *loading the
+// Unity build at all*: /api/game/enter mints it once the caller proves they may enter
+// (valid host token, or a live room), it rides the HttpOnly `game_access` cookie, and
+// nginx's auth_request checks it via /api/game/gate before serving any /game/ asset.
+// Longer-lived than the host token because it must outlast a whole class session, not just
+// the create_room handshake. Same b64url+HMAC wire format, but NOT mirrored in
+// Server/server.js — only the web-app mints it and (behind nginx) verifies it.
+//   payload = { v:1, role:'host'|'play', room:<code|null>, sid:<surveyId|null>, iat, exp }
+const ACCESS_TTL_MS = parseInt(process.env.GAME_ACCESS_TTL_MS || '14400000', 10); // 4h
+
+/**
+ * Mint a game-access token for the /game/ build gate.
+ * @param {{ role: 'host'|'play', room?: string|null, surveyId?: number|null }} claims
+ * @param {number} now - epoch ms; injectable for deterministic tests.
+ * @returns {{ token: string, expiresAt: number }}
+ */
+export function mintGameAccess({ role, room = null, surveyId = null }, now = Date.now()) {
+  const payload = { v: 1, role, room, sid: surveyId, iat: now, exp: now + ACCESS_TTL_MS };
+  const payloadB64 = b64url(Buffer.from(JSON.stringify(payload)));
+  return { token: payloadB64 + '.' + sign(payloadB64), expiresAt: payload.exp };
+}
+
+/**
+ * Verify a game-access token. Never throws.
+ * @param {string} token
+ * @param {number} now - epoch ms; injectable for deterministic tests.
+ * @returns {{ valid: boolean, role?: string, room?: string|null, surveyId?: number|null, error?: string }}
+ */
+export function verifyGameAccess(token, now = Date.now()) {
+  const sig = verifySignedToken(token, now);
+  if (!sig.valid) return sig;
+  const { payload } = sig;
+  if (payload.role !== 'host' && payload.role !== 'play') {
+    return { valid: false, error: 'bad role' };
+  }
+  return { valid: true, role: payload.role, room: payload.room ?? null, surveyId: payload.sid ?? null };
 }

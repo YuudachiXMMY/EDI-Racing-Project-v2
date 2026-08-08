@@ -61,7 +61,7 @@ export default function LoginPage() {
           />
           {error && <p className="error">{error}</p>}
           <button type="submit" disabled={loading}>
-            {loading ? 'Please wait...' : (isRegister ? 'Register' : 'Login')}
+            {loading ? 'Please wait...' : (isRegister ? 'Sign Up' : 'Log In')}
           </button>
         </form>
 

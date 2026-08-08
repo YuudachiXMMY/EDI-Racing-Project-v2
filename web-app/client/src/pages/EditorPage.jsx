@@ -1,15 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getSurvey, updateSurvey, exportSurvey, exportExcel, exportCsv, getResponseCount, toggleSurveyActive, linkRoom, unlinkRoom } from '../api.js';
+import { getSurvey, updateSurvey, exportExcel, exportCsv, getResponseCount, toggleSurveyActive, requestHostToken, duplicateSurvey } from '../api.js';
+import { submitHostLaunch } from '../gameLaunch.js';
 import QuestionsTab from '../components/QuestionsTab.jsx';
 import MappingsTab from '../components/MappingsTab.jsx';
 import RulesTab from '../components/RulesTab.jsx';
 import ResponsesTab from '../components/ResponsesTab.jsx';
 import ResultsTab from '../components/ResultsTab.jsx';
 import SharePanel from '../components/SharePanel.jsx';
-import SendToGameModal from '../components/SendToGameModal.jsx';
-import SendConfigModal from '../components/SendConfigModal.jsx';
-import { downloadBlob, downloadBlobObject } from '../utils/csvExport.js';
+import HostRoomPanel from '../components/HostRoomPanel.jsx';
+import { downloadBlobObject } from '../utils/csvExport.js';
 
 const TABS = ['Questions', 'Mappings', 'Rules', 'Responses', 'Results'];
 const SAVE_DELAY = 2000;
@@ -21,14 +21,9 @@ export default function EditorPage() {
   const [activeTab, setActiveTab] = useState(0);
   const [saveStatus, setSaveStatus] = useState('');
   const [loading, setLoading] = useState(true);
-  const [exportData, setExportData] = useState(null);
-  const [exportLoading, setExportLoading] = useState(false);
   const [responseCount, setResponseCount] = useState(0);
-  const [showSendModal, setShowSendModal] = useState(false);
-  const [showConfigModal, setShowConfigModal] = useState(false);
-  const [linkedRoom, setLinkedRoom] = useState(null);
-  const [linkInput, setLinkInput] = useState('');
-  const [linkStatus, setLinkStatus] = useState('');
+  // True while the Host Room panel (student link + QR) is open for this survey.
+  const [hostPanelOpen, setHostPanelOpen] = useState(false);
   const saveTimer = useRef(null);
   const latestData = useRef(null);
 
@@ -45,9 +40,6 @@ export default function EditorPage() {
       latestData.current = surveyRes.data;
     }
     if (countRes.success) setResponseCount(countRes.data.count);
-    if (surveyRes.success && surveyRes.data.linked_room_code) {
-      setLinkedRoom(surveyRes.data.linked_room_code);
-    }
     setLoading(false);
   }
 
@@ -60,35 +52,32 @@ export default function EditorPage() {
     return () => clearInterval(timer);
   }, [id]);
 
-  async function handleLinkRoom() {
-    const code = linkInput.trim().toUpperCase();
-    if (!code) return;
-    setLinkStatus('Linking...');
-    const result = await linkRoom(id, code);
-    if (result.success) {
-      setLinkedRoom(result.data.linkedRoomCode);
-      setLinkInput('');
-      setLinkStatus('');
-    } else {
-      setLinkStatus(result.error || 'Failed to link');
+  // Launch the game in professor host mode: mint a host token, then POST it to the access gateway
+  // (/api/game/enter), which sets the game-access cookie and redirects into /game/#role/token/survey.
+  // Mirrors the dashboard's host flow — the game tab is opened synchronously inside the click handler
+  // so the browser treats it as user-initiated (not a blocked popup); the token is fetched after, then
+  // submitted via a form POST (never a URL query, so it stays out of access logs / browser history).
+  async function handleHostGame() {
+    const gameTab = window.open('about:blank', '_blank');
+    const result = await requestHostToken(id);
+    if (!result.success) {
+      if (gameTab) gameTab.close();
+      alert(`Failed to start host session: ${result.error || 'unknown error'}`);
+      return;
     }
+    if (gameTab) {
+      try { gameTab.opener = null; } catch { /* some browsers disallow; harmless */ }
+    }
+    // Popup-blocked case (gameTab null): submitHostLaunch falls back to a new '_blank' tab.
+    submitHostLaunch(result.data.token, id, gameTab);
+    // Show the student join link + QR here; the panel polls for the room code the game creates.
+    setHostPanelOpen(true);
   }
 
-  async function handleUnlinkRoom() {
-    const result = await unlinkRoom(id);
-    if (result.success) {
-      setLinkedRoom(null);
-      setLinkStatus('');
-    }
-  }
-
-  async function handleExport() {
-    setExportLoading(true);
-    const result = await exportSurvey(id);
-    setExportLoading(false);
-    if (result.success) {
-      setExportData(result.data);
-    }
+  async function handleDuplicate() {
+    const result = await duplicateSurvey(id);
+    if (result.success) navigate(`/surveys/${result.data.id}`);
+    else alert(`Failed to duplicate: ${result.error || 'unknown error'}`);
   }
 
   async function handleExportExcel() {
@@ -99,18 +88,6 @@ export default function EditorPage() {
   async function handleExportCsv() {
     const result = await exportCsv(id);
     if (result.success) downloadBlobObject(result.blob, result.filename);
-  }
-
-  function downloadExportJson() {
-    if (!exportData) return;
-    const json = JSON.stringify(exportData, null, 2);
-    const safeName = (exportData.configName || 'export').replace(/[^a-zA-Z0-9_-]/g, '_');
-    downloadBlob(json, `${safeName}-export.json`, 'application/json');
-  }
-
-  function copyExportJson() {
-    if (!exportData) return;
-    navigator.clipboard.writeText(JSON.stringify(exportData, null, 2));
   }
 
   const handleChange = useCallback((field, value) => {
@@ -158,7 +135,7 @@ export default function EditorPage() {
   return (
     <div className="editor-page">
       <header className="editor-header">
-        <button onClick={() => navigate('/dashboard')} className="btn-secondary">← Dashboard</button>
+        <button onClick={() => navigate('/dashboard')} className="btn-secondary">← Back to Dashboard</button>
         <input
           type="text"
           className="survey-name-input"
@@ -166,46 +143,31 @@ export default function EditorPage() {
           onChange={handleNameChange}
           placeholder="Survey name"
         />
-        <span className="save-status">{saveStatus}</span>
-        <span className="response-count">{responseCount} response(s)</span>
-
-        {linkedRoom ? (
-          <span className="room-link-badge">
-            Linked: {linkedRoom}
-            <button onClick={handleUnlinkRoom} className="btn-secondary btn-small">Unlink</button>
-          </span>
-        ) : (
-          <span className="room-link-inline">
-            <input
-              type="text"
-              value={linkInput}
-              onChange={e => setLinkInput(e.target.value.toUpperCase())}
-              placeholder="Room code"
-              maxLength={8}
-              className="room-link-input"
-            />
-            <button onClick={handleLinkRoom} className="btn-secondary btn-small" disabled={!linkInput.trim()}>
-              Link
+        <div className="editor-meta">
+          <span className="save-status">{saveStatus}</span>
+          <span className="response-count">{responseCount} response(s)</span>
+        </div>
+        <div className="editor-actions">
+          <button
+            onClick={handleHostGame}
+            className="btn-primary"
+            disabled={responseCount === 0}
+            title={responseCount === 0 ? 'Collect at least one response before hosting' : 'Launch the game and host a room'}
+          >
+            Host Game
+          </button>
+          <div className="toolbar-group" role="group" aria-label="Export data">
+            <button onClick={handleExportExcel} className="btn-secondary" disabled={responseCount === 0}>
+              Export Excel
             </button>
-            {linkStatus && <span className="link-status">{linkStatus}</span>}
-          </span>
-        )}
-
-        <button onClick={() => setShowConfigModal(true)} className="btn-secondary">
-          Send Config to Game
-        </button>
-        <button onClick={() => setShowSendModal(true)} className="btn-primary" disabled={responseCount === 0}>
-          Send to Game
-        </button>
-        <button onClick={handleExportExcel} className="btn-secondary" disabled={responseCount === 0}>
-          Export Excel
-        </button>
-        <button onClick={handleExportCsv} className="btn-secondary" disabled={responseCount === 0}>
-          Export CSV
-        </button>
-        <button onClick={handleExport} className="btn-primary" disabled={exportLoading}>
-          {exportLoading ? 'Exporting...' : 'Export for Unity'}
-        </button>
+            <button onClick={handleExportCsv} className="btn-secondary" disabled={responseCount === 0}>
+              Export CSV
+            </button>
+          </div>
+          <button onClick={handleDuplicate} className="btn-secondary">
+            Duplicate
+          </button>
+        </div>
       </header>
 
       <SharePanel
@@ -213,29 +175,6 @@ export default function EditorPage() {
         isActive={!!survey.is_active}
         onToggleActive={handleToggleActive}
       />
-
-      {exportData && (
-        <div className="export-panel">
-          <div className="export-header">
-            <h3>Export: {exportData.configName}</h3>
-            <span>{exportData.carData.length} car(s), {exportData.eventRules.length} rule(s)</span>
-            <button onClick={() => setExportData(null)} className="btn-secondary btn-small">Close</button>
-          </div>
-          {exportData.carData.length === 0 && (
-            <p className="export-warning">No responses yet. Share the survey link with students first.</p>
-          )}
-          <div className="export-actions">
-            <button onClick={downloadExportJson} className="btn-primary">Download JSON</button>
-            <button onClick={copyExportJson} className="btn-secondary">Copy to Clipboard</button>
-          </div>
-          <textarea
-            className="export-preview"
-            readOnly
-            value={JSON.stringify(exportData, null, 2)}
-            rows={12}
-          />
-        </div>
-      )}
 
       <div className="tab-bar">
         {TABS.map((tab, i) => (
@@ -277,8 +216,9 @@ export default function EditorPage() {
         )}
       </div>
 
-      {showSendModal && <SendToGameModal surveyId={id} onClose={() => setShowSendModal(false)} />}
-      {showConfigModal && <SendConfigModal surveyId={id} onClose={() => setShowConfigModal(false)} />}
+      {hostPanelOpen && (
+        <HostRoomPanel surveyId={id} onClose={() => setHostPanelOpen(false)} />
+      )}
     </div>
   );
 }

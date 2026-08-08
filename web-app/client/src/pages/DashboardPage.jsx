@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getSurveys, createSurvey, deleteSurvey, getTemplates, toggleSurveyActive, logout, clearToken, requestHostToken } from '../api.js';
-import { buildHostLaunchUrl, buildShareUrl } from '../gameLaunch.js';
-import SendToGameModal from '../components/SendToGameModal.jsx';
+import { getSurveys, createSurvey, deleteSurvey, duplicateSurvey, getTemplates, toggleSurveyActive, logout, clearToken, requestHostToken } from '../api.js';
+import { submitHostLaunch, buildShareUrl } from '../gameLaunch.js';
+import HostRoomPanel from '../components/HostRoomPanel.jsx';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
   const [surveys, setSurveys] = useState([]);
   const [templates, setTemplates] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [sendModalSurveyId, setSendModalSurveyId] = useState(null);
+  // Survey whose Host Room panel (student link + QR) is open, or null when dismissed.
+  const [hostingSurveyId, setHostingSurveyId] = useState(null);
 
   useEffect(() => {
     loadData();
@@ -59,13 +60,22 @@ export default function DashboardPage() {
     if (result.success) setSurveys(prev => prev.filter(s => s.id !== id));
   }
 
-  // Launch the game in professor host mode: mint a host token, then open the Unity build
-  // at the game root with role/token/survey in the URL hash (Phase 2). Unity auto-creates
-  // the room carrying the token — no manual in-game Host click or room-code handoff.
+  async function handleDuplicate(id, e) {
+    e.stopPropagation();
+    const result = await duplicateSurvey(id);
+    if (result.success) loadData();
+    else alert(`Failed to duplicate: ${result.error || 'unknown error'}`);
+  }
+
+  // Launch the game in professor host mode: mint a host token, then POST it to the access
+  // gateway (/api/game/enter) which sets the game-access cookie and 302-redirects into the
+  // Unity build at /game/#role/token/survey. Unity auto-creates the room carrying the token —
+  // no manual in-game Host click or room-code handoff. The token goes via a form POST, never a
+  // URL query, so it is not captured by access logs or browser history (see submitHostLaunch).
   async function handleHostGame(surveyId) {
     // Open the game tab SYNCHRONOUSLY inside the click handler. If we opened it after the
     // `await` below, Safari (and Chrome under some settings) treat the popup as non-user-
-    // initiated and block it silently — the professor clicks "主持游戏" and nothing happens.
+    // initiated and block it silently — the professor clicks "Host Game" and nothing happens.
     // We can't pass 'noopener' here (that makes window.open return null, so we couldn't set
     // the URL after the token resolves); the target is same-origin, so opener access is not a
     // cross-origin tabnabbing vector, and we still null the back-reference defensively.
@@ -76,14 +86,14 @@ export default function DashboardPage() {
       alert(`Failed to start host session: ${result.error || 'unknown error'}`);
       return;
     }
-    const url = buildHostLaunchUrl(result.data.token, surveyId);
     if (gameTab) {
       try { gameTab.opener = null; } catch { /* some browsers disallow; harmless */ }
-      gameTab.location.href = url;
-    } else {
-      // Popup was blocked before the await; last-resort retry (may still be blocked).
-      window.open(url, '_blank', 'noopener');
     }
+    // Popup-blocked case (gameTab null): submitHostLaunch falls back to a new '_blank' tab.
+    submitHostLaunch(result.data.token, surveyId, gameTab);
+    // Surface the student join link + QR here in the dashboard. The panel polls the server for the
+    // room code the game tab is about to create (Unity owns room creation; the code isn't known yet).
+    setHostingSurveyId(surveyId);
   }
 
   async function handleLogout() {
@@ -97,7 +107,7 @@ export default function DashboardPage() {
       <header className="app-header">
         <h1>EDI Survey Dashboard</h1>
         <button onClick={() => navigate('/history')} className="btn-secondary">Session History</button>
-        <button onClick={handleLogout} className="btn-secondary">Logout</button>
+        <button onClick={handleLogout} className="btn-secondary">Log Out</button>
       </header>
 
       <div className="dashboard-actions">
@@ -155,19 +165,17 @@ export default function DashboardPage() {
                     className="btn-primary btn-small"
                     onClick={e => { e.stopPropagation(); handleHostGame(s.id); }}
                   >
-                    主持游戏
-                  </button>
-                )}
-                {(s.response_count ?? 0) > 0 && (
-                  <button
-                    className="btn-primary btn-small"
-                    onClick={e => { e.stopPropagation(); setSendModalSurveyId(s.id); }}
-                  >
-                    Send to Game
+                    Host Game
                   </button>
                 )}
                 <button
-                  className="btn-danger btn-small"
+                  className="btn-secondary btn-small"
+                  onClick={e => handleDuplicate(s.id, e)}
+                >
+                  Duplicate
+                </button>
+                <button
+                  className="btn-ghost-danger btn-small"
                   onClick={e => { e.stopPropagation(); handleDelete(s.id, s.config_name); }}
                 >
                   Delete
@@ -178,7 +186,9 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {sendModalSurveyId && <SendToGameModal surveyId={sendModalSurveyId} onClose={() => setSendModalSurveyId(null)} />}
+      {hostingSurveyId !== null && (
+        <HostRoomPanel surveyId={hostingSurveyId} onClose={() => setHostingSurveyId(null)} />
+      )}
     </div>
   );
 }

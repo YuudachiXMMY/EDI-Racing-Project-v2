@@ -18,10 +18,15 @@ const PORT = parseInt(process.env.API_PORT || '3001', 10);
 
 // Boot guard — refuse to start (or warn) if the host-token secret is misconfigured.
 // Runs before app.listen so a fatal config never binds the port. Mirrored in Server/server.js.
+// gameAccessGate:true — this process serves /api/game/gate, an ALWAYS-on auth boundary nginx
+// checks on every /game/ asset, so a default/public secret is never safe here (it would let
+// anyone forge a game_access cookie). The guard is therefore fatal on the default regardless
+// of REQUIRE_HOST_TOKEN.
 const REQUIRE_HOST_TOKEN = (process.env.REQUIRE_HOST_TOKEN || 'false').toLowerCase() === 'true';
 const secretCheck = checkSecretConfig({
   secret: process.env.INTERNAL_SECRET,
   requireHostToken: REQUIRE_HOST_TOKEN,
+  gameAccessGate: true,
 });
 if (secretCheck.level === 'fatal') {
   console.error(`[Auth] FATAL: ${secretCheck.message}`);
@@ -65,12 +70,15 @@ app.get('/api/health', (req, res) => {
   res.json({ success: true, data: { status: 'ok' } });
 });
 
-// Serve client build in production (base path matches Vite config base: '/survey/')
+// Serve the client build at the site root (Vite base: '/'). The Unity game is served
+// separately by nginx at /game/, so the SPA owns everything else. HashRouter means the
+// server only ever sees '/', but the '*' fallback also covers any non-hash deep path;
+// it skips /api so unmatched API routes still 404 as JSON instead of returning HTML.
 const clientDist = join(__dirname, '..', 'client', 'dist');
 if (existsSync(clientDist)) {
-  app.use('/survey', express.static(clientDist));
-  app.get('/', (req, res) => res.redirect('/survey/'));
-  app.get('/survey/*', (req, res) => {
+  app.use(express.static(clientDist));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api/')) return next();
     res.sendFile(join(clientDist, 'index.html'));
   });
 }

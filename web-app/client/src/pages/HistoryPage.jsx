@@ -47,7 +47,7 @@ export default function HistoryPage() {
     <div className="dashboard-page">
       <header className="app-header">
         <h1>Session History</h1>
-        <button onClick={() => navigate('/dashboard')} className="btn-secondary">← Dashboard</button>
+        <button onClick={() => navigate('/dashboard')} className="btn-secondary">← Back to Dashboard</button>
       </header>
 
       {loading ? (

@@ -238,6 +238,53 @@ describe('student cannot inject events (relay isolation)', () => {
   });
 });
 
+describe('survey -> room mapping (Host Game student-link discovery)', () => {
+  const roomStatusUrl = (surveyId) => `http://127.0.0.1:${PORT}/api/survey-room/${surveyId}`;
+  // The endpoint is internal-only: it requires the shared secret the web-app backend proves it
+  // with. The spawned Server runs under TEST_SECRET (see beforeAll), so callers must present it.
+  const internalHeaders = { 'x-internal-secret': TEST_SECRET };
+  const fetchRoom = (surveyId) => fetch(roomStatusUrl(surveyId), { headers: internalHeaders });
+
+  it('resolves the live room a survey is hosting after create_room', async () => {
+    // Unique surveyId so no other test's create_room can clobber this survey's mapping.
+    const { roomCode } = await hostARoom(777);
+    const res = await fetchRoom(777);
+    const data = await res.json();
+    expect(data.exists).toBe(true);
+    expect(data.roomCode).toBe(roomCode);
+  });
+
+  it('returns exists:false for a survey with no live room', async () => {
+    const res = await fetchRoom(999888);
+    const data = await res.json();
+    expect(data.exists).toBe(false);
+    expect(data.roomCode).toBeUndefined();
+  });
+
+  it('points at the newest room when a survey is re-hosted (latest wins)', async () => {
+    const first = await hostARoom(778);
+    const second = await hostARoom(778);
+    expect(second.roomCode).not.toBe(first.roomCode);
+    const data = await (await fetchRoom(778)).json();
+    expect(data.roomCode).toBe(second.roomCode);
+  });
+
+  it('rejects a survey-room lookup with no / wrong internal secret (403, no mapping leaked)', async () => {
+    // A caller on the game server's network that is NOT the trusted web-app backend must not be
+    // able to enumerate survey→room mappings, even for a survey that IS live.
+    await hostARoom(779);
+    const noSecret = await fetch(roomStatusUrl(779));
+    expect(noSecret.status).toBe(403);
+    const wrongSecret = await fetch(roomStatusUrl(779), {
+      headers: { 'x-internal-secret': 'not-the-real-secret' },
+    });
+    expect(wrongSecret.status).toBe(403);
+    const body = await wrongSecret.json();
+    expect(body.roomCode).toBeUndefined();
+    expect(body.exists).toBeUndefined();
+  });
+});
+
 describe('host-only messages are role-gated against a student', () => {
   it('rejects survey_import from a student', async () => {
     const { roomCode } = await hostARoom();

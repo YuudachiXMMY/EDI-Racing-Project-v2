@@ -163,17 +163,6 @@ function buildCarData(survey) {
   return carData;
 }
 
-// GET /api/surveys/:id/export — export survey data for Unity
-router.get('/:id/export', requireAuth, loadOwnedSurvey, (req, res) => {
-  const survey = req.survey;
-
-  const carData = buildCarData(survey);
-  const eventRules = JSON.parse(survey.rules_json);
-  const mappings = JSON.parse(survey.mappings_json);
-
-  res.json({ success: true, data: { configName: survey.config_name, carData, mappings, eventRules } });
-});
-
 // GET /api/surveys/:id/export-csv — export as vehicleGroupData.csv format
 router.get('/:id/export-csv', requireAuth, loadOwnedSurvey, (req, res) => {
   const survey = req.survey;
@@ -235,7 +224,13 @@ router.get('/:id/export-excel', requireAuth, loadOwnedSurvey, (req, res) => {
   res.send(Buffer.from(buf));
 });
 
-// POST /api/surveys/:id/send-to-game — send survey data directly to Unity via WebSocket
+// POST /api/surveys/:id/send-to-game — push a survey's processed responses straight into a
+// live Unity game room over the WS relay. This is the endpoint the Unity WebGL build calls
+// automatically on professor host launch (Assets/Plugins/WebGL/WebSocketBridge.jslib ->
+// WebSocketBridge_HostAutoInject); without it the game loads with "No active config" and the
+// students' survey data never becomes race cars. Builds the same double-serialized WebAppExport
+// the manual JSON import used (matching Unity's SurveyImportMessage.exportJson), then relays it
+// as a `survey_import` message the WS server forwards to the room's professor (Unity) client.
 router.post('/:id/send-to-game', requireAuth, loadOwnedSurvey, (req, res) => {
   const rc = normalizeRoomCode(req.body.roomCode);
   if (!rc.ok) {
@@ -268,47 +263,6 @@ router.post('/:id/send-to-game', requireAuth, loadOwnedSurvey, (req, res) => {
       if (msg.type === 'survey_import_ack') {
         done();
         return res.json({ success: true, data: { carsCount: carData.length, rulesCount: eventRules.length } });
-      }
-    },
-  });
-});
-
-// POST /api/surveys/:id/send-config-to-game — send raw survey config to Unity
-router.post('/:id/send-config-to-game', requireAuth, loadOwnedSurvey, (req, res) => {
-  const rc = normalizeRoomCode(req.body.roomCode);
-  if (!rc.ok) {
-    return res.status(400).json({ success: false, error: rc.error });
-  }
-
-  const survey = req.survey;
-
-  // Build Unity-compatible SurveyConfig (PascalCase fields for JsonUtility)
-  const configPayload = {
-    ConfigName: survey.config_name,
-    Description: survey.description || '',
-    CreatedAt: survey.created_at,
-    Version: '1.0',
-    Questions: JSON.parse(survey.questions_json),
-    Mappings: JSON.parse(survey.mappings_json),
-    Rules: JSON.parse(survey.rules_json),
-  };
-
-  sendToGameRoom(res, {
-    code: rc.code,
-    onRoomJoined: (ws) => {
-      ws.send(JSON.stringify({
-        type: 'config_import',
-        configName: survey.config_name,
-        configJson: JSON.stringify(configPayload),
-      }));
-    },
-    handleAck: (msg, res, ws, done) => {
-      if (msg.type === 'config_sync_ack') {
-        done();
-        if (msg.success) {
-          return res.json({ success: true, data: { configName: survey.config_name } });
-        }
-        return res.status(400).json({ success: false, error: msg.error || 'Config sync failed' });
       }
     },
   });

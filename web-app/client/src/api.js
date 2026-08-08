@@ -93,6 +93,10 @@ export async function deleteSurvey(id) {
   return request(`/surveys/${id}`, { method: 'DELETE' });
 }
 
+export async function duplicateSurvey(id) {
+  return request(`/surveys/${id}/duplicate`, { method: 'POST' });
+}
+
 export async function getTemplates() {
   return request('/templates');
 }
@@ -103,10 +107,6 @@ export async function getResponseCount(id) {
 
 export async function getResponses(id) {
   return request(`/surveys/${id}/responses`);
-}
-
-export async function exportSurvey(id) {
-  return request(`/surveys/${id}/export`);
 }
 
 export async function exportExcel(id) {
@@ -127,13 +127,6 @@ export async function exportCsv(id) {
   return { success: true, blob: await res.blob(), filename: 'vehicleGroupData.csv' };
 }
 
-export async function sendToGame(id, roomCode) {
-  return request(`/surveys/${id}/send-to-game`, {
-    method: 'POST',
-    body: JSON.stringify({ roomCode }),
-  });
-}
-
 // Mint a short-lived host token for launching the game in professor host mode (Phase 2).
 // Backend: POST /api/game/host-token (requireAuth) -> { success, data: { token, expiresAt } }.
 export async function requestHostToken(surveyId) {
@@ -143,41 +136,18 @@ export async function requestHostToken(surveyId) {
   });
 }
 
-export async function getRoomStatus(roomCode) {
-  return request(`/game/room-status/${roomCode.toUpperCase()}`);
+// Poll for the live room a just-launched host session created. The WS server owns room-code
+// generation and the prebuilt Unity client never reports it back, so the web-app discovers the
+// code by asking the server which room this survey is currently hosting.
+// Backend: GET /api/game/survey-room/:surveyId (requireAuth) -> { success, data: { exists, roomCode? } }.
+export async function getSurveyRoom(surveyId) {
+  return request(`/game/survey-room/${surveyId}`);
 }
 
+// Race results read path — populates the Results tab. The write path (saveRaceResults) was
+// coupled to the removed Send-to-Game modal; a host-mode results hook can be added later.
 export async function getRaceResults(surveyId) {
   return request(`/surveys/${surveyId}/results`);
-}
-
-export async function saveRaceResults(surveyId, resultsData) {
-  return request(`/surveys/${surveyId}/results`, {
-    method: 'POST',
-    body: JSON.stringify(resultsData),
-  });
-}
-
-export async function getRoomResults(roomCode) {
-  return request(`/game/room-results/${roomCode.toUpperCase()}`);
-}
-
-export async function linkRoom(surveyId, roomCode) {
-  return request(`/surveys/${surveyId}/link-room`, {
-    method: 'PATCH',
-    body: JSON.stringify({ roomCode }),
-  });
-}
-
-export async function unlinkRoom(surveyId) {
-  return request(`/surveys/${surveyId}/link-room`, { method: 'DELETE' });
-}
-
-export async function sendConfigToGame(id, roomCode) {
-  return request(`/surveys/${id}/send-config-to-game`, {
-    method: 'POST',
-    body: JSON.stringify({ roomCode }),
-  });
 }
 
 export async function getSessionHistory() {

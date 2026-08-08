@@ -1,44 +1,54 @@
-import { describe, it, expect } from 'vitest';
-import { buildHostLaunchUrl, buildStudentPlayUrl, buildSpectatorPath } from '../client/src/gameLaunch.js';
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { hostLaunchFormSpec, buildStudentPlayUrl, buildSpectatorPath, buildJoinLandingUrl } from '../client/src/gameLaunch.js';
 
-// VITE_GAME_URL is unset under vitest, so GAME_ROOT falls back to '/'. Assertions below
-// assume that default (single-origin deploy: game at /, survey app at /survey/).
-describe('buildHostLaunchUrl', () => {
-  it('puts role, token, and survey in the hash fragment at the game root', () => {
-    expect(buildHostLaunchUrl('tok', 5)).toBe('/#role=host&token=tok&survey=5');
+// The Unity build is gated at /game/; launch links go through the same-origin access
+// gateway /api/game/enter (which sets the game-access cookie and redirects into /game/).
+describe('hostLaunchFormSpec', () => {
+  it('describes a POST to the access gateway with role, token, and survey in the body', () => {
+    expect(hostLaunchFormSpec('tok', 5)).toEqual({
+      action: '/api/game/enter',
+      method: 'POST',
+      fields: { role: 'host', token: 'tok', survey: '5' },
+    });
+  });
+
+  it('is a POST — the host token must never ride a query string (access logs / history)', () => {
+    const spec = hostLaunchFormSpec('secret', 9);
+    expect(spec.method).toBe('POST');
+    expect(spec.action).toBe('/api/game/enter');
+    // The token lives in the body fields, not smuggled into the action URL.
+    expect(spec.action).not.toContain('token');
+    expect(spec.action).not.toContain('?');
   });
 
   it('coerces a numeric surveyId to a string', () => {
-    expect(buildHostLaunchUrl('t', 42)).toContain('survey=42');
+    expect(hostLaunchFormSpec('t', 42).fields.survey).toBe('42');
   });
 
-  it('URL-encodes special characters in the token', () => {
-    // A space encodes as '+' via URLSearchParams; '/' and '=' are percent/encoded safely.
-    const url = buildHostLaunchUrl('a b/c', 1);
-    expect(url).toContain('token=a+b%2Fc');
-    expect(url.startsWith('/#role=host')).toBe(true);
+  it('carries the token verbatim in the body (no URL-encoding mangling)', () => {
+    // Special chars that a query string would percent-encode stay raw in a form field.
+    expect(hostLaunchFormSpec('a b/c', 1).fields.token).toBe('a b/c');
   });
 
-  it('always begins with the hash fragment (token never in the query string)', () => {
-    const url = buildHostLaunchUrl('secret', 9);
-    expect(url).not.toContain('?');
-    expect(url).toContain('#');
+  it('is a same-origin gateway path (relative, no origin/host leaked)', () => {
+    expect(hostLaunchFormSpec('secret', 9).action).not.toContain('://');
   });
 });
 
 describe('buildStudentPlayUrl', () => {
-  it('puts room and role=play in the hash at the game root, with no token', () => {
-    expect(buildStudentPlayUrl('A1B2C3')).toBe('/#room=A1B2C3&role=play');
+  it('routes through the gateway with role=play and room, no token', () => {
+    expect(buildStudentPlayUrl('A1B2C3')).toBe('/api/game/enter?role=play&room=A1B2C3');
   });
 
-  it('never begins a query string (room code stays out of server logs)', () => {
-    const url = buildStudentPlayUrl('XYZ');
-    expect(url).not.toContain('?');
-    expect(url).toContain('#room=XYZ');
-  });
-
-  it('carries no host token key', () => {
+  it('carries no host token key (audience can watch but never host)', () => {
     expect(buildStudentPlayUrl('R1')).not.toContain('token');
+  });
+
+  it('is a same-origin gateway path', () => {
+    const url = buildStudentPlayUrl('XYZ');
+    expect(url.startsWith('/api/game/enter?')).toBe(true);
+    expect(url).toContain('room=XYZ');
+    expect(url).not.toContain('://');
   });
 });
 
@@ -51,10 +61,30 @@ describe('buildSpectatorPath', () => {
     expect(buildSpectatorPath('abc123')).toBe('/live/ABC123');
   });
 
-  it('is a router path, not a game-root hash URL, and carries no token', () => {
+  it('is a router path, not a game hash URL, and carries no token', () => {
     const p = buildSpectatorPath('R1');
     expect(p.startsWith('/live/')).toBe(true);
     expect(p).not.toContain('#');
     expect(p).not.toContain('token');
+  });
+});
+
+// The student join link shown after "Host Game" — this is what the QR code encodes.
+describe('buildJoinLandingUrl', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('builds an absolute URL to the no-auth join landing route', () => {
+    vi.stubGlobal('window', { location: { origin: 'https://race.example.edu' } });
+    expect(buildJoinLandingUrl('A1B2C3')).toBe('https://race.example.edu/#/join/A1B2C3');
+  });
+
+  it('upper-cases the room code so QR, URL, and JoinLandingPage all agree', () => {
+    vi.stubGlobal('window', { location: { origin: 'https://race.example.edu' } });
+    expect(buildJoinLandingUrl('abc123')).toBe('https://race.example.edu/#/join/ABC123');
+  });
+
+  it('carries no host token (audience link grants no host authority)', () => {
+    vi.stubGlobal('window', { location: { origin: 'https://race.example.edu' } });
+    expect(buildJoinLandingUrl('R1')).not.toContain('token');
   });
 });

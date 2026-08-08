@@ -23,33 +23,38 @@ public static class SceneWiring
 
         Debug.Log("[WireAll] ═══ Starting full scene wiring check ═══");
 
+        // All lookups below use FindObjectsInactive.Include because several UI panels start
+        // inactive (JoinScreen/EventPanel/RaceControlPanel/LeaderboardPanel are SetActive(false)
+        // for role/state gating). Without Include, re-running wiring can't see an existing
+        // inactive panel — it leaves RaceUI references dangling and FindOrCreate duplicates
+        // components. Mirrors RaceUI.ResolveMissingReferences.
         // Locate core singletons
-        var raceManager = Object.FindFirstObjectByType<RaceManager>();
+        var raceManager = Object.FindFirstObjectByType<RaceManager>(FindObjectsInactive.Include);
         if (raceManager == null)
         {
             Debug.LogError("[WireAll] No RaceManager in scene. Run 'EDI Racing > Setup Track' first.");
             return;
         }
 
-        var networkManager = Object.FindFirstObjectByType<NetworkManager>();
-        var networkSync = Object.FindFirstObjectByType<NetworkSync>();
-        var scoreManager = Object.FindFirstObjectByType<ScoreManager>();
-        var carSpawner = Object.FindFirstObjectByType<CarSpawner>();
-        var lapTracker = Object.FindFirstObjectByType<LapTracker>();
-        var eventManager = Object.FindFirstObjectByType<EventManager>();
-        var sessionManager = Object.FindFirstObjectByType<SessionManager>();
-        var weatherEffect = Object.FindFirstObjectByType<WeatherEffect>();
-        var cameraManager = Object.FindFirstObjectByType<CameraManager>();
-        var waypointPath = Object.FindFirstObjectByType<WaypointPath>();
+        var networkManager = Object.FindFirstObjectByType<NetworkManager>(FindObjectsInactive.Include);
+        var networkSync = Object.FindFirstObjectByType<NetworkSync>(FindObjectsInactive.Include);
+        var scoreManager = Object.FindFirstObjectByType<ScoreManager>(FindObjectsInactive.Include);
+        var carSpawner = Object.FindFirstObjectByType<CarSpawner>(FindObjectsInactive.Include);
+        var lapTracker = Object.FindFirstObjectByType<LapTracker>(FindObjectsInactive.Include);
+        var eventManager = Object.FindFirstObjectByType<EventManager>(FindObjectsInactive.Include);
+        var sessionManager = Object.FindFirstObjectByType<SessionManager>(FindObjectsInactive.Include);
+        var weatherEffect = Object.FindFirstObjectByType<WeatherEffect>(FindObjectsInactive.Include);
+        var cameraManager = Object.FindFirstObjectByType<CameraManager>(FindObjectsInactive.Include);
+        var waypointPath = Object.FindFirstObjectByType<WaypointPath>(FindObjectsInactive.Include);
         var configManager = FindOrCreate<SurveyConfigManager>(raceManager.gameObject, "SurveyConfigManager");
 
         // UI singletons
-        var raceUI = Object.FindFirstObjectByType<RaceUI>();
-        var setupScreen = Object.FindFirstObjectByType<SetupScreen>();
-        var joinScreen = Object.FindFirstObjectByType<JoinScreen>();
-        var leaderboard = Object.FindFirstObjectByType<LeaderboardPanel>();
-        var eventPanel = Object.FindFirstObjectByType<EventPanel>();
-        var controlPanel = Object.FindFirstObjectByType<RaceControlPanel>();
+        var raceUI = Object.FindFirstObjectByType<RaceUI>(FindObjectsInactive.Include);
+        var setupScreen = Object.FindFirstObjectByType<SetupScreen>(FindObjectsInactive.Include);
+        var joinScreen = Object.FindFirstObjectByType<JoinScreen>(FindObjectsInactive.Include);
+        var leaderboard = Object.FindFirstObjectByType<LeaderboardPanel>(FindObjectsInactive.Include);
+        var eventPanel = Object.FindFirstObjectByType<EventPanel>(FindObjectsInactive.Include);
+        var controlPanel = Object.FindFirstObjectByType<RaceControlPanel>(FindObjectsInactive.Include);
 
         // ═══════════════════════════════════════════════════════
         // WIRE: RaceManager
@@ -125,6 +130,56 @@ public static class SceneWiring
             Wire(ref raceUI.Setup, setupScreen, "RaceUI.Setup");
             Wire(ref raceUI.JoinScreen, joinScreen, "RaceUI.JoinScreen");
             EditorUtility.SetDirty(raceUI);
+        }
+
+        // ═══════════════════════════════════════════════════════
+        // WIRE: HUD panel data sources
+        // The panels are visible via RaceUI, but stay empty unless their own manager
+        // reference is set — WireAll previously wired RaceUI.Leaderboard/Events but not
+        // the ScoreManager/EventManager the panels read from.
+        // ═══════════════════════════════════════════════════════
+        if (leaderboard != null)
+        {
+            Wire(ref leaderboard.ScoreManager, scoreManager, "LeaderboardPanel.ScoreManager");
+            EditorUtility.SetDirty(leaderboard);
+        }
+        if (eventPanel != null)
+        {
+            Wire(ref eventPanel.EventManager, eventManager, "EventPanel.EventManager");
+            EditorUtility.SetDirty(eventPanel);
+        }
+        // RaceControlPanel.RaceManager is the professor's Pause/Save/Export hook. Its
+        // cross-object link to the RaceManager singleton has dropped to {fileID: 0} in
+        // serialization before (button refs survive, this one doesn't), silently killing
+        // every control — every handler early-returns on a null RaceManager. Re-wire here
+        // so "Wire All References" repairs it, mirroring RaceUI.ResolveMissingReferences.
+        if (controlPanel != null)
+        {
+            Wire(ref controlPanel.RaceManager, raceManager, "RaceControlPanel.RaceManager");
+            Wire(ref controlPanel.CameraManager, cameraManager, "RaceControlPanel.CameraManager");
+
+            // Scenes built before the Auto Cam feature only have Pause/Save/Export, so the button
+            // reference is null and the professor has no on-screen toggle (only the 'C' hotkey).
+            // Create + wire it here so "Wire All References" upgrades an existing scene, matching
+            // the layout TrackSetupEditor uses for freshly-created panels.
+            if (controlPanel.AutoCamButton == null)
+            {
+                var panelRt = controlPanel.GetComponent<RectTransform>();
+                if (panelRt != null && (panelRt.offsetMax.x - panelRt.offsetMin.x) < 500f)
+                {
+                    // Widen the panel so the fourth button sits on its background instead of past it.
+                    panelRt.offsetMin = new Vector2(-250f, panelRt.offsetMin.y);
+                    panelRt.offsetMax = new Vector2(250f, panelRt.offsetMax.y);
+                }
+
+                controlPanel.AutoCamButton = CreateButton(controlPanel.transform, "AutoCamBtn", "Auto Cam",
+                    new Vector2(0, 0.5f), new Vector2(0, 0.5f),
+                    new Vector2(370, -17), new Vector2(480, 17));
+                controlPanel.AutoCamLabel = controlPanel.AutoCamButton.GetComponentInChildren<Text>();
+                createdCount++;
+            }
+
+            EditorUtility.SetDirty(controlPanel);
         }
 
         // ═══════════════════════════════════════════════════════
@@ -311,8 +366,8 @@ public static class SceneWiring
         // ═══════════════════════════════════════════════════════
         if (cameraManager != null)
         {
-            var freeCam = Object.FindFirstObjectByType<RaceCameraController>();
-            var spectatorCam = Object.FindFirstObjectByType<SpectatorCamera>();
+            var freeCam = Object.FindFirstObjectByType<RaceCameraController>(FindObjectsInactive.Include);
+            var spectatorCam = Object.FindFirstObjectByType<SpectatorCamera>(FindObjectsInactive.Include);
             if (freeCam != null && cameraManager.FreeCamera == null)
             {
                 cameraManager.FreeCamera = freeCam;
@@ -333,7 +388,7 @@ public static class SceneWiring
         }
 
         // CarLabelSpawner
-        var carLabelSpawner = Object.FindFirstObjectByType<CarLabelSpawner>();
+        var carLabelSpawner = Object.FindFirstObjectByType<CarLabelSpawner>(FindObjectsInactive.Include);
         if (carLabelSpawner != null)
         {
             Wire(ref carLabelSpawner.RaceManager, raceManager, "CarLabelSpawner.RaceManager");
@@ -368,7 +423,7 @@ public static class SceneWiring
 
     private static T FindOrCreate<T>(GameObject host, string label) where T : Component
     {
-        var existing = Object.FindFirstObjectByType<T>();
+        var existing = Object.FindFirstObjectByType<T>(FindObjectsInactive.Include);
         if (existing != null) return existing;
 
         var component = host.AddComponent<T>();
