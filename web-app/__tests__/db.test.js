@@ -60,11 +60,11 @@ describe('Seed Templates', () => {
     db = createTestDb();
   });
 
-  it('seeds 4 default templates', () => {
+  it('seeds 1 default template', () => {
     seedTemplates(db);
 
     const count = db.prepare('SELECT COUNT(*) as c FROM templates').get().c;
-    expect(count).toBe(4);
+    expect(count).toBe(1);
   });
 
   it('seeds are idempotent (INSERT OR IGNORE)', () => {
@@ -72,14 +72,14 @@ describe('Seed Templates', () => {
     seedTemplates(db);
 
     const count = db.prepare('SELECT COUNT(*) as c FROM templates').get().c;
-    expect(count).toBe(4);
+    expect(count).toBe(1);
   });
 
   it('template names match expected set', () => {
     seedTemplates(db);
 
     const names = db.prepare('SELECT name FROM templates ORDER BY name').all().map(r => r.name);
-    expect(names).toEqual(['Accessibility', 'Diversity', 'ENGG*1100 Survey', 'V1 Parity']);
+    expect(names).toEqual(['ENGG*1100 Survey']);
   });
 
   it('templates have valid JSON in rules_json', () => {
