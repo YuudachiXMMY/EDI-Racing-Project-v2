@@ -1,28 +1,37 @@
 import { describe, it, expect, vi, afterEach } from 'vitest';
-import { buildHostLaunchUrl, buildStudentPlayUrl, buildSpectatorPath, buildJoinLandingUrl } from '../client/src/gameLaunch.js';
+import { hostLaunchFormSpec, buildStudentPlayUrl, buildSpectatorPath, buildJoinLandingUrl } from '../client/src/gameLaunch.js';
 
 // The Unity build is gated at /game/; launch links go through the same-origin access
 // gateway /api/game/enter (which sets the game-access cookie and redirects into /game/).
-describe('buildHostLaunchUrl', () => {
-  it('routes through the access gateway with role, token, and survey', () => {
-    expect(buildHostLaunchUrl('tok', 5)).toBe('/api/game/enter?role=host&token=tok&survey=5');
+describe('hostLaunchFormSpec', () => {
+  it('describes a POST to the access gateway with role, token, and survey in the body', () => {
+    expect(hostLaunchFormSpec('tok', 5)).toEqual({
+      action: '/api/game/enter',
+      method: 'POST',
+      fields: { role: 'host', token: 'tok', survey: '5' },
+    });
+  });
+
+  it('is a POST — the host token must never ride a query string (access logs / history)', () => {
+    const spec = hostLaunchFormSpec('secret', 9);
+    expect(spec.method).toBe('POST');
+    expect(spec.action).toBe('/api/game/enter');
+    // The token lives in the body fields, not smuggled into the action URL.
+    expect(spec.action).not.toContain('token');
+    expect(spec.action).not.toContain('?');
   });
 
   it('coerces a numeric surveyId to a string', () => {
-    expect(buildHostLaunchUrl('t', 42)).toContain('survey=42');
+    expect(hostLaunchFormSpec('t', 42).fields.survey).toBe('42');
   });
 
-  it('URL-encodes special characters in the token', () => {
-    // A space encodes as '+' via URLSearchParams; '/' and '=' are percent-encoded safely.
-    const url = buildHostLaunchUrl('a b/c', 1);
-    expect(url).toContain('token=a+b%2Fc');
-    expect(url.startsWith('/api/game/enter?role=host')).toBe(true);
+  it('carries the token verbatim in the body (no URL-encoding mangling)', () => {
+    // Special chars that a query string would percent-encode stay raw in a form field.
+    expect(hostLaunchFormSpec('a b/c', 1).fields.token).toBe('a b/c');
   });
 
   it('is a same-origin gateway path (relative, no origin/host leaked)', () => {
-    const url = buildHostLaunchUrl('secret', 9);
-    expect(url.startsWith('/api/game/enter?')).toBe(true);
-    expect(url).not.toContain('://');
+    expect(hostLaunchFormSpec('secret', 9).action).not.toContain('://');
   });
 });
 

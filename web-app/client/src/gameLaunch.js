@@ -3,13 +3,42 @@
 // access gateway /api/game/enter, which verifies the caller, sets the HttpOnly game-access
 // cookie nginx checks, then 302-redirects into /game/#… (where Unity reads role/token/room).
 
-// Build the professor host-launch URL: the gateway with role + host token + survey. The
-// gateway re-verifies the token before minting the cookie, and forwards the token into the
-// final /game/ hash so Unity can create the room. The token rides a query to the trusted
-// web-app only (over TLS), never to nginx static / a CDN.
-export function buildHostLaunchUrl(token, surveyId) {
-  const params = new URLSearchParams({ role: 'host', token, survey: String(surveyId) });
-  return `/api/game/enter?${params.toString()}`;
+// Describe the professor host-launch as a form POST (pure — no DOM). The host token is a
+// create_room credential, so it must travel in a POST body, NEVER a query string: a GET query
+// would be captured by nginx/edge access logs and browser history. The gateway re-verifies the
+// token, mints the game-access cookie, then 302-redirects into /game/#… (token in the hash,
+// which no server sees). See POST /api/game/enter.
+export function hostLaunchFormSpec(token, surveyId) {
+  return {
+    action: '/api/game/enter',
+    method: 'POST',
+    fields: { role: 'host', token, survey: String(surveyId) },
+  };
+}
+
+// Submit the host launch as a real form POST into an already-opened tab (or a new one when
+// `gameTab` is null after a popup block). Kept thin so the URL-shape logic above stays pure
+// and unit-testable; this is the only DOM glue.
+export function submitHostLaunch(token, surveyId, gameTab) {
+  const spec = hostLaunchFormSpec(token, surveyId);
+  const target = gameTab ? `edi-game-${surveyId}` : '_blank';
+  if (gameTab) {
+    try { gameTab.name = target; } catch { /* cross-origin about:blank is same-origin here; harmless */ }
+  }
+  const form = document.createElement('form');
+  form.method = spec.method;
+  form.action = spec.action;
+  form.target = target;
+  for (const [name, value] of Object.entries(spec.fields)) {
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = name;
+    input.value = value;
+    form.appendChild(input);
+  }
+  document.body.appendChild(form);
+  form.submit();
+  form.remove();
 }
 
 // Build the student/audience 3D-join URL: the gateway with role=play + room only — NEVER a

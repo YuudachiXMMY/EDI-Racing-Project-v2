@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, urlencoded } from 'express';
 import { requireAuth } from '../middleware/auth.js';
 import { mintHostToken, verifyHostToken, mintGameAccess, verifyGameAccess } from '../hostToken.js';
 import { getDb } from '../db.js';
@@ -116,32 +116,40 @@ router.get('/survey-room/:surveyId', requireAuth, async (req, res) => {
   }
 });
 
-// GET /api/game/enter — the access gateway for the gated Unity build. It proves the caller
-// may load the build, mints the HttpOnly game-access cookie nginx checks, then 302-redirects
-// into /game/ with role/token/room in the hash (where Unity reads them). Two roles:
-//   role=host — requires a valid host token (the same token Unity uses for create_room). The
-//               token still travels in the final hash so Unity can create the room.
-//   role=play — audience/students. Requires a *live* room (checked against the WS server);
-//               carries NO host token, so it can watch but never create a room or trigger.
-router.get('/enter', async (req, res) => {
-  const role = req.query.role === 'host' ? 'host' : 'play';
+// The access gateway for the gated Unity build. It proves the caller may load the build, mints
+// the HttpOnly game-access cookie nginx checks, then 302-redirects into /game/ with
+// role/token/room in the URL *hash* (never sent to any server; Unity reads it). Two roles, two
+// methods:
+//   POST /enter (role=host) — the host token is a create_room credential, so it travels in the
+//     POST body, NOT a query string: a GET query would be captured by nginx/edge access logs and
+//     browser history. The token still rides the final /game/#hash so Unity can create the room.
+//   GET /enter (role=play) — audience/students. Carries only a room code (not a secret) and
+//     requires a *live* room (checked against the WS server), so GET is fine here.
 
-  if (role === 'host') {
-    const token = typeof req.query.token === 'string' ? req.query.token : '';
-    const result = verifyHostToken(token);
-    if (!result.valid) {
-      return res.status(403).send('Invalid or expired host token');
-    }
-    const surveyId = result.surveyId ?? null;
-    const { token: cookie, expiresAt } = mintGameAccess({ role: 'host', surveyId });
-    setAccessCookie(req, res, cookie, expiresAt);
-    const params = new URLSearchParams({ role: 'host', token });
-    if (surveyId !== null) params.set('survey', String(surveyId));
-    return res.redirect(302, `${GAME_PATH}#${params.toString()}`);
+// POST /api/game/enter — host launch. Token in the body (see above). urlencoded so a plain
+// <form method="POST"> submit (from the web-app client) parses without a JSON content-type.
+router.post('/enter', urlencoded({ extended: false }), (req, res) => {
+  const token = typeof req.body?.token === 'string' ? req.body.token : '';
+  const result = verifyHostToken(token);
+  if (!result.valid) {
+    return res.status(403).send('Invalid or expired host token');
   }
+  const surveyId = result.surveyId ?? null;
+  const { token: cookie, expiresAt } = mintGameAccess({ role: 'host', surveyId });
+  setAccessCookie(req, res, cookie, expiresAt);
+  const params = new URLSearchParams({ role: 'host', token });
+  if (surveyId !== null) params.set('survey', String(surveyId));
+  return res.redirect(302, `${GAME_PATH}#${params.toString()}`);
+});
 
-  // role=play: only admit spectators to a room that actually exists on the WS server, so a
-  // guessed/stale code cannot mint an access cookie.
+// GET /api/game/enter — spectator/student launch. role=host is rejected here: the host token
+// must never ride a GET query string (405 steers the client to POST).
+router.get('/enter', async (req, res) => {
+  if (req.query.role === 'host') {
+    return res.status(405).send('host launch must use POST');
+  }
+  // Only admit spectators to a room that actually exists on the WS server, so a guessed/stale
+  // code cannot mint an access cookie.
   const norm = normalizeRoomCode(typeof req.query.room === 'string' ? req.query.room : '');
   if (!norm.ok) {
     return res.status(400).send('room is required');

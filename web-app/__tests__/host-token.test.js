@@ -93,6 +93,23 @@ describe('checkSecretConfig', () => {
     ).toBe('warn');
   });
 
+  it('is fatal on the default when the game-access gate is active, even with enforcement off', () => {
+    // The web-app always serves /api/game/gate, so the public default would let anyone forge a
+    // game_access cookie — never merely a warning for that process.
+    expect(
+      checkSecretConfig({ secret: DEFAULT_INTERNAL_SECRET, requireHostToken: false, gameAccessGate: true }).level
+    ).toBe('fatal');
+    expect(
+      checkSecretConfig({ secret: undefined, requireHostToken: false, gameAccessGate: true }).level
+    ).toBe('fatal');
+  });
+
+  it('is ok with a strong secret regardless of the game-access gate', () => {
+    expect(
+      checkSecretConfig({ secret: 's3cr3t-random', requireHostToken: false, gameAccessGate: true }).level
+    ).toBe('ok');
+  });
+
   it('is ok when a strong secret is set, regardless of enforcement', () => {
     expect(checkSecretConfig({ secret: 's3cr3t-random', requireHostToken: true }).level).toBe('ok');
     expect(checkSecretConfig({ secret: 's3cr3t-random', requireHostToken: false }).level).toBe('ok');
