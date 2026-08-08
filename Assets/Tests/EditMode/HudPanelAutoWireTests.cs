@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
 
@@ -9,8 +10,10 @@ using UnityEngine;
 /// with that reference unset, the panel appeared but stayed permanently empty.
 /// The fix adds a defensive auto-resolve in each panel's lifecycle (LeaderboardPanel /
 /// RaceControlPanel in Start(); EventPanel in Awake(), because its OnEnable subscribes to the
-/// manager and runs before Start). These tests drive the relevant hook directly (private, so via
-/// SendMessage — EditMode does not auto-run it) and assert the manager gets resolved from the scene.
+/// manager and runs before Start). These tests drive the relevant hook directly via reflection
+/// (the methods are private and EditMode does not auto-run them; Component.SendMessage is avoided
+/// because in Unity 6.3 EditMode it trips a native 'ShouldRunBehaviour()' assertion that the Test
+/// Framework reports as an unhandled-log failure) and assert the manager gets resolved from the scene.
 /// </summary>
 [TestFixture]
 public class HudPanelAutoWireTests
@@ -38,6 +41,20 @@ public class HudPanelAutoWireTests
         spawned.Clear();
     }
 
+    // Invoke a private lifecycle method (Awake/Start) directly via reflection rather than
+    // Component.SendMessage. In Unity 6.3 EditMode, SendMessage("Start"/"Awake") trips a native
+    // 'ShouldRunBehaviour()' assertion that the Test Framework treats as an unhandled-log failure;
+    // reflection bypasses SendMessage and runs the method the same way. TargetInvocationException
+    // is unwrapped so a real exception in the lifecycle surfaces as its own type (for DoesNotThrow).
+    private static void InvokeLifecycle(Component target, string method)
+    {
+        var mi = target.GetType().GetMethod(method,
+            BindingFlags.Instance | BindingFlags.NonPublic);
+        Assert.IsNotNull(mi, $"Expected private method '{method}' on {target.GetType().Name}.");
+        try { mi.Invoke(target, null); }
+        catch (TargetInvocationException e) { throw e.InnerException ?? e; }
+    }
+
     [Test]
     public void LeaderboardPanel_Start_ResolvesScoreManager_WhenUnset()
     {
@@ -53,7 +70,7 @@ public class HudPanelAutoWireTests
         panel.MaxRows = 1;
         panel.ScoreManager = null;
 
-        panel.SendMessage("Start");
+        InvokeLifecycle(panel, "Start");
 
         Assert.IsNotNull(panel.ScoreManager, "ScoreManager should be auto-resolved when left unset.");
         Assert.AreSame(scoreManager, panel.ScoreManager, "Should resolve the ScoreManager present in the scene.");
@@ -72,7 +89,7 @@ public class HudPanelAutoWireTests
         // The auto-wire lives in Awake (not Start): OnEnable subscribes to OnEventTriggered and
         // runs BEFORE Start, so wiring in Start would make the first OnEnable miss the manager and
         // never subscribe. Driving Awake is what the runtime lifecycle does before OnEnable.
-        panel.SendMessage("Awake");
+        InvokeLifecycle(panel, "Awake");
 
         Assert.IsNotNull(panel.EventManager, "EventManager should be auto-resolved when left unset.");
         Assert.AreSame(eventManager, panel.EventManager, "Should resolve the EventManager present in the scene.");
@@ -90,7 +107,7 @@ public class HudPanelAutoWireTests
         var panel = panelObj.AddComponent<EventPanel>();
         panel.EventManager = null;
 
-        panel.SendMessage("Awake");
+        InvokeLifecycle(panel, "Awake");
 
         Assert.IsNotNull(panel.EventManager, "Manager on an inactive object should still be resolved.");
         Assert.AreSame(eventManager, panel.EventManager);
@@ -108,8 +125,8 @@ public class HudPanelAutoWireTests
         // early-returns on null.
         Assert.DoesNotThrow(() =>
         {
-            panel.SendMessage("Awake");
-            panel.SendMessage("Start");
+            InvokeLifecycle(panel, "Awake");
+            InvokeLifecycle(panel, "Start");
         }, "With no EventManager in the scene, Awake+Start must not throw.");
         Assert.IsNull(panel.EventManager, "No manager in scene → reference stays null, panel stays safely empty.");
     }
@@ -127,7 +144,7 @@ public class HudPanelAutoWireTests
         var panel = panelObj.AddComponent<RaceControlPanel>();
         panel.RaceManager = null;
 
-        panel.SendMessage("Start");
+        InvokeLifecycle(panel, "Start");
 
         Assert.IsNotNull(panel.RaceManager, "RaceManager should be auto-resolved when left unset.");
         Assert.AreSame(raceManager, panel.RaceManager, "Should resolve the RaceManager present in the scene.");
@@ -143,7 +160,7 @@ public class HudPanelAutoWireTests
         var panel = panelObj.AddComponent<RaceControlPanel>();
         panel.RaceManager = null;
 
-        panel.SendMessage("Start");
+        InvokeLifecycle(panel, "Start");
 
         Assert.IsNotNull(panel.RaceManager, "RaceManager on an inactive object should still be resolved.");
         Assert.AreSame(raceManager, panel.RaceManager);

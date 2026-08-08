@@ -43,7 +43,10 @@ public class StudentLeaderboardSourceTests
         panel.ContentParent = panelObj.transform;
         panel.MaxRows = maxRows;
 
-        panel.SendMessage("Start");
+        // Drive the private lifecycle hook via reflection, not Component.SendMessage: in Unity 6.3
+        // EditMode, SendMessage("Start") trips a native 'ShouldRunBehaviour()' assertion that the
+        // Test Framework reports as an unhandled log failure. Reflection runs Start() directly.
+        InvokePrivate(panel, "Start");
         return panel;
     }
 
@@ -52,7 +55,8 @@ public class StudentLeaderboardSourceTests
         var mi = target.GetType().GetMethod(method,
             BindingFlags.Instance | BindingFlags.NonPublic);
         Assert.IsNotNull(mi, $"Expected private method '{method}' to exist.");
-        mi.Invoke(target, args);
+        try { mi.Invoke(target, args); }
+        catch (TargetInvocationException e) { throw e.InnerException ?? e; }
     }
 
     private List<GameObject> RowPool(LeaderboardPanel panel)
@@ -90,7 +94,10 @@ public class StudentLeaderboardSourceTests
         panel.NetworkSync = null;
 
         // Act
-        panel.SendMessage("Start");
+        // Drive the private lifecycle hook via reflection, not Component.SendMessage: in Unity 6.3
+        // EditMode, SendMessage("Start") trips a native 'ShouldRunBehaviour()' assertion that the
+        // Test Framework reports as an unhandled log failure. Reflection runs Start() directly.
+        InvokePrivate(panel, "Start");
 
         // Assert
         Assert.IsNotNull(panel.NetworkSync, "NetworkSync should be auto-resolved when left unset.");
@@ -152,11 +159,15 @@ public class StudentLeaderboardSourceTests
         // Act
         InvokePrivate(panel, "RenderNetworkEntries", new object[] { rankings });
 
-        // Assert
+        // Assert — the row pool is pre-sized to the largest display mode (Fullscreen), so its count
+        // is not MaxRows. What clamps to MaxRows is how many rows are *shown*: in Normal mode only
+        // MaxRows entries are displayed, so the 3rd broadcast entry ("C") must be hidden.
         var rows = RowPool(panel);
-        Assert.AreEqual(2, rows.Count, "Row pool is capped at MaxRows.");
+        int shown = rows.FindAll(r => r.activeSelf).Count;
+        Assert.AreEqual(2, shown, "Only MaxRows entries are shown even when more are broadcast.");
         Assert.IsTrue(rows[0].activeSelf);
         Assert.IsTrue(rows[1].activeSelf);
+        Assert.IsFalse(rows[2].activeSelf, "The 3rd entry, beyond MaxRows, must be clamped out.");
         Assert.AreEqual("1. [1] A", rows[0].GetComponent<Text>().text);
         Assert.AreEqual("2. [1] B", rows[1].GetComponent<Text>().text);
     }
