@@ -1,0 +1,14 @@
+# Keep the build context lean and never ship the live SQLite DB or secrets.
+node_modules/
+client/node_modules/
+data/
+*.db
+*.db-shm
+*.db-wal
+.env
+.env.*
+!.env.example
+.DS_Store
+__tests__/
+client/dist/
+npm-debug.log*

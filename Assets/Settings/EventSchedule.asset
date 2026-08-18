@@ -1,0 +1,85 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4a773661527084244b090d05d93a0986, type: 3}
+  m_Name: EventSchedule
+  m_EditorClassIdentifier: Assembly-CSharp::EventSchedule
+  Events:
+  - DisplayName: Name Length Penalty
+    AttributeName: teamName
+    Operator: 6
+    CompareValue: 10
+    SpeedDelta: -10
+    Duration: 8
+    Weather: 0
+    TriggerKey: 41
+    AllowRepeat: 0
+    HasBeenTriggered: 0
+  - DisplayName: Color Boost (Blue)
+    AttributeName: colorIndex
+    Operator: 0
+    CompareValue: 3
+    SpeedDelta: 15
+    Duration: 6
+    Weather: 0
+    TriggerKey: 42
+    AllowRepeat: 0
+    HasBeenTriggered: 0
+  - DisplayName: Color Penalty (Red)
+    AttributeName: colorIndex
+    Operator: 0
+    CompareValue: 2
+    SpeedDelta: -12
+    Duration: 8
+    Weather: 0
+    TriggerKey: 43
+    AllowRepeat: 0
+    HasBeenTriggered: 0
+  - DisplayName: Function Boost (Password)
+    AttributeName: functions
+    Operator: 2
+    CompareValue: password
+    SpeedDelta: 10
+    Duration: 6
+    Weather: 0
+    TriggerKey: 44
+    AllowRepeat: 0
+    HasBeenTriggered: 0
+  - DisplayName: Function Penalty (Face Recog)
+    AttributeName: functions
+    Operator: 2
+    CompareValue: facerecog
+    SpeedDelta: -10
+    Duration: 8
+    Weather: 0
+    TriggerKey: 45
+    AllowRepeat: 0
+    HasBeenTriggered: 0
+  - DisplayName: Snow Weather
+    AttributeName: 
+    Operator: 8
+    CompareValue: 
+    SpeedDelta: -8
+    Duration: 12
+    Weather: 1
+    TriggerKey: 46
+    AllowRepeat: 1
+    HasBeenTriggered: 0
+  - DisplayName: Night Weather
+    AttributeName: 
+    Operator: 8
+    CompareValue: 
+    SpeedDelta: -5
+    Duration: 15
+    Weather: 2
+    TriggerKey: 47
+    AllowRepeat: 1
+    HasBeenTriggered: 0

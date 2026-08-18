@@ -1,0 +1,43 @@
+# Production overlay — layers a Traefik edge (TLS + host routing) on top of the
+# self-contained base. The base already serves a single origin via nginx; Traefik
+# just terminates TLS and routes ONE host to it.
+#
+#   docker compose -f Deploy/docker-compose.yml -f Deploy/docker-compose.prod.yml up -d
+#
+# Requires an external `proxy` network with a running Traefik instance:
+#   docker network create proxy   # once, if it does not exist
+
+services:
+  edi-racing:
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.edi-racing-game.rule=Host(`${GAME_DOMAIN:-edi-racing.localhost}`)"
+      - "traefik.http.services.edi-racing-game.loadbalancer.server.port=80"
+    environment:
+      # Production ENFORCES host-token role binding: create_room is rejected without a valid
+      # token (PRD "role security" decision). `:?` makes compose fail fast if INTERNAL_SECRET
+      # is unset, complementing the app boot guard that refuses the public default under
+      # enforcement. Generate once with `openssl rand -hex 32`.
+      - REQUIRE_HOST_TOKEN=true
+      - INTERNAL_SECRET=${INTERNAL_SECRET:?INTERNAL_SECRET must be set (e.g. openssl rand -hex 32) for host-token enforcement}
+    networks:
+      - proxy
+      - edi-racing-net
+
+  web-app:
+    # Optional/debug host router; browser clients use same-origin /api via the nginx edge.
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.edi-racing-api.rule=Host(`${API_DOMAIN:-api.edi-racing.localhost}`)"
+      - "traefik.http.services.edi-racing-api.loadbalancer.server.port=3001"
+    environment:
+      # Must match the game container's secret byte-for-byte — the web-app mints the tokens the
+      # WS relay verifies with the same INTERNAL_SECRET.
+      - INTERNAL_SECRET=${INTERNAL_SECRET:?INTERNAL_SECRET must be set (e.g. openssl rand -hex 32) for host-token enforcement}
+    networks:
+      - proxy
+      - edi-racing-net
+
+networks:
+  proxy:
+    external: true

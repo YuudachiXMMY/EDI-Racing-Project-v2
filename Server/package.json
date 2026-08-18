@@ -1,0 +1,12 @@
+{
+  "name": "edi-racing-server",
+  "version": "1.0.0",
+  "description": "WebSocket relay server for EDI Racing Game multi-client sync",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --env-file=.env server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

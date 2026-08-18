@@ -1,0 +1,25 @@
+# Unity project files (not needed in Docker)
+Assets/
+Library/
+Logs/
+Temp/
+obj/
+ProjectSettings/
+Packages/
+UserSettings/
+.git/
+.claude/
+scripts/
+*.meta
+*.csproj
+*.sln
+
+# Node modules (rebuilt in Docker)
+Server/node_modules/
+
+# Keep only:
+# - Server/ (WebSocket relay source)
+# - Deploy/nginx/ (config)
+# - Deploy/webgl-build/ (Unity build output)
+# - Deploy/start.sh (entrypoint)
+# - Deploy/Dockerfile

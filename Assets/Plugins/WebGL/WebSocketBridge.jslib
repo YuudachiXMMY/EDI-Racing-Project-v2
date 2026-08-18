@@ -1,0 +1,146 @@
+var WebSocketBridgeLib = {
+    $webSocket: null,
+    $gameObjectName: null,
+
+    WebSocketBridge_GetPageWebSocketUrl: function() {
+        var protocol = (window.location.protocol === 'https:') ? 'wss://' : 'ws://';
+        var url = protocol + window.location.host + '/ws';
+        var bufferSize = lengthBytesUTF8(url) + 1;
+        var buffer = _malloc(bufferSize);
+        stringToUTF8(url, buffer, bufferSize);
+        return buffer;
+    },
+
+    WebSocketBridge_DownloadFile: function(filenamePtr, contentPtr) {
+        var filename = UTF8ToString(filenamePtr);
+        var content = UTF8ToString(contentPtr);
+        var blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+        var link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        link.style.display = 'none';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+    },
+
+    WebSocketBridge_Connect: function(urlPtr, goNamePtr) {
+        var url = UTF8ToString(urlPtr);
+        gameObjectName = UTF8ToString(goNamePtr);
+
+        if (webSocket != null && webSocket.readyState < 2) {
+            webSocket.close();
+        }
+
+        webSocket = new WebSocket(url);
+
+        webSocket.onopen = function() {
+            SendMessage(gameObjectName, 'OnWebSocketOpen', '');
+        };
+
+        webSocket.onmessage = function(evt) {
+            SendMessage(gameObjectName, 'OnWebSocketMessage', evt.data);
+        };
+
+        webSocket.onclose = function(evt) {
+            SendMessage(gameObjectName, 'OnWebSocketClose', evt.code.toString());
+        };
+
+        webSocket.onerror = function() {
+            SendMessage(gameObjectName, 'OnWebSocketError', 'Connection error');
+        };
+    },
+
+    WebSocketBridge_Send: function(msgPtr) {
+        if (webSocket == null || webSocket.readyState !== 1) return;
+        var msg = UTF8ToString(msgPtr);
+        webSocket.send(msg);
+    },
+
+    WebSocketBridge_Close: function() {
+        if (webSocket == null) return;
+        webSocket.close();
+        webSocket = null;
+    },
+
+    WebSocketBridge_GetState: function() {
+        if (webSocket == null) return 3; // CLOSED
+        return webSocket.readyState;
+    },
+
+    WebSocketBridge_GetPageUrl: function() {
+        var url = window.location.href;
+        var bufferSize = lengthBytesUTF8(url) + 1;
+        var buffer = _malloc(bufferSize);
+        stringToUTF8(url, buffer, bufferSize);
+        return buffer;
+    },
+
+    WebSocketBridge_LocalStorageGet: function(keyPtr) {
+        var key = UTF8ToString(keyPtr);
+        var val = window.localStorage.getItem(key) || '';
+        var bufferSize = lengthBytesUTF8(val) + 1;
+        var buffer = _malloc(bufferSize);
+        stringToUTF8(val, buffer, bufferSize);
+        return buffer;
+    },
+
+    WebSocketBridge_LocalStorageSet: function(keyPtr, valPtr) {
+        window.localStorage.setItem(UTF8ToString(keyPtr), UTF8ToString(valPtr));
+    },
+
+    WebSocketBridge_ClearUrlHash: function() {
+        if (window.history && window.history.replaceState) {
+            window.history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+    },
+
+    // Phase 3 auto-inject: on host launch, ask the web-app to push the selected survey's
+    // responses into this freshly-created room. Reuses the existing authenticated
+    // POST /api/surveys/:id/send-to-game endpoint (relative -> same origin behind nginx),
+    // carrying the professor's Bearer token from localStorage. Fire-and-forget: failures
+    // are logged, never block hosting, and the manual Send-to-Game modal remains a fallback.
+    WebSocketBridge_HostAutoInject: function(surveyIdPtr, roomCodePtr) {
+        var surveyId = UTF8ToString(surveyIdPtr);
+        var roomCode = UTF8ToString(roomCodePtr);
+        var token = window.localStorage.getItem('edi-survey-token') || '';
+        var headers = { 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+        fetch('/api/surveys/' + encodeURIComponent(surveyId) + '/send-to-game', {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify({ roomCode: roomCode })
+        }).then(function(r) {
+            if (!r.ok) console.warn('[HostAutoInject] send-to-game failed: HTTP ' + r.status);
+        }).catch(function(e) {
+            console.warn('[HostAutoInject] send-to-game error', e);
+        });
+    },
+
+    // Phase 4 student link: return the page origin so C# can compose the shareable student
+    // landing URL ({origin}/survey/#/join/{roomCode}) shown on the professor host screen.
+    WebSocketBridge_GetPageOrigin: function() {
+        var origin = window.location.origin;
+        var bufferSize = lengthBytesUTF8(origin) + 1;
+        var buffer = _malloc(bufferSize);
+        stringToUTF8(origin, buffer, bufferSize);
+        return buffer;
+    },
+
+    // Phase 4 student link: copy the shareable student link to the clipboard when the
+    // professor clicks the copy button. Requires a secure context (HTTPS/localhost); the
+    // guard degrades gracefully so a non-secure context is a no-op, never an error.
+    WebSocketBridge_CopyToClipboard: function(textPtr) {
+        var text = UTF8ToString(textPtr);
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).catch(function(e) {
+                console.warn('[Clipboard] copy failed', e);
+            });
+        }
+    }
+};
+
+autoAddDeps(WebSocketBridgeLib, '$webSocket');
+autoAddDeps(WebSocketBridgeLib, '$gameObjectName');
+mergeInto(LibraryManager.library, WebSocketBridgeLib);
