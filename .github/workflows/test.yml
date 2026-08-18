@@ -1,0 +1,73 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Assets/**'
+      - 'Packages/**'
+      - 'ProjectSettings/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'Assets/**'
+      - 'Packages/**'
+      - 'ProjectSettings/**'
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  test:
+    name: EditMode Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Unity license
+        id: license
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+        run: |
+          if [ -z "$UNITY_LICENSE" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::UNITY_LICENSE secret not configured — skipping Unity tests."
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Free disk space
+        if: steps.license.outputs.available == 'true'
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force
+          df -h /
+
+      - uses: actions/checkout@v4
+        if: steps.license.outputs.available == 'true'
+        with:
+          lfs: true
+
+      - uses: game-ci/unity-test-runner@v4
+        if: steps.license.outputs.available == 'true'
+        id: tests
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        with:
+          testMode: editmode
+          projectPath: .
+          coverageOptions: 'generateAdditionalMetrics;generateHtmlReport;assemblyFilters:+EDIRacing.Runtime'
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.license.outputs.available == 'true'
+        with:
+          name: test-results
+          path: artifacts
+
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.license.outputs.available == 'true'
+        with:
+          name: coverage-report
+          path: CodeCoverage
