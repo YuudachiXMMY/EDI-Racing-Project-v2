@@ -8,6 +8,9 @@ using UnityEngine;
 /// CLI build automation for WebGL. Called via:
 ///   Unity -batchmode -executeMethod BuildScript.BuildWebGL
 ///   Unity -batchmode -executeMethod BuildScript.VerifyBuildArtifacts
+///
+/// The WebGL build target is capped at maxTextureSize 2048; source textures
+/// larger than that are downscaled by the importer at build time.
 /// </summary>
 public static class BuildScript
 {
