@@ -16,8 +16,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-
       - name: Check if WebGL build exists
         id: check-build
         run: |
@@ -40,8 +38,6 @@ jobs:
     needs: verify-artifacts
     steps:
       - uses: actions/checkout@v4
-        with:
-
       - name: Check if WebGL build exists
         id: check-build
         run: |
@@ -64,8 +60,6 @@ jobs:
     if: ${{ vars.UNITY_TESTS_ENABLED == 'true' }}
     steps:
       - uses: actions/checkout@v4
-        with:
-
       - uses: game-ci/unity-test-runner@v4
         env:
           UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}

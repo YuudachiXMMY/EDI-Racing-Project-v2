@@ -57,8 +57,6 @@ jobs:
           df -h /
 
       - uses: actions/checkout@v4
-        with:
-
       # Cache the imported Library folder to cut minutes off subsequent builds.
       - name: Cache Unity Library
         uses: actions/cache@v4
