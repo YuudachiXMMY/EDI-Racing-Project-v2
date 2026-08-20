@@ -45,7 +45,6 @@ jobs:
       - uses: actions/checkout@v4
         if: steps.license.outputs.available == 'true'
         with:
-          lfs: true
 
       - uses: game-ci/unity-test-runner@v4
         if: steps.license.outputs.available == 'true'

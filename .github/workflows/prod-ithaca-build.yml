@@ -58,7 +58,6 @@ jobs:
 
       - uses: actions/checkout@v4
         with:
-          lfs: true
 
       # Cache the imported Library folder to cut minutes off subsequent builds.
       - name: Cache Unity Library

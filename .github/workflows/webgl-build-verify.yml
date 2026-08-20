@@ -17,7 +17,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          lfs: true
 
       - name: Check if WebGL build exists
         id: check-build
@@ -42,7 +41,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          lfs: true
 
       - name: Check if WebGL build exists
         id: check-build
@@ -67,7 +65,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          lfs: true
 
       - uses: game-ci/unity-test-runner@v4
         env:
