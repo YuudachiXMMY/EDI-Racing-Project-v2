@@ -44,6 +44,15 @@ export function applyMigrations(db) {
     // Column already exists — ignore
   }
 
+  // Migration: remove deprecated built-in templates from older DBs.
+  // The seed set was reduced to just 'ENGG*1100 Survey', but these three legacy
+  // templates persist because seedTemplates() uses INSERT OR IGNORE (never deletes).
+  // Idempotent: a no-op once the rows are gone. Nothing references templates(id),
+  // so there are no dependent surveys/foreign keys to cascade.
+  db.prepare(
+    "DELETE FROM templates WHERE name IN ('V1 Parity', 'Accessibility', 'Diversity')"
+  ).run();
+
   // Migration: create game_sessions table for existing DBs
   db.exec(`CREATE TABLE IF NOT EXISTS game_sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
