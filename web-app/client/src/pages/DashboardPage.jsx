@@ -76,18 +76,17 @@ export default function DashboardPage() {
     // Open the game tab SYNCHRONOUSLY inside the click handler. If we opened it after the
     // `await` below, Safari (and Chrome under some settings) treat the popup as non-user-
     // initiated and block it silently — the professor clicks "Host Game" and nothing happens.
-    // We can't pass 'noopener' here (that makes window.open return null, so we couldn't set
-    // the URL after the token resolves); the target is same-origin, so opener access is not a
-    // cross-origin tabnabbing vector, and we still null the back-reference defensively.
+    // We can't pass 'noopener' here (that makes window.open return null, so we couldn't write
+    // the launch form into the tab after the token resolves). The target is same-origin, so
+    // keeping the opener link is not a cross-origin tabnabbing vector — and we must NOT sever it
+    // (opener=null): disowning the popup makes submitHostLaunch's same-origin document write miss,
+    // stranding the tab on about:blank.
     const gameTab = window.open('about:blank', '_blank');
     const result = await requestHostToken(surveyId);
     if (!result.success) {
       if (gameTab) gameTab.close();
       alert(`Failed to start host session: ${result.error || 'unknown error'}`);
       return;
-    }
-    if (gameTab) {
-      try { gameTab.opener = null; } catch { /* some browsers disallow; harmless */ }
     }
     // Popup-blocked case (gameTab null): submitHostLaunch falls back to a new '_blank' tab.
     submitHostLaunch(result.data.token, surveyId, gameTab);
