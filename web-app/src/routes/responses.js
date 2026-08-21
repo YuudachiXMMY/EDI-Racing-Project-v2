@@ -3,6 +3,7 @@ import { getDb } from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { loadOwnedSurvey } from '../middleware/loadOwnedSurvey.js';
 import { GAME_HTTP_URL } from '../config.js';
+import { computeSurveyAnalysis } from '../lib/surveyAnalysis.js';
 
 const router = Router();
 
@@ -97,6 +98,22 @@ router.get('/surveys/:id/responses', requireAuth, loadOwnedSurvey, (req, res) =>
   }));
 
   res.json({ success: true, data: parsed });
+});
+
+// GET /api/surveys/:id/analysis — descriptive statistics over all responses
+// (professor, requires auth). Recomputed on each call so the professor can hit
+// "Refresh Analysis" to fold in newly submitted responses.
+router.get('/surveys/:id/analysis', requireAuth, loadOwnedSurvey, (req, res) => {
+  const db = getDb();
+  const questions = JSON.parse(req.survey.questions_json || '[]');
+
+  const rows = db.prepare(
+    'SELECT answers_json FROM responses WHERE survey_id = ?'
+  ).all(req.params.id);
+  const responses = rows.map(r => ({ answers: JSON.parse(r.answers_json) }));
+
+  const analysis = computeSurveyAnalysis(questions, responses);
+  res.json({ success: true, data: analysis });
 });
 
 export default router;
