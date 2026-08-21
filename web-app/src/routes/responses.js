@@ -36,12 +36,10 @@ router.get('/s/:shareCode', (req, res) => {
 router.post('/s/:shareCode/respond', (req, res) => {
   const { email, teamName, answers } = req.body;
 
-  if (!email || !email.trim()) {
-    return res.status(400).json({ success: false, error: 'Email is required' });
-  }
-  if (!teamName || !teamName.trim()) {
-    return res.status(400).json({ success: false, error: 'Team name is required' });
-  }
+  // Email and team name are both optional. Team name is captured inside the survey
+  // itself (e.g. the ENGG*1100 `team_name` question), so it is no longer gated here.
+  const cleanEmail = (email || '').trim();
+  const cleanTeamName = (teamName || '').trim();
 
   const db = getDb();
   const survey = db.prepare(
@@ -58,7 +56,7 @@ router.post('/s/:shareCode/respond', (req, res) => {
   try {
     const result = db.prepare(
       'INSERT INTO responses (survey_id, email, team_name, answers_json) VALUES (?, ?, ?, ?)'
-    ).run(survey.id, email.trim(), teamName.trim(), JSON.stringify(answers || {}));
+    ).run(survey.id, cleanEmail, cleanTeamName, JSON.stringify(answers || {}));
 
     // Notify WS server if survey is linked to a room (fire-and-forget)
     const linked = db.prepare('SELECT linked_room_code FROM surveys WHERE id = ?').get(survey.id);
@@ -70,7 +68,7 @@ router.post('/s/:shareCode/respond', (req, res) => {
         body: JSON.stringify({
           roomCode: linked.linked_room_code,
           responseCount: count,
-          teamName: teamName.trim(),
+          teamName: cleanTeamName,
           surveyId: survey.id,
         }),
       }).catch(() => {}); // Silently ignore if WS server unreachable
