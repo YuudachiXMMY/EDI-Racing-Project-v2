@@ -5,6 +5,8 @@ import { requireAuth } from '../middleware/auth.js';
 import { loadOwnedSurvey } from '../middleware/loadOwnedSurvey.js';
 import { normalizeRoomCode } from '../config.js';
 import { sendToGameRoom } from '../lib/gameSocket.js';
+import { createZip } from '../lib/zip.js';
+import { computeSurveyAnalysis, buildAnalysisCsv } from '../lib/surveyAnalysis.js';
 
 const router = Router();
 
@@ -163,33 +165,30 @@ function buildCarData(survey) {
   return carData;
 }
 
-// GET /api/surveys/:id/export-csv — export as vehicleGroupData.csv format
-router.get('/:id/export-csv', requireAuth, loadOwnedSurvey, (req, res) => {
-  const survey = req.survey;
-
+/**
+ * Build the Unity vehicleGroupData.csv content for a survey: one row per response
+ * as `teamName,colorIndex,functions`.
+ */
+function buildVehicleGroupCsv(survey) {
   const carData = buildCarData(survey);
-  const csv = carData.map(car => {
+  return carData.map(car => {
     const colorIndex = car.attributes.find(a => a.key === 'colorIndex')?.value || '0';
     const functions = car.attributes.find(a => a.key === 'functions')?.value || '';
     return `${car.teamName},${colorIndex},${functions}`;
   }).join('\n');
+}
 
-  res.setHeader('Content-Type', 'text/csv');
-  res.setHeader('Content-Disposition', 'attachment; filename="vehicleGroupData.csv"');
-  res.send(csv);
-});
-
-// GET /api/surveys/:id/export-excel — export as xlsx matching input.xlsx format
-router.get('/:id/export-excel', requireAuth, loadOwnedSurvey, (req, res) => {
-  const db = getDb();
-  const survey = req.survey;
-
+/**
+ * Build the raw-responses workbook buffer (xlsx) for a survey, matching the
+ * input.xlsx column structure: ID, Start time, Completion time, Email, Name,
+ * Last modified time, then one column per question.
+ */
+function buildResponsesWorkbook(survey, db) {
   const questions = JSON.parse(survey.questions_json);
   const responses = db.prepare(
     'SELECT id, email, team_name, answers_json, submitted_at FROM responses WHERE survey_id = ? ORDER BY submitted_at ASC'
   ).all(survey.id);
 
-  // Build rows matching input.xlsx column structure
   const rows = responses.map((r, idx) => {
     const answers = JSON.parse(r.answers_json);
     const row = {
@@ -216,12 +215,59 @@ router.get('/:id/export-excel', requireAuth, loadOwnedSurvey, (req, res) => {
   const ws = XLSX.utils.json_to_sheet(rows);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
-  const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
+  return Buffer.from(XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }));
+}
 
-  const safeName = (survey.config_name || 'export').replace(/[^a-zA-Z0-9_-]/g, '_');
+/**
+ * Build the survey-analysis CSV (descriptive statistics) for a survey. Recomputed
+ * from the current responses on each call, mirroring the /analysis route.
+ */
+function buildSurveyAnalysisCsv(survey, db) {
+  const questions = JSON.parse(survey.questions_json || '[]');
+  const rows = db.prepare('SELECT answers_json FROM responses WHERE survey_id = ?').all(survey.id);
+  const responses = rows.map(r => ({ answers: JSON.parse(r.answers_json) }));
+  return buildAnalysisCsv(computeSurveyAnalysis(questions, responses));
+}
+
+/** Filesystem-safe base name derived from the survey's config name. */
+function safeSurveyName(survey) {
+  return (survey.config_name || 'export').replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+// GET /api/surveys/:id/export-csv — export as vehicleGroupData.csv format
+router.get('/:id/export-csv', requireAuth, loadOwnedSurvey, (req, res) => {
+  const csv = buildVehicleGroupCsv(req.survey);
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', 'attachment; filename="vehicleGroupData.csv"');
+  res.send(csv);
+});
+
+// GET /api/surveys/:id/export-excel — export as xlsx matching input.xlsx format
+router.get('/:id/export-excel', requireAuth, loadOwnedSurvey, (req, res) => {
+  const buf = buildResponsesWorkbook(req.survey, getDb());
   res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-  res.setHeader('Content-Disposition', `attachment; filename="${safeName}.xlsx"`);
-  res.send(Buffer.from(buf));
+  res.setHeader('Content-Disposition', `attachment; filename="${safeSurveyName(req.survey)}.xlsx"`);
+  res.send(buf);
+});
+
+// GET /api/surveys/:id/export-bundle — one download with everything: the raw
+// responses workbook, the Unity vehicleGroupData.csv, and the survey-analysis
+// CSV, packed into a single .zip. Backs the editor's single "Download Data" button.
+router.get('/:id/export-bundle', requireAuth, loadOwnedSurvey, (req, res) => {
+  const survey = req.survey;
+  const db = getDb();
+  const base = safeSurveyName(survey);
+
+  const files = [
+    { name: `${base}-responses.xlsx`, data: buildResponsesWorkbook(survey, db) },
+    { name: 'vehicleGroupData.csv', data: buildVehicleGroupCsv(survey) },
+    { name: `${base}-analysis.csv`, data: buildSurveyAnalysisCsv(survey, db) },
+  ];
+
+  const zip = createZip(files);
+  res.setHeader('Content-Type', 'application/zip');
+  res.setHeader('Content-Disposition', `attachment; filename="${base}-data.zip"`);
+  res.send(zip);
 });
 
 // POST /api/surveys/:id/send-to-game — push a survey's processed responses straight into a

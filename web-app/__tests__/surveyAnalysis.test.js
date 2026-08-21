@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeSurveyAnalysis } from '../src/lib/surveyAnalysis.js';
+import { computeSurveyAnalysis, buildAnalysisCsv } from '../src/lib/surveyAnalysis.js';
 
 // Question type constants mirror the Unity enum (see client constants.js).
 const TEXT = 0;
@@ -133,5 +133,51 @@ describe('computeSurveyAnalysis', () => {
   it('handles empty inputs gracefully', () => {
     expect(computeSurveyAnalysis([], [])).toEqual({ responseCount: 0, questions: [] });
     expect(computeSurveyAnalysis(null, null)).toEqual({ responseCount: 0, questions: [] });
+  });
+});
+
+describe('buildAnalysisCsv', () => {
+  it('returns an empty string when there are no questions', () => {
+    expect(buildAnalysisCsv({ responseCount: 0, questions: [] })).toBe('');
+    expect(buildAnalysisCsv(null)).toBe('');
+  });
+
+  it('emits one metric row per numeric statistic under a shared header', () => {
+    const analysis = computeSurveyAnalysis(
+      [{ Id: 'member_count', Text: 'Members', Type: NUMERIC, Options: [] }],
+      [res({ member_count: 2 }), res({ member_count: 4 })]
+    );
+    const csv = buildAnalysisCsv(analysis);
+    const lines = csv.trim().split('\n');
+    expect(lines[0]).toBe('Question,Type,Answered,Metric,Value');
+    // Mean/Std/Median/Q1/Q3/Min/Max — seven metric rows for a numeric question.
+    expect(lines).toHaveLength(1 + 7);
+    expect(csv).toContain('Members,Numeric,2,Mean,3');
+    expect(csv).toContain('Members,Numeric,2,Min,2');
+    expect(csv).toContain('Members,Numeric,2,Max,4');
+  });
+
+  it('emits one row per declared choice option and quotes commas', () => {
+    const analysis = computeSurveyAnalysis(
+      [{ Id: 'color', Text: 'Colour, please', Type: CHOICE, Options: ['Blue', 'Red'] }],
+      [res({ color: 'Blue' }), res({ color: 'Blue' }), res({ color: 'Red' })]
+    );
+    const csv = buildAnalysisCsv(analysis);
+    // A comma in the question text forces RFC-4180 quoting.
+    expect(csv).toContain('"Colour, please",Choice,3,Blue,2');
+    expect(csv).toContain('"Colour, please",Choice,3,Red,1');
+  });
+
+  it('surfaces free-text and unanswered numeric questions with placeholder rows', () => {
+    const analysis = computeSurveyAnalysis(
+      [
+        { Id: 'member_names', Text: 'Names', Type: TEXT, Options: [] },
+        { Id: 'member_count', Text: 'Members', Type: NUMERIC, Options: [] },
+      ],
+      [res({ member_names: 'Al' })]
+    );
+    const csv = buildAnalysisCsv(analysis);
+    expect(csv).toContain('Names,Text,1,(free text),');
+    expect(csv).toContain('Members,Numeric,0,(no numeric answers),');
   });
 });
