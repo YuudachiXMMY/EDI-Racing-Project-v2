@@ -65,9 +65,9 @@ export default function EditorPage() {
       alert(`Failed to start host session: ${result.error || 'unknown error'}`);
       return;
     }
-    if (gameTab) {
-      try { gameTab.opener = null; } catch { /* some browsers disallow; harmless */ }
-    }
+    // Do NOT sever the opener (opener=null): the game tab is same-origin (not a tabnabbing
+    // vector), and disowning it makes submitHostLaunch's same-origin document write miss,
+    // stranding the tab on about:blank.
     // Popup-blocked case (gameTab null): submitHostLaunch falls back to a new '_blank' tab.
     submitHostLaunch(result.data.token, id, gameTab);
     // Show the student join link + QR here; the panel polls for the room code the game creates.

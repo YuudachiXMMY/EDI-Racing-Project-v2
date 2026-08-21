@@ -19,24 +19,47 @@ export function hostLaunchFormSpec(token, surveyId) {
 // Submit the host launch as a real form POST into an already-opened tab (or a new one when
 // `gameTab` is null after a popup block). Kept thin so the URL-shape logic above stays pure
 // and unit-testable; this is the only DOM glue.
+//
+// We write the form INTO the game tab's own document and self-submit it, rather than submitting
+// from the opener with form.target=<window name>. Cross-window name retargeting is fragile: a
+// popup whose opener link is severed (or one isolated by COOP) is no longer "familiar" to the
+// opener, so the name lookup misses, the POST spawns a THIRD tab, and the opened tab is left
+// stranded on about:blank — the "Host Game opens an empty tab" bug. Self-submitting inside the
+// tab navigates that exact tab with no name/opener matching at all. The about:blank tab is
+// same-origin with the opener, so its document is writable and the absolute same-origin action
+// resolves correctly (a relative action would resolve against about:blank and break).
 export function submitHostLaunch(token, surveyId, gameTab) {
   const spec = hostLaunchFormSpec(token, surveyId);
-  const target = gameTab ? `edi-game-${surveyId}` : '_blank';
-  if (gameTab) {
-    try { gameTab.name = target; } catch { /* cross-origin about:blank is same-origin here; harmless */ }
+  // Absolute same-origin action: required when the form lives in the about:blank tab (its base
+  // URI is about:blank); harmless in the opener-document fallback below.
+  const action = `${window.location.origin}${spec.action}`;
+
+  const buildForm = (doc, target) => {
+    const form = doc.createElement('form');
+    form.method = spec.method;
+    form.action = action;
+    if (target) form.target = target;
+    for (const [name, value] of Object.entries(spec.fields)) {
+      const input = doc.createElement('input');
+      input.type = 'hidden';
+      input.name = name;
+      input.value = value;
+      form.appendChild(input);
+    }
+    doc.body.appendChild(form);
+    return form;
+  };
+
+  // Preferred path: submit from within the already-open game tab (self-navigation).
+  const tabDoc = gameTab && gameTab.document;
+  if (tabDoc && tabDoc.body) {
+    buildForm(tabDoc, null).submit();
+    return;
   }
-  const form = document.createElement('form');
-  form.method = spec.method;
-  form.action = spec.action;
-  form.target = target;
-  for (const [name, value] of Object.entries(spec.fields)) {
-    const input = document.createElement('input');
-    input.type = 'hidden';
-    input.name = name;
-    input.value = value;
-    form.appendChild(input);
-  }
-  document.body.appendChild(form);
+
+  // Fallback (popup blocked → gameTab null, or its document is unreachable): submit from the
+  // current document into a fresh _blank tab.
+  const form = buildForm(document, '_blank');
   form.submit();
   form.remove();
 }
