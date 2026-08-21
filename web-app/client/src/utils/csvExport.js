@@ -70,3 +70,50 @@ export function buildResultsCsv(session) {
 export function downloadJsonFile(session, filename) {
   downloadBlob(JSON.stringify(session, null, 2), filename, 'application/json');
 }
+
+/** Round a stat to at most 4 decimals, dropping trailing zeros; '' for null/undefined. */
+function fmtNum(n) {
+  if (n === null || n === undefined || Number.isNaN(n)) return '';
+  return Number.isInteger(n) ? String(n) : String(Number(n.toFixed(4)));
+}
+
+/**
+ * Build a tidy (long-format) CSV from a survey-analysis object as returned by
+ * GET /api/surveys/:id/analysis. One row per metric so numeric and choice
+ * questions share the same columns:
+ *   Question, Type, Answered, Metric, Value
+ * Numeric questions emit Mean/Std/Median/Q1/Q3/Min/Max rows; choice questions
+ * emit one row per option (declared options plus any "(other)" values); free-text
+ * questions emit a single placeholder row. Returns '' when there are no questions.
+ */
+export function buildAnalysisCsv(analysis) {
+  const questions = analysis?.questions || [];
+  if (questions.length === 0) return '';
+
+  let csv = 'Question,Type,Answered,Metric,Value\n';
+  const row = (q, type, metric, value) =>
+    `${escapeCsv(q.text)},${type},${q.answered},${escapeCsv(metric)},${escapeCsv(value)}\n`;
+
+  for (const q of questions) {
+    if (q.kind === 'numeric') {
+      if (!q.stats) {
+        csv += row(q, 'Numeric', '(no numeric answers)', '');
+        continue;
+      }
+      csv += row(q, 'Numeric', 'Mean', fmtNum(q.stats.mean));
+      csv += row(q, 'Numeric', 'Std', fmtNum(q.stats.std));
+      csv += row(q, 'Numeric', 'Median', fmtNum(q.stats.median));
+      csv += row(q, 'Numeric', 'Q1', fmtNum(q.stats.q1));
+      csv += row(q, 'Numeric', 'Q3', fmtNum(q.stats.q3));
+      csv += row(q, 'Numeric', 'Min', fmtNum(q.stats.min));
+      csv += row(q, 'Numeric', 'Max', fmtNum(q.stats.max));
+    } else if (q.kind === 'choice') {
+      for (const c of q.counts) csv += row(q, 'Choice', c.option, c.count);
+      for (const o of (q.other || [])) csv += row(q, 'Choice', `${o.value} (other)`, o.count);
+    } else {
+      csv += row(q, 'Text', '(free text)', '');
+    }
+  }
+
+  return csv;
+}

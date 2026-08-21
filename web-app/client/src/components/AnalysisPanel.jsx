@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getSurveyAnalysis } from '../api.js';
+import { buildAnalysisCsv, downloadBlob } from '../utils/csvExport.js';
 
 // Format a numeric stat for display: round to 2 decimals, drop trailing zeros,
 // and render an em-dash for undefined values (e.g. std of a single response).
@@ -80,13 +81,31 @@ export default function AnalysisPanel({ surveyId }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [surveyId]);
 
+  function handleExport() {
+    const csv = buildAnalysisCsv(analysis);
+    if (!csv) return;
+    downloadBlob(csv, `survey-${surveyId}-analysis.csv`, 'text/csv');
+  }
+
+  const hasQuestions = !!analysis && analysis.questions.length > 0;
+
   return (
     <section className="analysis-panel">
       <div className="analysis-header">
         <h3>Survey Analysis</h3>
-        <button className="btn-secondary btn-small" onClick={loadAnalysis} disabled={loading}>
-          {loading ? 'Refreshing…' : 'Refresh Analysis'}
-        </button>
+        <div className="toolbar-group" role="group" aria-label="Analysis actions">
+          <button className="btn-secondary btn-small" onClick={loadAnalysis} disabled={loading}>
+            {loading ? 'Refreshing…' : 'Refresh Analysis'}
+          </button>
+          <button
+            className="btn-secondary btn-small"
+            onClick={handleExport}
+            disabled={loading || !hasQuestions}
+            title={hasQuestions ? 'Download the analysis as CSV' : 'No analysis to export yet'}
+          >
+            Export CSV
+          </button>
+        </div>
       </div>
 
       {error && <p className="error">{error}</p>}
