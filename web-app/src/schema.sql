@@ -34,16 +34,18 @@ CREATE TABLE IF NOT EXISTS surveys (
 CREATE TABLE IF NOT EXISTS responses (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   survey_id INTEGER NOT NULL REFERENCES surveys(id),
-  email TEXT NOT NULL,
-  team_name TEXT NOT NULL,
+  -- Email and team name are optional; stored as '' when the student omits them.
+  email TEXT NOT NULL DEFAULT '',
+  team_name TEXT NOT NULL DEFAULT '',
   -- Raw answers as JSON key-value pairs
   answers_json TEXT NOT NULL DEFAULT '{}',
   submitted_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
--- Unique constraint: one response per email per survey
+-- Unique constraint: one response per email per survey.
+-- Partial so that optional (empty) emails never collide with each other.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_responses_unique
-  ON responses(survey_id, email);
+  ON responses(survey_id, email) WHERE email != '';
 
 -- Race results sent from Unity game
 CREATE TABLE IF NOT EXISTS race_results (

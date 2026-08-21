@@ -12,11 +12,10 @@ export default function StudentSurveyPage() {
   const [status, setStatus] = useState('loading'); // loading | ready | submitting | submitted | error
   const [error, setError] = useState('');
   const [email, setEmail] = useState('');
-  const [teamName, setTeamName] = useState('');
+  const [submittedTeamName, setSubmittedTeamName] = useState('');
   const [formError, setFormError] = useState('');
   const modelRef = useRef(null);
   const emailRef = useRef('');
-  const teamNameRef = useRef('');
 
   useEffect(() => {
     loadSurvey();
@@ -45,23 +44,18 @@ export default function StudentSurveyPage() {
 
   async function handleSubmit(answers) {
     setFormError('');
-    const currentEmail = emailRef.current;
-    const currentTeamName = teamNameRef.current;
-    if (!currentEmail.trim()) {
-      setFormError('Please enter your email');
-      modelRef.current?.clear(false, true);
-      return;
-    }
-    if (!currentTeamName.trim()) {
-      setFormError('Please enter your team name');
-      modelRef.current?.clear(false, true);
-      return;
-    }
+    // Email is optional; send whatever the student typed (may be empty).
+    const currentEmail = emailRef.current.trim();
+    // Team name is no longer a separate required field — it is collected inside the
+    // survey itself (e.g. the ENGG*1100 `team_name` question). Derive it from the answers.
+    const derivedTeamName =
+      typeof answers?.team_name === 'string' ? answers.team_name.trim() : '';
+    setSubmittedTeamName(derivedTeamName);
 
     setStatus('submitting');
     const result = await submitResponse(shareCode, {
-      email: currentEmail.trim(),
-      teamName: currentTeamName.trim(),
+      email: currentEmail,
+      teamName: derivedTeamName,
       answers,
     });
 
@@ -95,7 +89,10 @@ export default function StudentSurveyPage() {
         <div className="student-card">
           <div className="student-confirmation">
             <h2>Response Submitted!</h2>
-            <p>Thank you, <strong>{teamName}</strong>.</p>
+            <p>
+              Thank you
+              {submittedTeamName ? <>, <strong>{submittedTeamName}</strong></> : ''}.
+            </p>
             <p>Your responses have been recorded. Your team car will be ready for the race.</p>
           </div>
         </div>
@@ -112,17 +109,9 @@ export default function StudentSurveyPage() {
         <div className="student-form">
           <input
             type="email"
-            placeholder="Your email"
+            placeholder="Your email (optional)"
             value={email}
             onChange={e => { setEmail(e.target.value); emailRef.current = e.target.value; }}
-            required
-          />
-          <input
-            type="text"
-            placeholder="Team name"
-            value={teamName}
-            onChange={e => { setTeamName(e.target.value); teamNameRef.current = e.target.value; }}
-            required
           />
         </div>
 
