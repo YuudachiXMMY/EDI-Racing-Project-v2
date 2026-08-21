@@ -109,6 +109,12 @@ export async function getResponses(id) {
   return request(`/surveys/${id}/responses`);
 }
 
+// Descriptive statistics across all of a survey's responses. Recomputed server-side
+// on each call so "Refresh Analysis" picks up newly submitted responses.
+export async function getSurveyAnalysis(id) {
+  return request(`/surveys/${id}/analysis`);
+}
+
 export async function exportExcel(id) {
   const token = getToken();
   const res = await fetch(`/api/surveys/${id}/export-excel`, {
