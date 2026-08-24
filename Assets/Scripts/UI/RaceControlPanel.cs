@@ -13,6 +13,8 @@ public class RaceControlPanel : MonoBehaviour
     public RaceManager RaceManager;
     [Tooltip("Drives the Auto Cam button. Auto-resolved if unset.")]
     public CameraManager CameraManager;
+    [Tooltip("Drives the Names toggle button. Auto-resolved if unset.")]
+    public CarLabelSpawner CarLabelSpawner;
 
     [Header("UI Elements")]
     public Button PauseResumeButton;
@@ -21,6 +23,8 @@ public class RaceControlPanel : MonoBehaviour
     public Button ExportButton;
     public Button AutoCamButton;
     public Text AutoCamLabel;
+    public Button ToggleNamesButton;
+    public Text ToggleNamesLabel;
     public Text StatusText;
 
     private bool isPaused;
@@ -37,6 +41,8 @@ public class RaceControlPanel : MonoBehaviour
             RaceManager = FindFirstObjectByType<RaceManager>(FindObjectsInactive.Include);
         if (CameraManager == null)
             CameraManager = FindFirstObjectByType<CameraManager>(FindObjectsInactive.Include);
+        if (CarLabelSpawner == null)
+            CarLabelSpawner = FindFirstObjectByType<CarLabelSpawner>(FindObjectsInactive.Include);
 
         if (PauseResumeButton != null)
             PauseResumeButton.onClick.AddListener(TogglePause);
@@ -46,9 +52,20 @@ public class RaceControlPanel : MonoBehaviour
             ExportButton.onClick.AddListener(ExportResults);
         if (AutoCamButton != null)
             AutoCamButton.onClick.AddListener(ToggleAutoCam);
+        if (ToggleNamesButton != null)
+            ToggleNamesButton.onClick.AddListener(ToggleNames);
 
         if (StatusText != null)
             StatusText.text = "";
+    }
+
+    private void ToggleNames()
+    {
+        if (CarLabelSpawner == null) return;
+        CarLabelSpawner.ToggleLabels();
+        bool on = CarLabelSpawner.LabelsVisible;
+        if (ToggleNamesLabel != null) ToggleNamesLabel.text = on ? "Names: On" : "Names: Off";
+        ShowStatus(on ? "Car names shown" : "Car names hidden");
     }
 
     private void ToggleAutoCam()
