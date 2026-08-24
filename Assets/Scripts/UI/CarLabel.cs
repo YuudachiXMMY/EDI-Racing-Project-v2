@@ -24,15 +24,17 @@ public class CarLabel : MonoBehaviour
     }
 
     /// <summary>
-    /// Rotation that makes a world-space label's readable face (+Z) point at the camera from
-    /// any angle. Pure and deterministic so the billboard math is unit-testable without a live
-    /// camera. Falls back to identity when the label sits on top of the camera (degenerate dir).
+    /// Rotation that makes a world-space label read correctly toward the camera from any angle.
+    /// A UGUI canvas reads right when its forward (+Z) points the SAME way the camera looks, i.e.
+    /// AWAY from the camera — pointing +Z toward the camera mirrors the text. Pure and
+    /// deterministic so the billboard math is unit-testable without a live camera. Falls back to
+    /// identity when the label sits on top of the camera (degenerate dir).
     /// </summary>
     public static Quaternion ComputeFacingRotation(Vector3 labelPos, Vector3 camPos, Vector3 camUp)
     {
-        Vector3 lookDir = camPos - labelPos;               // +Z toward camera → text readable
+        Vector3 lookDir = labelPos - camPos;               // +Z away from camera → text not mirrored
         if (lookDir.sqrMagnitude < 0.0001f) return Quaternion.identity;
-        return Quaternion.LookRotation(lookDir, camUp);    // full 3D, no Y flattening
+        return Quaternion.LookRotation(lookDir, camUp);    // full 3D, faces camera from any angle
     }
 
     private void LateUpdate()
