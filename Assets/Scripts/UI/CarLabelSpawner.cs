@@ -102,6 +102,11 @@ public class CarLabelSpawner : MonoBehaviour
             text.fontSize = FontSize;
             text.alignment = TextAnchor.MiddleCenter;
             text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            // The world-space canvas rect (sizeDelta 4x0.5) is far smaller than a fontSize-24
+            // glyph, so the default Wrap/Truncate modes clip every line to nothing and no name
+            // ever renders. Let the text overflow its rect so the label is actually visible.
+            text.horizontalOverflow = HorizontalWrapMode.Overflow;
+            text.verticalOverflow = VerticalWrapMode.Overflow;
 
             // Highlight own car with distinct label
             if (identity.IsOwnCar)
