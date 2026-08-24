@@ -33,4 +33,10 @@ MonoBehaviour:
   ForwardSlowdownFactor: 0.6
   CollisionSpeedFactor: 0.6
   CollisionRecoveryTime: 0.8
+  TrailDuration: 0.5
+  TrailStartWidth: 0.8
+  TrailEndWidth: 0.1
   TotalLaps: 3
+  TrailMinVertexDistance: 1.5
+  LabelVisibleDistance: 80
+  AvoidanceQuality: 2
