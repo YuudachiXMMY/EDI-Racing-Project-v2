@@ -2,8 +2,7 @@ using UnityEngine;
 
 /// <summary>
 /// World-space floating team name label above a car.
-/// Billboards toward the camera with distance-based culling
-/// and throttled rotation updates for performance.
+/// Billboards toward the currently active camera (any angle) with distance-based culling.
 /// </summary>
 public class CarLabel : MonoBehaviour
 {
@@ -16,15 +15,24 @@ public class CarLabel : MonoBehaviour
     private Transform target;
     private Transform cam;
     private Canvas canvas;
-    private int frameCounter;
-    private int staggerOffset;
 
     public void Initialize(Transform carTransform)
     {
         target = carTransform;
         cam = Camera.main != null ? Camera.main.transform : null;
         canvas = GetComponent<Canvas>();
-        staggerOffset = GetInstanceID() % 4;
+    }
+
+    /// <summary>
+    /// Rotation that makes a world-space label's readable face (+Z) point at the camera from
+    /// any angle. Pure and deterministic so the billboard math is unit-testable without a live
+    /// camera. Falls back to identity when the label sits on top of the camera (degenerate dir).
+    /// </summary>
+    public static Quaternion ComputeFacingRotation(Vector3 labelPos, Vector3 camPos, Vector3 camUp)
+    {
+        Vector3 lookDir = camPos - labelPos;               // +Z toward camera → text readable
+        if (lookDir.sqrMagnitude < 0.0001f) return Quaternion.identity;
+        return Quaternion.LookRotation(lookDir, camUp);    // full 3D, no Y flattening
     }
 
     private void LateUpdate()
@@ -33,24 +41,31 @@ public class CarLabel : MonoBehaviour
 
         transform.position = target.position + Vector3.up * HeightOffset;
 
-        if (cam == null) cam = Camera.main != null ? Camera.main.transform : null;
-        if (cam != null)
-        {
-            // Distance culling — disable Canvas to eliminate draw calls
-            float sqrDist = (cam.position - transform.position).sqrMagnitude;
-            bool visible = sqrDist < MaxVisibleDistance * MaxVisibleDistance;
-            if (canvas != null && canvas.enabled != visible)
-                canvas.enabled = visible;
+        Transform activeCam = ResolveActiveCamera();
+        if (activeCam == null) return;
 
-            // Billboard only every 4th frame (rotation change is subtle)
-            frameCounter++;
-            if (visible && (frameCounter + staggerOffset) % 4 == 0)
-            {
-                Vector3 lookDir = cam.position - transform.position;
-                lookDir.y = 0f;
-                if (lookDir.sqrMagnitude > 0.001f)
-                    transform.rotation = Quaternion.LookRotation(lookDir);
-            }
+        // Distance culling — disable Canvas to eliminate draw calls when far away.
+        float sqrDist = (activeCam.position - transform.position).sqrMagnitude;
+        bool visible = sqrDist < MaxVisibleDistance * MaxVisibleDistance;
+        if (canvas != null && canvas.enabled != visible)
+            canvas.enabled = visible;
+
+        // Face the active camera from any angle, every visible frame, so a mode switch or a
+        // fast AutoCam cut never leaves a label edge-on or aimed at the previous camera.
+        if (visible)
+            transform.rotation = ComputeFacingRotation(transform.position, activeCam.position, activeCam.up);
+    }
+
+    // Reuse the cached camera while it is the live active one; re-resolve when it has been
+    // disabled or destroyed (camera-mode switch, or a future second camera taking the tag).
+    private Transform ResolveActiveCamera()
+    {
+        if (cam != null && cam.gameObject.activeInHierarchy)
+        {
+            var c = cam.GetComponent<Camera>();
+            if (c == null || c.isActiveAndEnabled) return cam;
         }
+        cam = Camera.main != null ? Camera.main.transform : null;
+        return cam;
     }
 }
