@@ -41,7 +41,10 @@ public class RaceUI : MonoBehaviour
         if (NetworkManager != null)
             NetworkManager.OnRoomCreated += HandleRoomCreated;
         if (Leaderboard != null)
+        {
             Leaderboard.OnFullscreenChanged += HandleLeaderboardFullscreenChanged;
+            Leaderboard.OnCarSelected += HandleCarSelected;
+        }
 
         ApplyRole();
         OnStateChanged(RaceManager != null ? RaceManager.CurrentState : GameState.Setup);
@@ -78,7 +81,10 @@ public class RaceUI : MonoBehaviour
         if (NetworkManager != null)
             NetworkManager.OnRoomCreated -= HandleRoomCreated;
         if (Leaderboard != null)
+        {
             Leaderboard.OnFullscreenChanged -= HandleLeaderboardFullscreenChanged;
+            Leaderboard.OnCarSelected -= HandleCarSelected;
+        }
     }
 
     // True while the leaderboard is in its full-screen mode, which covers the whole race view.
@@ -138,13 +144,13 @@ public class RaceUI : MonoBehaviour
         if (Setup != null) Setup.gameObject.SetActive(isProfessor);
         if (JoinScreen != null) JoinScreen.gameObject.SetActive(!isProfessor);
 
-        // Switch camera mode based on role
+        // Switch camera mode based on role. The professor free-flies; the student gets the auto-
+        // switching broadcast camera (not free control), and click-to-follow drives it from there
+        // via HandleCarSelected. AllowFreeControl gates the professor F/C keys off for students.
         if (CameraManager != null)
         {
-            if (isProfessor)
-                CameraManager.SetMode(CameraManager.CameraMode.Free);
-            else
-                CameraManager.SetMode(CameraManager.CameraMode.Spectator);
+            CameraManager.AllowFreeControl = isProfessor;
+            CameraManager.SetMode(CameraModeForRole(isProfessor));
         }
     }
 
@@ -156,6 +162,26 @@ public class RaceUI : MonoBehaviour
     /// </summary>
     public static bool ShouldShowEventPanel(bool isProfessor, bool isRacing, bool leaderboardFullscreen)
         => isProfessor && isRacing && !leaderboardFullscreen;
+
+    /// <summary>
+    /// Camera mode a role starts in: the professor free-flies (Free); the student gets the auto-
+    /// switching top-N chase (AutoTopCars, broadcast feel) rather than the single-car leader lock.
+    /// Pure so the mapping is unit-testable without a live scene.
+    /// </summary>
+    public static CameraManager.CameraMode CameraModeForRole(bool isProfessor)
+        => isProfessor ? CameraManager.CameraMode.Free : CameraManager.CameraMode.AutoTopCars;
+
+    // A row in the full-screen leaderboard was clicked (both roles): follow that car in a 3rd-person
+    // chase and shrink the board back to Normal so the race is visible again. Resolving the clicked
+    // team name to a spawned car works for host and student alike (both set CarIdentity.TeamName).
+    private void HandleCarSelected(string teamName)
+    {
+        if (CameraManager == null || RaceManager == null) return;
+        var car = CarLookup.FindByTeamName(RaceManager.SpawnedCars, teamName);
+        if (car == null) return;
+        CameraManager.FollowCar(car.transform);
+        if (Leaderboard != null) Leaderboard.SetDisplayMode(LeaderboardPanel.DisplayMode.Normal);
+    }
 
     private void OnStateChanged(GameState state)
     {
@@ -183,9 +209,13 @@ public class RaceUI : MonoBehaviour
             if (cameraHint == null) BuildCameraHint();
             if (cameraHint != null) cameraHint.SetActive(isRacing);
         }
-        else if (cameraHint != null)
+        else
         {
-            cameraHint.SetActive(false);
+            // Student: the professor camera hint never applies, but the student still needs to know
+            // the leaderboard resizes with Tab and that its rows are clickable in fullscreen.
+            if (cameraHint != null) cameraHint.SetActive(false);
+            if (studentHint == null) BuildStudentHint();
+            if (studentHint != null) studentHint.SetActive(isRacing);
         }
     }
 
@@ -219,5 +249,36 @@ public class RaceUI : MonoBehaviour
         rt.sizeDelta = new Vector2(720f, 44f);
 
         cameraHint = obj;
+    }
+
+    // Runtime-built student hint, mirroring BuildCameraHint. Students never see the professor hint;
+    // this one names the two controls their spectator view actually has — Tab resizes the leaderboard,
+    // and clicking a team name in the full-screen board follows that car (Esc returns to auto cam).
+    private GameObject studentHint;
+
+    private void BuildStudentHint()
+    {
+        var obj = new GameObject("StudentHint");
+        obj.transform.SetParent(transform, false);
+
+        var text = obj.AddComponent<Text>();
+        text.text = "Tab: leaderboard size (normal / enlarged / fullscreen)   |   "
+                  + "Click a team name in fullscreen to follow that car   |   Esc: auto camera";
+        text.fontSize = 15;
+        text.alignment = TextAnchor.LowerLeft;
+        text.color = new Color(1f, 1f, 1f, 0.75f);
+        text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+        text.supportRichText = true;
+        text.horizontalOverflow = HorizontalWrapMode.Overflow;
+        text.verticalOverflow = VerticalWrapMode.Overflow;
+
+        var rt = obj.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0f, 0f);
+        rt.anchorMax = new Vector2(0f, 0f);
+        rt.pivot = new Vector2(0f, 0f);
+        rt.anchoredPosition = new Vector2(14f, 12f);
+        rt.sizeDelta = new Vector2(820f, 24f);
+
+        studentHint = obj;
     }
 }

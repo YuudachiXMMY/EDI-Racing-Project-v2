@@ -39,6 +39,14 @@ public class LeaderboardPanel : MonoBehaviour
     /// </summary>
     public event System.Action<bool> OnFullscreenChanged;
 
+    /// <summary>
+    /// Raised when a row is clicked while in <see cref="DisplayMode.Fullscreen"/>; the argument is
+    /// that row's team name. RaceUI resolves it to a spawned car and drives the camera into a
+    /// 3rd-person follow. Never fired in Normal/Enlarged. The leaderboard stays unaware of the camera
+    /// — it only reports which team was clicked, mirroring <see cref="OnFullscreenChanged"/>.
+    /// </summary>
+    public event System.Action<string> OnCarSelected;
+
     /// <summary>Columns used by the Fullscreen layout (rank-ordered, filled top-to-bottom).</summary>
     public const int ColumnCount = 3;
 
@@ -83,6 +91,9 @@ public class LeaderboardPanel : MonoBehaviour
     public int FullscreenTitleFontSize = 48;
 
     private readonly List<GameObject> rowPool = new List<GameObject>();
+    // Team name currently rendered in each pooled row (parallel to rowPool), or "" when the row is
+    // inactive. A clicked row maps to its team via this, so OnCarSelected can report which car.
+    private readonly List<string> rowTeamNames = new List<string>();
     private float timer;
 
     // Row height as a multiple of the row font size, used in the zoomed modes so each row is tall
@@ -141,6 +152,8 @@ public class LeaderboardPanel : MonoBehaviour
             GameObject row = Instantiate(RowPrefab, rowParent);
             row.SetActive(false);
             rowPool.Add(row);
+            rowTeamNames.Add("");
+            MakeRowClickable(row, i);
         }
 
         CaptureRowDefaults();
@@ -253,6 +266,33 @@ public class LeaderboardPanel : MonoBehaviour
         if (Keyboard.current == null) return;
         if (Keyboard.current[ToggleKey].wasPressedThisFrame)
             SetDisplayMode(NextMode(currentMode));
+    }
+
+    // Turn a pooled row into a click target. The row prefab's Text is the raycast graphic, so a
+    // click anywhere on the name selects that row. Transition is None so the Button never tints over
+    // the rank-colour styling. index is a method parameter (not the loop variable), so each row's
+    // handler captures its own slot; clicks only act in Fullscreen (see HandleRowClicked).
+    private void MakeRowClickable(GameObject row, int index)
+    {
+        var text = row.GetComponent<Text>();
+        if (text != null) text.raycastTarget = true;
+
+        var btn = row.GetComponent<Button>();
+        if (btn == null) btn = row.AddComponent<Button>();
+        btn.transition = Selectable.Transition.None;
+        if (text != null) btn.targetGraphic = text;
+
+        btn.onClick.AddListener(() => HandleRowClicked(index));
+    }
+
+    // A pooled row was clicked. Only meaningful in Fullscreen; report the team name so RaceUI can
+    // follow that car. Guards keep an empty/inactive row (rowTeamNames[index] == "") from firing.
+    private void HandleRowClicked(int index)
+    {
+        if (currentMode != DisplayMode.Fullscreen) return;
+        if (index < 0 || index >= rowTeamNames.Count) return;
+        string team = rowTeamNames[index];
+        if (!string.IsNullOrEmpty(team)) OnCarSelected?.Invoke(team);
     }
 
     /// <summary>Pure cycle order: Normal → Enlarged → Fullscreen → Normal.</summary>
@@ -403,10 +443,12 @@ public class LeaderboardPanel : MonoBehaviour
             {
                 if (replace) PlaceRow(i, rowsPerColumn);
                 var car = ranked[i];
+                rowTeamNames[i] = car.TeamName;
                 StyleRow(i, $"{i + 1}. [{car.CurrentLap}] {car.TeamName}", i);
             }
             else
             {
+                rowTeamNames[i] = "";
                 rowPool[i].SetActive(false);
             }
         }
@@ -432,10 +474,12 @@ public class LeaderboardPanel : MonoBehaviour
             {
                 if (replace) PlaceRow(i, rowsPerColumn);
                 var entry = rankings[i];
+                rowTeamNames[i] = entry.name;
                 StyleRow(i, $"{entry.rank}. [{entry.lap}] {entry.name}", i);
             }
             else
             {
+                rowTeamNames[i] = "";
                 rowPool[i].SetActive(false);
             }
         }
