@@ -75,6 +75,19 @@ services:
       # Required — see the edi-racing service above. This process serves the /game/ access gate,
       # which is fatal on the public default. Must equal the game container's INTERNAL_SECRET.
       - INTERNAL_SECRET=${INTERNAL_SECRET:?INTERNAL_SECRET must be set (e.g. openssl rand -hex 32); the /game/ access gate is never safe with the public default}
+      # Password-reset email via the self-hosted Stalwart SMTP server. Values arrive from the
+      # deploy-server .env (populated by apps/ediracing/.env.extra). Empty defaults keep local
+      # `up --build` quiet: with SMTP_HOST unset, mailConfigured() is false and the app boots
+      # with reset emails disabled (a warning, not a failure). In production the prod overlay
+      # already attaches web-app to the external `proxy` network, so `stalwart:587` resolves.
+      - SMTP_HOST=${SMTP_HOST:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_SECURE=${SMTP_SECURE:-false}
+      - SMTP_USER=${SMTP_USER:-}
+      - SMTP_PASS=${SMTP_PASS:-}
+      - MAIL_FROM=${MAIL_FROM:-noreply@${DOMAIN:-localhost}}
+      # Public origin for the emailed reset link (HashRouter: ${APP_BASE_URL}/#/reset-password?token=…).
+      - APP_BASE_URL=${APP_BASE_URL:-https://${DOMAIN:-localhost}}
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3001/api/health"]
       interval: 10s
