@@ -4,12 +4,17 @@ import { mailConfig } from '../config.js';
 let _transport = null;
 function getTransport() {
   if (_transport) return _transport;
-  _transport = nodemailer.createTransport({
+  const opts = {
     host: mailConfig.host,
     port: mailConfig.port,
     secure: mailConfig.secure,
     auth: mailConfig.user ? { user: mailConfig.user, pass: mailConfig.pass } : undefined,
-  });
+  };
+  // Internal plaintext relay (stalwart:25): never negotiate STARTTLS so a missing/mismatched
+  // server cert can't abort the connection. tlsInsecure only matters if TLS is used anyway.
+  if (mailConfig.ignoreTLS) opts.ignoreTLS = true;
+  if (mailConfig.tlsInsecure) opts.tls = { rejectUnauthorized: false };
+  _transport = nodemailer.createTransport(opts);
   return _transport;
 }
 

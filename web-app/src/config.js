@@ -38,6 +38,12 @@ export const mailConfig = {
   host: process.env.SMTP_HOST || '',
   port: parseInt(process.env.SMTP_PORT || '587', 10),
   secure: (process.env.SMTP_SECURE || 'false').toLowerCase() === 'true', // true=465, false=587/STARTTLS
+  // Internal Stalwart relay listens on plaintext :25 with no STARTTLS advertised (and a cert
+  // that would not match the "stalwart" hostname anyway). ignoreTLS skips the STARTTLS upgrade
+  // so nodemailer stays plaintext; tlsInsecure disables cert verification if STARTTLS is used.
+  // Accept both "1" and "true" (trainear uses 1/0). See apps/ediracing/docker-compose.yml.
+  ignoreTLS: /^(1|true)$/i.test(process.env.SMTP_IGNORE_TLS || ''),
+  tlsInsecure: /^(1|true)$/i.test(process.env.SMTP_TLS_INSECURE || ''),
   user: process.env.SMTP_USER || '',
   pass: process.env.SMTP_PASS || '',
   from: process.env.MAIL_FROM || 'noreply@localhost',
