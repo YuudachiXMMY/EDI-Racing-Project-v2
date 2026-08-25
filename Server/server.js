@@ -85,7 +85,10 @@ function verifyHostToken(token, now = Date.now()) {
   return { valid: true, surveyId: payload.sid ?? null };
 }
 
-// Room: { professor: WebSocket|null, students: Set<WebSocket>, webapps: Set<WebSocket>, raceStarted: boolean, latestState: string|null, gamePhase: string, raceResults: string|null, surveyData: string|null, professorSessionId: string|null, graceTimer: NodeJS.Timeout|null }
+// Room: { professor: WebSocket|null, students: Set<WebSocket>, webapps: Set<WebSocket>, raceStarted: boolean, latestState: string|null, latestRaceStart: string|null, gamePhase: string, raceResults: string|null, surveyData: string|null, professorSessionId: string|null, graceTimer: NodeJS.Timeout|null }
+// latestState holds the most recent position frame (overwritten by every state_update).
+// latestRaceStart holds the one-time race_start roster (car list) — cached SEPARATELY so a
+// late joiner can be replayed the roster (spawn cars) before latestState (snap to positions).
 const rooms = new Map();
 const clientRooms = new Map(); // WebSocket -> { roomCode, role, sessionId }
 const sessions = new Map();   // sessionId -> { roomCode, role }
@@ -122,6 +125,26 @@ function broadcastToStudents(roomCode, message) {
       student.send(data);
     }
   }
+}
+
+// Replay the cached race roster to a late-joining client so its Unity/2D view spawns the
+// visual cars; the caller then sends latestState to snap them to current positions. Roster
+// order matters: the client's HandleStateUpdate is a no-op until race_start has spawned the
+// cars, so this MUST be sent before latestState. Personalized per team — yourCarIndex is -1
+// for anonymous students and web viewers. No-op before race start or if nothing is cached.
+function sendRaceStartTo(ws, room, teamName) {
+  if (!room.raceStarted || !room.latestRaceStart || ws.readyState !== 1) return;
+  try {
+    const startMsg = JSON.parse(room.latestRaceStart);
+    const cars = startMsg.cars || [];
+    let yourIndex = -1;
+    if (teamName) {
+      yourIndex = cars.findIndex(c =>
+        c.teamName && c.teamName.toLowerCase() === teamName.toLowerCase()
+      );
+    }
+    ws.send(JSON.stringify({ ...startMsg, yourCarIndex: yourIndex }));
+  } catch { /* malformed cache — caller still sends latestState */ }
 }
 
 const API_URL = process.env.API_URL || 'http://localhost:3001';
@@ -411,6 +434,7 @@ wss.on('connection', (ws) => {
           studentTeamNames: new Map(),
           raceStarted: false,
           latestState: null,
+          latestRaceStart: null,
           gamePhase: 'Setup',
           raceResults: null,
           latestLeaderboard: null,
@@ -467,6 +491,8 @@ wss.on('connection', (ws) => {
         if (room.surveyData && !room.raceStarted) {
           ws.send(room.surveyData);
         }
+        // If race already started, replay the roster (spawn cars) BEFORE the latest positions.
+        sendRaceStartTo(ws, room, teamName);
         // If race already started, send latest state to late-joiner
         if (room.latestState) {
           ws.send(room.latestState);
@@ -523,6 +549,9 @@ wss.on('connection', (ws) => {
           if (room.surveyData && !room.raceStarted) {
             ws.send(room.surveyData);
           }
+          // Replay the roster (spawn cars) before positions, so a student who reconnected
+          // after the race started re-spawns its cars instead of dropping state_updates.
+          sendRaceStartTo(ws, room, teamName);
           if (room.latestState) {
             ws.send(room.latestState);
           }
@@ -544,7 +573,9 @@ wss.on('connection', (ws) => {
         webRoom.webapps.add(ws);
         clientRooms.set(ws, { roomCode: webCode, role: 'webapp' });
         sendJSON(ws, { type: 'room_joined', roomCode: webCode });
-        // Send cached state to late-joining web viewer
+        // Send cached state to late-joining web viewer. Roster first (unpersonalized — web
+        // viewers have no team, so yourCarIndex is -1) so the 2D minimap knows the cars.
+        sendRaceStartTo(ws, webRoom, '');
         if (webRoom.latestState) ws.send(webRoom.latestState);
         if (webRoom.latestLeaderboard) ws.send(webRoom.latestLeaderboard);
         if (webRoom.latestConfig) ws.send(webRoom.latestConfig);
@@ -620,6 +651,10 @@ wss.on('connection', (ws) => {
             room.raceStarted = true;
             room.gamePhase = 'Racing';
             room.latestState = raw;
+            // Cache the roster separately so late joiners can be replayed the car list even
+            // after the first state_update overwrites latestState (~100ms later). Store the
+            // RAW host message (no yourCarIndex) — personalization is per-recipient.
+            room.latestRaceStart = raw;
 
             // Send personalized race_start to each student with yourCarIndex
             const cars = msg.cars || [];
