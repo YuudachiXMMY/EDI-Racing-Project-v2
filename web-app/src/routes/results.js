@@ -125,6 +125,56 @@ router.post('/sessions/archive', (req, res) => {
   res.json({ success: true, data: { id: Number(result.lastInsertRowid) } });
 });
 
+// POST /api/internal/race-results — WS-server write path that populates the survey Results tab.
+// Shared-secret auth, INDEPENDENT of the user JWT (the WS relay has no professor token) and
+// fail-closed like /sessions/archive. Looks up the survey by linked room code and inserts one
+// race_results row. Called by Server/server.js on every `race_results` message (End/Save/Export).
+router.post('/internal/race-results', (req, res) => {
+  if (!ARCHIVE_ENABLED) {
+    return res.status(503).json({
+      success: false,
+      error: 'Results write is disabled: set a strong INTERNAL_SECRET.',
+    });
+  }
+  const provided = Buffer.from(req.headers['x-internal-secret'] || '');
+  const expected = Buffer.from(INTERNAL_SECRET);
+  if (provided.length !== expected.length || !timingSafeEqual(provided, expected)) {
+    return res.status(403).json({ success: false, error: 'Forbidden' });
+  }
+
+  const { roomCode, configName, rankings, eventLog, totalRaceTime } = req.body;
+  if (!roomCode) {
+    return res.status(400).json({ success: false, error: 'roomCode is required' });
+  }
+  if (!rankings || !Array.isArray(rankings)) {
+    return res.status(400).json({ success: false, error: 'rankings array is required' });
+  }
+
+  const db = getDb();
+  const linked = db.prepare(
+    'SELECT id FROM surveys WHERE linked_room_code = ? COLLATE NOCASE'
+  ).get(roomCode);
+
+  // Unlinked room (e.g. in-game host without a web survey): skip quietly rather than error.
+  if (!linked) {
+    return res.json({ success: true, skipped: true });
+  }
+
+  const result = db.prepare(
+    `INSERT INTO race_results (survey_id, room_code, config_name, rankings_json, event_log_json, total_race_time)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).run(
+    linked.id,
+    roomCode,
+    configName || '',
+    JSON.stringify(rankings),
+    JSON.stringify(eventLog || []),
+    totalRaceTime || 0
+  );
+
+  res.json({ success: true, data: { id: Number(result.lastInsertRowid) } });
+});
+
 // GET /api/sessions — list all game sessions for the logged-in professor
 router.get('/sessions', requireAuth, (req, res) => {
   const db = getDb();

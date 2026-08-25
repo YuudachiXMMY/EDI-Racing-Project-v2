@@ -229,6 +229,57 @@ function buildSurveyAnalysisCsv(survey, db) {
   return buildAnalysisCsv(computeSurveyAnalysis(questions, responses));
 }
 
+/**
+ * Build the latest-leaderboard CSV for a survey from the most recent race_results row. Columns
+ * mirror the client buildResultsCsv (csvExport.js): Rank, TeamName, one per distinct car
+ * attribute key, then LapsCompleted, CheckpointsPassed, TotalTime, BestLap, AvgLap — the three
+ * time columns at millisecond (F3) precision. Returns '' when the survey has no results yet, so
+ * the caller can omit the file from the bundle. Rows are Unity CarResult objects (PascalCase);
+ * ElapsedTime falls back to the legacy TotalTime for rows written before the time fields existed.
+ */
+function buildLeaderboardCsv(survey, db) {
+  const row = db.prepare(
+    'SELECT rankings_json FROM race_results WHERE survey_id = ? ORDER BY received_at DESC LIMIT 1'
+  ).get(survey.id);
+  if (!row) return '';
+
+  let rankings;
+  try { rankings = JSON.parse(row.rankings_json); } catch { return ''; }
+  if (!Array.isArray(rankings) || rankings.length === 0) return '';
+
+  const escape = (v) => {
+    if (v === null || v === undefined || v === '') return '';
+    const s = String(v);
+    return (s.includes(',') || s.includes('"') || s.includes('\n') || s.includes('\r'))
+      ? '"' + s.replace(/"/g, '""') + '"' : s;
+  };
+
+  const allKeys = [];
+  for (const car of rankings) {
+    for (const attr of (car.Attributes || [])) {
+      if (attr.Key && !allKeys.includes(attr.Key)) allKeys.push(attr.Key);
+    }
+  }
+
+  let csv = 'Rank,TeamName';
+  for (const key of allKeys) csv += `,${escape(key)}`;
+  csv += ',LapsCompleted,CheckpointsPassed,TotalTime,BestLap,AvgLap\n';
+
+  for (const car of rankings) {
+    csv += `${car.Rank},${escape(car.TeamName)}`;
+    for (const key of allKeys) {
+      const attr = (car.Attributes || []).find(a => a.Key === key);
+      csv += `,${escape(attr ? attr.Value : '')}`;
+    }
+    const total = car.ElapsedTime ?? car.TotalTime ?? 0;
+    csv += `,${car.LapsCompleted},${car.CheckpointsPassed}` +
+      `,${Number(total).toFixed(3)}` +
+      `,${Number(car.BestLapTime || 0).toFixed(3)}` +
+      `,${Number(car.AverageLapTime || 0).toFixed(3)}\n`;
+  }
+  return csv;
+}
+
 /** Filesystem-safe base name derived from the survey's config name. */
 function safeSurveyName(survey) {
   return (survey.config_name || 'export').replace(/[^a-zA-Z0-9_-]/g, '_');
@@ -263,6 +314,11 @@ router.get('/:id/export-bundle', requireAuth, loadOwnedSurvey, (req, res) => {
     { name: 'vehicleGroupData.csv', data: buildVehicleGroupCsv(survey) },
     { name: `${base}-analysis.csv`, data: buildSurveyAnalysisCsv(survey, db) },
   ];
+
+  // The latest race leaderboard, when the survey has run at least one race. Omitted (rather than
+  // a confusing empty file) when there are no results yet.
+  const leaderboardCsv = buildLeaderboardCsv(survey, db);
+  if (leaderboardCsv) files.push({ name: 'leaderboard.csv', data: leaderboardCsv });
 
   const zip = createZip(files);
   res.setHeader('Content-Type', 'application/zip');

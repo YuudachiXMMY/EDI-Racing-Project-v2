@@ -177,7 +177,16 @@ public struct CarResult
     public AttributeEntry[] Attributes;
     public int LapsCompleted;
     public int CheckpointsPassed;
+    // Legacy checkpoint-segment timer (tiebreaker). Retained for back-compat; the UI surfaces
+    // ElapsedTime as "Total". See ScoreManager.CollectResults.
     public float TotalTime;
+
+    // Wall-clock seconds from race start to the moment results were collected.
+    public float ElapsedTime;
+    // Fastest completed lap (seconds); 0 if no lap finished.
+    public float BestLapTime;
+    // Mean completed-lap time (seconds); 0 if no lap finished.
+    public float AverageLapTime;
 
     public int ColorIndex
     {

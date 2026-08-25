@@ -160,6 +160,57 @@ public class ScoreManagerTests
     }
 
     [Test]
+    public void CollectResults_PopulatesMillisecondTimeFields()
+    {
+        // Arrange: a car with two completed laps (best 12s, total 27s).
+        var car = CreateCar("Racer", 8, 3f, lap: 2);
+        car.BestLapTime = 12f;
+        car.AccumulatedLapTime = 27f;
+        car.CompletedLaps = 2;
+        scoreManager.RegisterCar(car);
+
+        // Act
+        var results = scoreManager.CollectResults(new List<EventLogEntry>(), 90f);
+
+        // Assert: ElapsedTime is the whole-race time; average = accumulated / laps.
+        var r = results.Rankings[0];
+        Assert.AreEqual(90f, r.ElapsedTime);
+        Assert.AreEqual(12f, r.BestLapTime);
+        Assert.AreEqual(13.5f, r.AverageLapTime, 0.0001f);
+    }
+
+    [Test]
+    public void CollectResults_ZeroLaps_AverageLapTimeIsZero()
+    {
+        var car = CreateCar("NoLaps", 0, 1f, lap: 0); // CompletedLaps defaults to 0
+        scoreManager.RegisterCar(car);
+
+        var results = scoreManager.CollectResults(new List<EventLogEntry>(), 5f);
+
+        Assert.AreEqual(0f, results.Rankings[0].AverageLapTime);
+        Assert.AreEqual(0f, results.Rankings[0].BestLapTime);
+    }
+
+    [Test]
+    public void CarIdentity_RecordLap_TracksBestAndAccumulated()
+    {
+        // Arrange: race started at t=0 (LastLapStartTime seeded to 0 by Initialize).
+        var obj = new GameObject("LapCar");
+        carObjects.Add(obj);
+        var car = obj.AddComponent<CarIdentity>();
+        car.Initialize(new CarData("LapCar", Array.Empty<AttributeEntry>()));
+
+        // Act: lap 1 ends at t=10 (10s), lap 2 ends at t=25 (15s).
+        car.RecordLap(10f);
+        car.RecordLap(25f);
+
+        // Assert
+        Assert.AreEqual(2, car.CompletedLaps);
+        Assert.AreEqual(10f, car.BestLapTime, 0.0001f);       // faster of 10s / 15s
+        Assert.AreEqual(25f, car.AccumulatedLapTime, 0.0001f); // 10 + 15
+    }
+
+    [Test]
     public void CollectResults_PreservesCarAttributes()
     {
         var obj = new GameObject("WithAttrs");

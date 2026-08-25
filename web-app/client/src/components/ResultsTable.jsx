@@ -9,7 +9,9 @@ export default function ResultsTable({ rankings }) {
           <th>Team</th>
           <th>Laps</th>
           <th>Checkpoints</th>
-          <th>Time</th>
+          <th>Total</th>
+          <th>Best Lap</th>
+          <th>Avg Lap</th>
         </tr>
       </thead>
       <tbody>
@@ -19,7 +21,9 @@ export default function ResultsTable({ rankings }) {
             <td>{car.TeamName}</td>
             <td>{car.LapsCompleted}</td>
             <td>{car.CheckpointsPassed}</td>
-            <td>{(car.TotalTime || 0).toFixed(2)}s</td>
+            <td>{(car.ElapsedTime ?? car.TotalTime ?? 0).toFixed(3)}s</td>
+            <td>{(car.BestLapTime || 0).toFixed(3)}s</td>
+            <td>{(car.AverageLapTime || 0).toFixed(3)}s</td>
           </tr>
         ))}
       </tbody>

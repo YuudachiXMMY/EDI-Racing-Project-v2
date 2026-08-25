@@ -26,7 +26,7 @@ public static class ResultsExporter
     public static string ExportRankingsCsv(RaceResults results)
     {
         if (results.Rankings == null || results.Rankings.Length == 0)
-            return "Rank,TeamName,LapsCompleted,CheckpointsPassed,Time\n";
+            return "Rank,TeamName,LapsCompleted,CheckpointsPassed,TotalTime,BestLap,AvgLap\n";
 
         // Collect all unique attribute keys across all cars (preserve insertion order)
         var allKeys = new List<string>();
@@ -44,7 +44,7 @@ public static class ResultsExporter
         sb.Append("Rank,TeamName");
         foreach (var key in allKeys)
             sb.Append($",{EscapeCsv(key)}");
-        sb.AppendLine(",LapsCompleted,CheckpointsPassed,Time");
+        sb.AppendLine(",LapsCompleted,CheckpointsPassed,TotalTime,BestLap,AvgLap");
 
         // Data rows
         foreach (var car in results.Rankings)
@@ -55,7 +55,7 @@ public static class ResultsExporter
                 string val = car.Attributes.Get(key, "");
                 sb.Append($",{EscapeCsv(val)}");
             }
-            sb.AppendLine($",{car.LapsCompleted},{car.CheckpointsPassed},{car.TotalTime:F2}");
+            sb.AppendLine($",{car.LapsCompleted},{car.CheckpointsPassed},{car.ElapsedTime:F3},{car.BestLapTime:F3},{car.AverageLapTime:F3}");
         }
         return sb.ToString();
     }

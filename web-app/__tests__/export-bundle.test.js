@@ -127,4 +127,34 @@ describe('GET /api/surveys/:id/export-bundle', () => {
     });
     expect(res.status).toBe(404);
   });
+
+  it('adds leaderboard.csv once the survey has a race_results row', async () => {
+    // Newest race_results row for this survey — Unity CarResult shape (PascalCase), incl. the
+    // millisecond time fields (ElapsedTime/BestLapTime/AverageLapTime).
+    const rankings = [
+      { Rank: 1, TeamName: 'Team A', Attributes: [{ Key: 'colorIndex', Value: '0' }],
+        LapsCompleted: 7, CheckpointsPassed: 42, TotalTime: 3.1,
+        ElapsedTime: 92.437, BestLapTime: 12.004, AverageLapTime: 13.205 },
+      { Rank: 2, TeamName: 'Team B', Attributes: [{ Key: 'colorIndex', Value: '1' }],
+        LapsCompleted: 6, CheckpointsPassed: 40, TotalTime: 2.0,
+        ElapsedTime: 92.437, BestLapTime: 12.500, AverageLapTime: 14.100 },
+    ];
+    testDb.prepare(
+      `INSERT INTO race_results (survey_id, room_code, config_name, rankings_json, event_log_json, total_race_time)
+       VALUES (?,?,?,?,?,?)`
+    ).run(surveyId, 'ROOM01', 'Demo Survey', JSON.stringify(rankings), '[]', 92.437);
+
+    const res = await fetch(`${baseUrl}/api/surveys/${surveyId}/export-bundle`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    expect(res.status).toBe(200);
+    const files = readZip(Buffer.from(await res.arrayBuffer()));
+
+    expect(Object.keys(files)).toContain('leaderboard.csv');
+    const csv = files['leaderboard.csv'].toString('utf8');
+    const [header, rowA] = csv.split('\n');
+    expect(header).toBe('Rank,TeamName,colorIndex,LapsCompleted,CheckpointsPassed,TotalTime,BestLap,AvgLap');
+    // Times rendered at millisecond (F3) precision; ElapsedTime surfaces as TotalTime.
+    expect(rowA).toBe('1,Team A,0,7,42,92.437,12.004,13.205');
+  });
 });

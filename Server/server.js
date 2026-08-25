@@ -126,6 +126,33 @@ function broadcastToStudents(roomCode, message) {
 
 const API_URL = process.env.API_URL || 'http://localhost:3001';
 
+// Push the latest race results straight to the web-app so they land in the survey's Results tab
+// (race_results table) without waiting for the room to close. Fire-and-forget: a web-app outage
+// must never crash the relay. `rawResultsMsg` is the exact `race_results` message JSON from Unity
+// ({ configName, resultsJson }); the room-close archive path remains as a fallback.
+function postRaceResults(roomCode, rawResultsMsg) {
+  let payload = { roomCode, configName: '', rankings: [], eventLog: [], totalRaceTime: 0 };
+  try {
+    const parsed = JSON.parse(rawResultsMsg);
+    payload.configName = parsed.configName || '';
+    if (parsed.resultsJson) {
+      const results = JSON.parse(parsed.resultsJson);
+      payload.rankings = results.Rankings || [];
+      payload.eventLog = results.EventLog || [];
+      payload.totalRaceTime = results.TotalRaceTime || 0;
+    }
+  } catch { return; /* malformed message — nothing to archive */ }
+
+  fetch(`${API_URL}/api/internal/race-results`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-internal-secret': INTERNAL_SECRET,
+    },
+    body: JSON.stringify(payload),
+  }).catch(() => {});
+}
+
 function destroyRoom(roomCode) {
   const room = rooms.get(roomCode);
   if (!room) return;
@@ -627,6 +654,8 @@ wss.on('connection', (ws) => {
           } else if (msg.type === 'race_results') {
             room.raceResults = raw;
             room.gamePhase = 'Finished';
+            // Deliver to the survey's Results tab immediately (not only on room close).
+            postRaceResults(info.roomCode, raw);
           } else if (msg.type === 'race_end') {
             room.gamePhase = 'Finished';
           }

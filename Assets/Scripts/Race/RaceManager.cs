@@ -92,6 +92,9 @@ public class RaceManager : MonoBehaviour
         foreach (var car in spawnedCars)
         {
             var identity = car.GetComponent<CarIdentity>();
+            // Seed the lap-timing clock to race start (Time.time, same frame as raceStartTime
+            // below) so the first completed lap measures its true duration, not the whole clock.
+            identity.LastLapStartTime = Time.time;
             ScoreManager.RegisterCar(identity);
         }
 
@@ -168,6 +171,8 @@ public class RaceManager : MonoBehaviour
         if (SessionManager == null || !raceStarted) return;
         var session = BuildSessionData();
         SessionManager.SaveSession(session);
+        // Also push the current standings to the web-app (survey Results) when hosting.
+        if (NetworkSync != null) NetworkSync.BroadcastRaceResults();
     }
 
     public void ExportCurrentResults()
@@ -176,6 +181,38 @@ public class RaceManager : MonoBehaviour
         var results = ScoreManager.CollectResults(eventLog, Time.time - raceStartTime);
         var config = SurveyConfigManager != null ? SurveyConfigManager.ActiveConfig : null;
         SessionManager.ExportResults(results, config);
+        // Also push the current standings to the web-app (survey Results) when hosting.
+        if (NetworkSync != null) NetworkSync.BroadcastRaceResults();
+    }
+
+    /// <summary>
+    /// Explicitly ends an in-progress (typically infinite) race: snapshots the current leader as
+    /// winner, moves to Finished, and delivers the latest leaderboard to the web-app. Safe to call
+    /// once; a no-op if the race hasn't started or has already finished.
+    /// </summary>
+    public void EndRace()
+    {
+        if (!raceStarted || raceFinished) return;
+        raceFinished = true;
+
+        var ranked = ScoreManager.GetRankedCars();
+        CarIdentity leader = ranked.Count > 0 ? ranked[0] : null;
+
+        SetState(GameState.Finished);
+
+        if (leader != null)
+        {
+            // OnRaceFinished drives RaceFinishPanel (needs a non-null winner) AND NetworkSync's
+            // handler, which broadcasts the results to the web-app.
+            Debug.Log($"[RaceManager] Race ended by professor. Leader: {leader.TeamName}");
+            OnRaceFinished?.Invoke(leader);
+        }
+        else
+        {
+            // No cars: still deliver an (empty) leaderboard so the Results tab reflects the end.
+            Debug.Log("[RaceManager] Race ended by professor with no cars.");
+            if (NetworkSync != null) NetworkSync.BroadcastRaceResults();
+        }
     }
 
     public void LoadFromSession(SessionData session)
@@ -222,8 +259,11 @@ public class RaceManager : MonoBehaviour
 
     private void OnCarCompletedLap(CarIdentity car)
     {
+        car.RecordLap(Time.time);
         Debug.Log($"[Race] {car.TeamName} completed lap {car.CurrentLap}");
-        if (car.CurrentLap >= Config.TotalLaps)
+        // TotalLaps <= 0 means infinite: the race never auto-finishes and keeps ranking forever
+        // until the professor ends/saves/exports it. Positive values keep the lap-limited finish.
+        if (Config.TotalLaps > 0 && car.CurrentLap >= Config.TotalLaps)
         {
             Debug.Log($"[Race] {car.TeamName} FINISHED!");
             if (!raceFinished)
