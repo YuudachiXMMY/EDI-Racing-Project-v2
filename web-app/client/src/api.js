@@ -109,22 +109,23 @@ export async function getResponses(id) {
   return request(`/surveys/${id}/responses`);
 }
 
-export async function exportExcel(id) {
-  const token = getToken();
-  const res = await fetch(`/api/surveys/${id}/export-excel`, {
-    headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-  });
-  if (!res.ok) return { success: false, error: 'Export failed' };
-  return { success: true, blob: await res.blob(), filename: res.headers.get('Content-Disposition')?.split('filename=')[1]?.replace(/"/g, '') || 'export.xlsx' };
+// Descriptive statistics across all of a survey's responses. Recomputed server-side
+// on each call so "Refresh Analysis" picks up newly submitted responses.
+export async function getSurveyAnalysis(id) {
+  return request(`/surveys/${id}/analysis`);
 }
 
-export async function exportCsv(id) {
+// Download everything in one shot: a .zip bundling the raw responses workbook,
+// the Unity vehicleGroupData.csv, and the survey-analysis CSV. Backs the editor's
+// single "Download Data" button (replaces the separate Excel/CSV/analysis exports).
+export async function exportBundle(id) {
   const token = getToken();
-  const res = await fetch(`/api/surveys/${id}/export-csv`, {
+  const res = await fetch(`/api/surveys/${id}/export-bundle`, {
     headers: token ? { 'Authorization': `Bearer ${token}` } : {},
   });
   if (!res.ok) return { success: false, error: 'Export failed' };
-  return { success: true, blob: await res.blob(), filename: 'vehicleGroupData.csv' };
+  const filename = res.headers.get('Content-Disposition')?.split('filename=')[1]?.replace(/"/g, '') || 'survey-data.zip';
+  return { success: true, blob: await res.blob(), filename };
 }
 
 // Mint a short-lived host token for launching the game in professor host mode (Phase 2).

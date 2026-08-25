@@ -20,8 +20,8 @@ const templates = [
       { Id: 'distance_km', Text: 'Consider all members, whose hometown (attended their high school) is the furthest from the University of Guelph? Enter the distance in kilometers below.', Type: 2, Options: [], MinValue: 0, MaxValue: 99999, Required: true },
       { Id: 'vehicle_type', Text: 'What type of vehicle would your team prefer to ride in?', Type: 1, Options: ['Convertible', 'Hatchback', 'Pickup truck', 'Sedan', 'SUV', 'Van'], MinValue: 0, MaxValue: 0, Required: true },
       { Id: 'entertainment', Text: 'What type of entertainment system do you utilize the most?', Type: 1, Options: ['Bluetooth', 'CD player', 'AUX connected devices', 'Apple CarPlay', 'Android AutoCar'], MinValue: 0, MaxValue: 0, Required: true },
-      { Id: 'driving_experience', Text: 'What is the cumulative driving experience of your team (in years)?', Type: 2, Options: [], MinValue: 0, MaxValue: 200, Required: false },
-      { Id: 'car_features', Text: 'Rank the following advanced in-car features in terms of importance to your team. (Select up to 3)', Type: 3, Options: ['Heads-up display', 'Automatic High Beams', 'Electronic Door Handles', 'Do-It-All Touchscreens', 'Camera Vision', 'Lane-Keep Assist', 'Full-self driving'], MinValue: 0, MaxValue: 3, Required: false },
+      { Id: 'driving_experience', Text: 'What is the cumulative driving experience of your team (in years)?', Type: 2, Options: [], MinValue: 0, MaxValue: 200, Required: true },
+      { Id: 'car_features', Text: 'Rank the following advanced in-car features in terms of importance to your team. (Select up to 3)', Type: 3, Options: ['Heads-up display', 'Automatic High Beams', 'Electronic Door Handles', 'Do-It-All Touchscreens', 'Camera Vision', 'Lane-Keep Assist', 'Full-self driving'], MinValue: 0, MaxValue: 3, Required: true },
     ],
     mappings: [
       { QuestionId: 'color', AttributeName: 'colorIndex', DefaultValue: '0', TransformType: 'lookup', LookupEntries: [{ Key: 'Green', Value: '0' }, { Key: 'Black', Value: '1' }, { Key: 'Red', Value: '2' }, { Key: 'Blue', Value: '3' }, { Key: 'White', Value: '4' }] },

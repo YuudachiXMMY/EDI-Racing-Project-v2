@@ -51,6 +51,44 @@ describe('Database Schema', () => {
       ).run(survey.lastInsertRowid);
     }).toThrow();
   });
+
+  it('allows a response with no email or team name (both optional)', () => {
+    const user = createTestUser(db);
+    const survey = db.prepare(
+      "INSERT INTO surveys (user_id, config_name) VALUES (?, 'Test')"
+    ).run(user.userId);
+
+    expect(() => {
+      db.prepare(
+        "INSERT INTO responses (survey_id, answers_json) VALUES (?, '{}')"
+      ).run(survey.lastInsertRowid);
+    }).not.toThrow();
+
+    const row = db.prepare(
+      'SELECT email, team_name FROM responses WHERE survey_id = ?'
+    ).get(survey.lastInsertRowid);
+    expect(row.email).toBe('');
+    expect(row.team_name).toBe('');
+  });
+
+  it('does not treat empty emails as colliding (partial unique index)', () => {
+    const user = createTestUser(db);
+    const survey = db.prepare(
+      "INSERT INTO surveys (user_id, config_name) VALUES (?, 'Test')"
+    ).run(user.userId);
+
+    db.prepare(
+      "INSERT INTO responses (survey_id, email, team_name) VALUES (?, '', 'Team1')"
+    ).run(survey.lastInsertRowid);
+
+    // A second empty-email response must be allowed — uniqueness only applies to
+    // non-empty emails.
+    expect(() => {
+      db.prepare(
+        "INSERT INTO responses (survey_id, email, team_name) VALUES (?, '', 'Team2')"
+      ).run(survey.lastInsertRowid);
+    }).not.toThrow();
+  });
 });
 
 describe('Seed Templates', () => {

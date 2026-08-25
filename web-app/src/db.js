@@ -53,6 +53,19 @@ export function applyMigrations(db) {
     "DELETE FROM templates WHERE name IN ('V1 Parity', 'Accessibility', 'Diversity')"
   ).run();
 
+  // Migration: make the per-email response uniqueness partial. Email is now optional,
+  // so a full UNIQUE(survey_id, email) index (present in older DBs) would reject a second
+  // empty-email response for the same survey. Recreate it to only constrain non-empty
+  // emails. Wrapped in try/catch: a no-op on old-shape DBs that have no responses table.
+  try {
+    db.exec('DROP INDEX IF EXISTS idx_responses_unique');
+    db.exec(
+      "CREATE UNIQUE INDEX IF NOT EXISTS idx_responses_unique ON responses(survey_id, email) WHERE email != ''"
+    );
+  } catch {
+    // responses table does not exist yet — ignore
+  }
+
   // Migration: create game_sessions table for existing DBs
   db.exec(`CREATE TABLE IF NOT EXISTS game_sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { getResponses } from '../api.js';
+import AnalysisPanel from './AnalysisPanel.jsx';
 
 export default function ResponsesTab({ surveyId }) {
   const [responses, setResponses] = useState([]);
@@ -63,6 +64,8 @@ export default function ResponsesTab({ surveyId }) {
           ))}
         </tbody>
       </table>
+
+      <AnalysisPanel surveyId={surveyId} />
     </div>
   );
 }

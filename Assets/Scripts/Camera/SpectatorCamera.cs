@@ -3,17 +3,20 @@ using UnityEngine;
 
 /// <summary>
 /// Auto-follow camera for student spectator view and the professor "Auto Cam" modes.
-/// Two behaviours, selected by <see cref="Mode"/>:
+/// Three behaviours, selected by <see cref="Mode"/>:
 ///   • ChaseTopN — trails behind and looks at the target car. FollowCount == 1 tracks the
 ///     leader (student view); FollowCount > 1 cycles through the top-N cars (professor top-3).
 ///   • FixedPointsOnLeader — parks at the scene FixedCameraPoint that is second-closest to the
 ///     leader, always aimed at it. As the leader laps the track the second-closest camera
 ///     changes, so the active shot follows the car (professor "all cams on leader" broadcast
 ///     mode). Re-selected on each timed cut so it never re-cuts faster than CycleInterval.
+///   • SpecificCar — chase one explicitly chosen car (set via <see cref="SetFollowTarget"/>),
+///     ignoring rank. Drives the leaderboard click-to-follow feature for both roles; needs no
+///     ScoreManager, so it works on the student client whose ScoreManager is empty.
 /// </summary>
 public class SpectatorCamera : MonoBehaviour
 {
-    public enum FollowMode { ChaseTopN, FixedPointsOnLeader }
+    public enum FollowMode { ChaseTopN, FixedPointsOnLeader, SpecificCar }
 
     [Header("References")]
     public ScoreManager ScoreManager;
@@ -51,6 +54,9 @@ public class SpectatorCamera : MonoBehaviour
     private float leaderCheckTimer;
     private int cycleIndex;
 
+    // The car SpecificCar mode chases. Set by SetFollowTarget; ignored in the other modes.
+    private Transform specificTarget;
+
     /// <summary>
     /// Switch follow behaviour and restart the cycle cleanly (first car / first camera, immediate
     /// re-pick). Called by CameraManager when entering or switching Auto Cam sub-modes.
@@ -59,6 +65,18 @@ public class SpectatorCamera : MonoBehaviour
     {
         Mode = mode;
         FollowCount = followCount;
+        ResetCycle();
+    }
+
+    /// <summary>
+    /// Chase one specific car in 3rd person, regardless of rank (leaderboard click-to-follow).
+    /// Enters <see cref="FollowMode.SpecificCar"/> and restarts the cycle so the new car is picked
+    /// up immediately. Independent of ScoreManager, so it works on the student client.
+    /// </summary>
+    public void SetFollowTarget(Transform target)
+    {
+        Mode = FollowMode.SpecificCar;
+        specificTarget = target;
         ResetCycle();
     }
 
@@ -122,6 +140,15 @@ public class SpectatorCamera : MonoBehaviour
 
     private void UpdateTarget()
     {
+        // SpecificCar chases the one car the caller chose — no ranking needed, so this sits above
+        // the ScoreManager guard (the student client's ScoreManager is empty). A null/destroyed
+        // target leaves currentTarget null and LateUpdate simply holds the last frame.
+        if (Mode == FollowMode.SpecificCar)
+        {
+            currentTarget = specificTarget;
+            return;
+        }
+
         if (ScoreManager == null) return;
 
         List<CarIdentity> ranked = ScoreManager.GetRankedCars();

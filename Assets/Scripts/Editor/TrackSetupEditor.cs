@@ -879,14 +879,15 @@ public class TrackSetupEditor : EditorWindow
         var existing = Object.FindFirstObjectByType<RaceControlPanel>(FindObjectsInactive.Include);
         if (existing != null) return existing;
 
-        // Widened to 560px to make room for the fourth (Auto Cam) button alongside the status text.
+        // Widened to 660px to make room for the fifth (Toggle Names) button alongside the status text.
         var panel = CreateUIPanel(canvasRoot, "RaceControlPanel",
             new Vector2(0.5f, 0), new Vector2(0.5f, 0),
-            new Vector2(-280, 10), new Vector2(280, 60));
+            new Vector2(-330, 10), new Vector2(330, 60));
 
         var cp = panel.AddComponent<RaceControlPanel>();
         cp.RaceManager = rm;
         cp.CameraManager = cm;
+        cp.CarLabelSpawner = Object.FindFirstObjectByType<CarLabelSpawner>(FindObjectsInactive.Include);
 
         // Pause/Resume button
         cp.PauseResumeButton = CreateUIButton(panel.transform, "PauseResumeBtn", "Pause",
@@ -909,6 +910,12 @@ public class TrackSetupEditor : EditorWindow
             new Vector2(0, 0.5f), new Vector2(0, 0.5f),
             new Vector2(370, -17), new Vector2(480, 17));
         cp.AutoCamLabel = cp.AutoCamButton.GetComponentInChildren<Text>();
+
+        // Toggle Names button (shows/hides all car name labels; mirrors the 'N' hotkey)
+        cp.ToggleNamesButton = CreateUIButton(panel.transform, "ToggleNamesBtn", "Names: On",
+            new Vector2(0, 0.5f), new Vector2(0, 0.5f),
+            new Vector2(490, -17), new Vector2(600, 17));
+        cp.ToggleNamesLabel = cp.ToggleNamesButton.GetComponentInChildren<Text>();
 
         // Status text
         cp.StatusText = CreateLabel(panel.transform, "StatusText", "", 14, TextAnchor.MiddleRight,

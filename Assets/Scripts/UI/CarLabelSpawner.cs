@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
 /// <summary>
@@ -21,7 +22,35 @@ public class CarLabelSpawner : MonoBehaviour
     [Tooltip("Max distance from camera before labels are hidden. Uses RaceConfig value if RaceManager has one.")]
     public float MaxVisibleDistance = 80f;
 
+    [Header("Toggle")]
+    [Tooltip("Key that toggles all car name labels on/off. Labels default to visible.")]
+    public Key ToggleLabelsKey = Key.N;
+
     private readonly List<GameObject> spawnedLabels = new List<GameObject>();
+
+    // Labels are shown by default; the button/hotkey flip this and every spawned label follows.
+    private bool labelsVisible = true;
+
+    private void Update()
+    {
+        if (Keyboard.current == null) return;
+        if (Keyboard.current[ToggleLabelsKey].wasPressedThisFrame)
+            ToggleLabels();
+    }
+
+    /// <summary>Flip all car name labels between shown and hidden.</summary>
+    public void ToggleLabels() => SetLabelsVisible(!labelsVisible);
+
+    /// <summary>Show or hide every spawned car name label. Default is visible.</summary>
+    public void SetLabelsVisible(bool visible)
+    {
+        labelsVisible = visible;
+        foreach (var label in spawnedLabels)
+            if (label != null) label.SetActive(visible);
+    }
+
+    /// <summary>Whether car name labels are currently shown.</summary>
+    public bool LabelsVisible => labelsVisible;
 
     private void OnEnable()
     {
@@ -73,6 +102,11 @@ public class CarLabelSpawner : MonoBehaviour
             text.fontSize = FontSize;
             text.alignment = TextAnchor.MiddleCenter;
             text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            // The world-space canvas rect (sizeDelta 4x0.5) is far smaller than a fontSize-24
+            // glyph, so the default Wrap/Truncate modes clip every line to nothing and no name
+            // ever renders. Let the text overflow its rect so the label is actually visible.
+            text.horizontalOverflow = HorizontalWrapMode.Overflow;
+            text.verticalOverflow = VerticalWrapMode.Overflow;
 
             // Highlight own car with distinct label
             if (identity.IsOwnCar)
@@ -104,6 +138,11 @@ public class CarLabelSpawner : MonoBehaviour
 
             spawnedLabels.Add(labelObj);
         }
+
+        // Respect the current toggle when labels are (re)spawned each race.
+        if (!labelsVisible)
+            foreach (var label in spawnedLabels)
+                if (label != null) label.SetActive(false);
 
         Debug.Log($"[CarLabelSpawner] Spawned {spawnedLabels.Count} car labels");
     }

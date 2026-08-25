@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getSurvey, updateSurvey, exportExcel, exportCsv, getResponseCount, toggleSurveyActive, requestHostToken, duplicateSurvey } from '../api.js';
+import { getSurvey, updateSurvey, exportBundle, getResponseCount, toggleSurveyActive, requestHostToken, duplicateSurvey } from '../api.js';
 import { submitHostLaunch } from '../gameLaunch.js';
 import QuestionsTab from '../components/QuestionsTab.jsx';
 import MappingsTab from '../components/MappingsTab.jsx';
@@ -80,14 +80,12 @@ export default function EditorPage() {
     else alert(`Failed to duplicate: ${result.error || 'unknown error'}`);
   }
 
-  async function handleExportExcel() {
-    const result = await exportExcel(id);
+  // One button, one download: a .zip with the raw responses workbook, the Unity
+  // vehicleGroupData.csv, and the survey-analysis CSV (see api.exportBundle).
+  async function handleDownloadData() {
+    const result = await exportBundle(id);
     if (result.success) downloadBlobObject(result.blob, result.filename);
-  }
-
-  async function handleExportCsv() {
-    const result = await exportCsv(id);
-    if (result.success) downloadBlobObject(result.blob, result.filename);
+    else alert(`Download failed: ${result.error || 'unknown error'}`);
   }
 
   const handleChange = useCallback((field, value) => {
@@ -156,14 +154,14 @@ export default function EditorPage() {
           >
             Host Game
           </button>
-          <div className="toolbar-group" role="group" aria-label="Export data">
-            <button onClick={handleExportExcel} className="btn-secondary" disabled={responseCount === 0}>
-              Export Excel
-            </button>
-            <button onClick={handleExportCsv} className="btn-secondary" disabled={responseCount === 0}>
-              Export CSV
-            </button>
-          </div>
+          <button
+            onClick={handleDownloadData}
+            className="btn-secondary"
+            disabled={responseCount === 0}
+            title={responseCount === 0 ? 'Collect at least one response before downloading' : 'Download all data (raw responses, Unity CSV, and survey analysis) as a ZIP'}
+          >
+            Download Data
+          </button>
           <button onClick={handleDuplicate} className="btn-secondary">
             Duplicate
           </button>

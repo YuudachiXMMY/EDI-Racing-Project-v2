@@ -21,6 +21,17 @@ public class CarIdentity : MonoBehaviour
     public int CurrentLap;
     public float CheckpointTime;
 
+    [Header("Lap Timing")]
+    // Fastest completed lap for this car (seconds). 0 = no lap completed yet.
+    public float BestLapTime;
+    // Sum of all completed lap times (seconds); AverageLapTime = AccumulatedLapTime / CompletedLaps.
+    public float AccumulatedLapTime;
+    // Number of laps for which a time was recorded (mirrors CurrentLap under normal play).
+    public int CompletedLaps;
+    // Time.time when the current lap started. Seed to the race start time (not 0), or the
+    // first lap time would be the whole elapsed clock. Set by RaceManager on race start.
+    public float LastLapStartTime;
+
     public void Initialize(CarData data)
     {
         TeamName = data.TeamName;
@@ -32,6 +43,26 @@ public class CarIdentity : MonoBehaviour
         TotalCheckpointsPassed = 0;
         CurrentLap = 0;
         CheckpointTime = 0f;
+        BestLapTime = 0f;
+        AccumulatedLapTime = 0f;
+        CompletedLaps = 0;
+        LastLapStartTime = 0f;
+    }
+
+    /// <summary>
+    /// Records the lap that just completed at <paramref name="now"/> (Time.time): accumulates
+    /// its duration, updates the best lap, and resets the lap-start marker for the next lap.
+    /// </summary>
+    public void RecordLap(float now)
+    {
+        float lap = now - LastLapStartTime;
+        if (lap > 0f)
+        {
+            AccumulatedLapTime += lap;
+            if (BestLapTime <= 0f || lap < BestLapTime) BestLapTime = lap;
+        }
+        LastLapStartTime = now;
+        CompletedLaps++;
     }
 
     // --- Attribute Accessors (mirror CarData) ---
