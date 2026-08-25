@@ -36,12 +36,13 @@ export const mailConfig = {
   // explicitly. In production the compose file injects SMTP_HOST=stalwart; locally, an
   // unset host means the boot guard correctly warns that reset emails are disabled.
   host: process.env.SMTP_HOST || '',
-  port: parseInt(process.env.SMTP_PORT || '587', 10),
-  secure: (process.env.SMTP_SECURE || 'false').toLowerCase() === 'true', // true=465, false=587/STARTTLS
-  // Internal Stalwart relay listens on plaintext :25 with no STARTTLS advertised (and a cert
-  // that would not match the "stalwart" hostname anyway). ignoreTLS skips the STARTTLS upgrade
-  // so nodemailer stays plaintext; tlsInsecure disables cert verification if STARTTLS is used.
-  // Accept both "1" and "true" (trainear uses 1/0). See apps/ediracing/docker-compose.yml.
+  port: parseInt(process.env.SMTP_PORT || '465', 10),
+  // Stalwart exposes only :25 and :465 on the internal proxy network (no 587). We use 465
+  // implicit TLS, so secure=1. All three flags accept "1" or "true" (trainear uses 1/0).
+  secure: /^(1|true)$/i.test(process.env.SMTP_SECURE || ''), // 1/true=implicit TLS (465)
+  // ignoreTLS skips STARTTLS entirely (plaintext :25). tlsInsecure keeps TLS but disables cert
+  // verification — required here because the internal hostname "stalwart" never matches the
+  // server cert (DNS:mail.ithacateens.com). See apps/ediracing/.env.extra.
   ignoreTLS: /^(1|true)$/i.test(process.env.SMTP_IGNORE_TLS || ''),
   tlsInsecure: /^(1|true)$/i.test(process.env.SMTP_TLS_INSECURE || ''),
   user: process.env.SMTP_USER || '',
