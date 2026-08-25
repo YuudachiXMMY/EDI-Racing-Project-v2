@@ -59,7 +59,7 @@
 ## Allowed Libraries / Addons
 
 <!-- Add approved third-party dependencies here -->
-- [None configured yet — add as dependencies are approved]
+- **nodemailer** (web-app runtime dependency) — SMTP client for password-recovery emails via the self-hosted Stalwart server. Pure-JS, no native build. Approved 2026-08-25.
 
 ## Architecture Decisions Log
 

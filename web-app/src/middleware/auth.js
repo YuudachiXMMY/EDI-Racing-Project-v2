@@ -13,6 +13,17 @@ export function destroySession(token) {
   sessions.delete(token);
 }
 
+/**
+ * Invalidate every active session belonging to a user. Called after a password reset
+ * so any stolen/old session token stops working and the user must log in again.
+ * @param {number} userId
+ */
+export function destroySessionsForUser(userId) {
+  for (const [token, session] of sessions) {
+    if (session.userId === userId) sessions.delete(token);
+  }
+}
+
 export function requireAuth(req, res, next) {
   const header = req.headers.authorization;
   if (!header || !header.startsWith('Bearer ')) {

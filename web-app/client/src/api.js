@@ -67,6 +67,22 @@ export async function logout() {
   clearToken();
 }
 
+// Request a password-reset email. Always returns a generic success (no user enumeration).
+export async function requestPasswordReset(email) {
+  return request('/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email })
+  });
+}
+
+// Complete a password reset with the token from the emailed link.
+export async function resetPassword(token, password) {
+  return request('/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ token, password })
+  });
+}
+
 export async function getSurveys() {
   return request('/surveys');
 }
