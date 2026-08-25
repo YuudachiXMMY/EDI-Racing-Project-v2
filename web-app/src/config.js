@@ -28,3 +28,30 @@ export function normalizeRoomCode(roomCode) {
 export function generateShareCode() {
   return randomBytes(4).toString('hex').toUpperCase(); // 8-char code
 }
+
+// Stalwart SMTP settings for password-recovery email (see infrastructure/mail/README.md).
+// The password is env-configured; on the deploy server it arrives via apps/ediracing/.env.extra.
+export const mailConfig = {
+  // Empty default (not 'stalwart') so mailConfigured() is false until SMTP_HOST is set
+  // explicitly. In production the compose file injects SMTP_HOST=stalwart; locally, an
+  // unset host means the boot guard correctly warns that reset emails are disabled.
+  host: process.env.SMTP_HOST || '',
+  port: parseInt(process.env.SMTP_PORT || '587', 10),
+  secure: (process.env.SMTP_SECURE || 'false').toLowerCase() === 'true', // true=465, false=587/STARTTLS
+  user: process.env.SMTP_USER || '',
+  pass: process.env.SMTP_PASS || '',
+  from: process.env.MAIL_FROM || 'noreply@localhost',
+};
+
+// Public origin used to build reset links. The SPA is served at the site root with
+// HashRouter, so links are `${APP_BASE_URL}/#/reset-password?token=...`. No trailing slash.
+export const APP_BASE_URL = (process.env.APP_BASE_URL || 'http://localhost:3001').replace(/\/$/, '');
+
+/**
+ * Whether outgoing mail is usable: a host and from-address are required, and if a
+ * username is set (authenticated submission) a password must accompany it.
+ * @returns {boolean}
+ */
+export function mailConfigured() {
+  return Boolean(mailConfig.host && mailConfig.from && (!mailConfig.user || mailConfig.pass));
+}

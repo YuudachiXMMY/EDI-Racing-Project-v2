@@ -36,7 +36,7 @@ MonoBehaviour:
   TrailDuration: 0.5
   TrailStartWidth: 0.8
   TrailEndWidth: 0.1
-  TotalLaps: 3
+  TotalLaps: 0
   TrailMinVertexDistance: 1.5
   LabelVisibleDistance: 80
   AvoidanceQuality: 2

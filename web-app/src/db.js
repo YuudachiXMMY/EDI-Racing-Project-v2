@@ -66,6 +66,18 @@ export function applyMigrations(db) {
     // responses table does not exist yet — ignore
   }
 
+  // Migration: create password_resets table for existing DBs (predating password recovery).
+  // Idempotent: a no-op once the table exists (schema.sql creates it on fresh DBs).
+  db.exec(`CREATE TABLE IF NOT EXISTS password_resets (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL REFERENCES users(id),
+    token_hash TEXT NOT NULL UNIQUE,
+    expires_at INTEGER NOT NULL,
+    used_at INTEGER DEFAULT NULL,
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+  )`);
+  db.exec('CREATE INDEX IF NOT EXISTS idx_password_resets_token ON password_resets(token_hash)');
+
   // Migration: create game_sessions table for existing DBs
   db.exec(`CREATE TABLE IF NOT EXISTS game_sessions (
     id INTEGER PRIMARY KEY AUTOINCREMENT,

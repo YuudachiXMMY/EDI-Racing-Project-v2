@@ -12,6 +12,7 @@ import responseRoutes from './routes/responses.js';
 import gameStatusRoutes from './routes/game-status.js';
 import resultsRoutes, { archiveSecretUsable } from './routes/results.js';
 import { checkSecretConfig } from './hostToken.js';
+import { mailConfigured } from './config.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = parseInt(process.env.API_PORT || '3001', 10);
@@ -44,6 +45,13 @@ if (!archiveSecretUsable(process.env.INTERNAL_SECRET)) {
     '[Auth] WARNING: /api/sessions/archive is DISABLED — INTERNAL_SECRET is unset or the ' +
     'public default. Set a strong secret to enable session archiving.'
   );
+}
+
+// Mail boot guard — warn (not fatal) when SMTP is unconfigured so password-reset emails are
+// silently disabled but the app still boots and serves login for existing users.
+if (!mailConfigured()) {
+  console.warn('[Mail] WARNING: SMTP is not fully configured — password-reset emails are DISABLED. ' +
+    'Set SMTP_HOST/MAIL_FROM (+ SMTP_USER/SMTP_PASS if authenticating).');
 }
 
 const app = express();

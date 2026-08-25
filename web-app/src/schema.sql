@@ -7,6 +7,18 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 
+-- Password reset tokens (single-use, short-lived). Only the SHA-256 hash of the
+-- token is stored; the raw token lives only in the emailed reset link.
+CREATE TABLE IF NOT EXISTS password_resets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id),
+  token_hash TEXT NOT NULL UNIQUE,
+  expires_at INTEGER NOT NULL,          -- epoch ms
+  used_at INTEGER DEFAULT NULL,         -- epoch ms; set once the token is consumed
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_password_resets_token ON password_resets(token_hash);
+
 -- Survey configurations (mirrors Unity SurveyConfig)
 CREATE TABLE IF NOT EXISTS surveys (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

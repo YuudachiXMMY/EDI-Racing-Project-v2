@@ -71,6 +71,12 @@ export default function LoginPage() {
             {isRegister ? 'Login' : 'Register'}
           </a>
         </p>
+
+        {!isRegister && (
+          <p className="toggle-link">
+            <a href="#/forgot-password">Forgot password?</a>
+          </p>
+        )}
       </div>
     </div>
   );
