@@ -21,6 +21,7 @@ public class RaceControlPanel : MonoBehaviour
     public Text PauseResumeLabel;
     public Button SaveButton;
     public Button ExportButton;
+    public Button EndRaceButton;
     public Button AutoCamButton;
     public Text AutoCamLabel;
     public Button ToggleNamesButton;
@@ -50,6 +51,8 @@ public class RaceControlPanel : MonoBehaviour
             SaveButton.onClick.AddListener(SaveSession);
         if (ExportButton != null)
             ExportButton.onClick.AddListener(ExportResults);
+        if (EndRaceButton != null)
+            EndRaceButton.onClick.AddListener(EndRace);
         if (AutoCamButton != null)
             AutoCamButton.onClick.AddListener(ToggleAutoCam);
         if (ToggleNamesButton != null)
@@ -116,6 +119,13 @@ public class RaceControlPanel : MonoBehaviour
         if (RaceManager == null) return;
         RaceManager.ExportCurrentResults();
         ShowStatus("Results exported!");
+    }
+
+    private void EndRace()
+    {
+        if (RaceManager == null) return;
+        RaceManager.EndRace();
+        ShowStatus("Race ended — results sent");
     }
 
     private void ShowStatus(string message)

@@ -25,7 +25,8 @@ public class ResultsExporterTests
                 {
                     Rank = 1, TeamName = "Alpha",
                     Attributes = new AttributeEntry[] { new AttributeEntry { Key = "color", Value = "red" } },
-                    LapsCompleted = 3, CheckpointsPassed = 12, TotalTime = 45.5f
+                    LapsCompleted = 3, CheckpointsPassed = 12, TotalTime = 2.0f,
+                    ElapsedTime = 45.5f, BestLapTime = 12.25f, AverageLapTime = 15.167f
                 }
             }
         };
@@ -34,9 +35,20 @@ public class ResultsExporterTests
         string[] lines = csv.Split('\n');
 
         Assert.IsTrue(lines[0].Contains("color"));
+        Assert.IsTrue(lines[0].Contains("TotalTime,BestLap,AvgLap"));
         Assert.IsTrue(lines[1].Contains("Alpha"));
         Assert.IsTrue(lines[1].Contains("red"));
-        Assert.IsTrue(lines[1].Contains("45.50"));
+        // Millisecond (F3) precision for all three time columns; ElapsedTime surfaces as TotalTime.
+        Assert.IsTrue(lines[1].EndsWith("3,12,45.500,12.250,15.167"));
+    }
+
+    [Test]
+    public void ExportRankingsCsv_EmptyResults_HeaderHasTimeColumns()
+    {
+        var results = new RaceResults { Rankings = Array.Empty<CarResult>() };
+        string csv = ResultsExporter.ExportRankingsCsv(results);
+
+        Assert.AreEqual("Rank,TeamName,LapsCompleted,CheckpointsPassed,TotalTime,BestLap,AvgLap\n", csv);
     }
 
     [Test]

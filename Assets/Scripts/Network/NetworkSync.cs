@@ -184,8 +184,18 @@ public class NetworkSync : MonoBehaviour
 
     private void OnRaceFinishedHandler(CarIdentity winner)
     {
+        BroadcastRaceResults();
+    }
+
+    /// <summary>
+    /// Snapshots the current standings and sends them to the web-app as a `race_results` message.
+    /// Callable on race finish, professor End Race, Save, or Export. No-op when not hosting a live
+    /// room, so Editor-only runs and local Save/Export still work without a connection.
+    /// </summary>
+    public void BroadcastRaceResults()
+    {
         if (NetworkManager == null || !NetworkManager.IsConnected || !NetworkManager.IsHost) return;
-        if (ScoreManager == null) return;
+        if (ScoreManager == null || RaceManager == null) return;
 
         var results = ScoreManager.CollectResults(
             RaceManager.GetEventLog(),

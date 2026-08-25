@@ -60,7 +60,10 @@ public class ScoreManager : MonoBehaviour
                     : Array.Empty<AttributeEntry>(),
                 LapsCompleted = c.CurrentLap,
                 CheckpointsPassed = c.TotalCheckpointsPassed,
-                TotalTime = c.CheckpointTime
+                TotalTime = c.CheckpointTime,
+                ElapsedTime = raceTime,
+                BestLapTime = c.BestLapTime,
+                AverageLapTime = c.CompletedLaps > 0 ? c.AccumulatedLapTime / c.CompletedLaps : 0f
             };
         }
         return new RaceResults

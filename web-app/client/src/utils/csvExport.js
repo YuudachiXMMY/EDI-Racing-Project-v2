@@ -52,7 +52,7 @@ export function buildResultsCsv(session) {
 
   let csv = 'Rank,TeamName';
   for (const key of allKeys) csv += `,${escapeCsv(key)}`;
-  csv += ',LapsCompleted,CheckpointsPassed,Time\n';
+  csv += ',LapsCompleted,CheckpointsPassed,TotalTime,BestLap,AvgLap\n';
 
   for (const car of rankings) {
     csv += `${car.Rank},${escapeCsv(car.TeamName)}`;
@@ -60,7 +60,10 @@ export function buildResultsCsv(session) {
       const attr = (car.Attributes || []).find(a => a.Key === key);
       csv += `,${escapeCsv(attr ? attr.Value : '')}`;
     }
-    csv += `,${car.LapsCompleted},${car.CheckpointsPassed},${(car.TotalTime || 0).toFixed(2)}\n`;
+    // ElapsedTime is the real race time (ms); fall back to legacy TotalTime for older rows.
+    const total = car.ElapsedTime ?? car.TotalTime ?? 0;
+    csv += `,${car.LapsCompleted},${car.CheckpointsPassed}` +
+      `,${total.toFixed(3)},${(car.BestLapTime || 0).toFixed(3)},${(car.AverageLapTime || 0).toFixed(3)}\n`;
   }
 
   return csv;
