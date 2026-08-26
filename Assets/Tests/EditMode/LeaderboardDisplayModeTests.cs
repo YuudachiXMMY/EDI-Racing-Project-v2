@@ -39,4 +39,15 @@ public class LeaderboardDisplayModeTests
         mode = LeaderboardPanel.NextMode(mode);
         Assert.AreEqual(LeaderboardPanel.DisplayMode.Normal, mode);
     }
+
+    // The student touch "Leaderboard" button and the Tab hotkey share LeaderboardPanel.CycleDisplayMode(),
+    // which is SetDisplayMode(NextMode(currentMode)); the cycle order it rides is what this pins so the
+    // shared path can't silently drift from the keyboard behaviour. (CycleDisplayMode itself mutates a
+    // live RectTransform, so it is exercised in play mode rather than unit-tested directly.)
+    [Test]
+    public void NextMode_DrivesButtonAndTabCycle_Enlarged()
+    {
+        Assert.AreEqual(LeaderboardPanel.DisplayMode.Enlarged,
+            LeaderboardPanel.NextMode(LeaderboardPanel.DisplayMode.Normal));
+    }
 }
