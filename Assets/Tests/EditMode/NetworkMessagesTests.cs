@@ -315,4 +315,36 @@ public class NetworkMessagesTests
         var msg = new RaceStartMessage();
         Assert.AreEqual("race_start", msg.type);
     }
+
+    [Test]
+    public void WeatherStateMessage_TypeField_IsCorrect()
+    {
+        var msg = new WeatherStateMessage();
+        Assert.AreEqual("weather_state", msg.type);
+    }
+
+    [Test]
+    public void WeatherStateMessage_JsonRoundTrip_PreservesFields()
+    {
+        // Arrange
+        var original = new WeatherStateMessage { weather = (int)WeatherType.Night, duration = 12.5f };
+
+        // Act
+        string json = JsonUtility.ToJson(original);
+        var restored = JsonUtility.FromJson<WeatherStateMessage>(json);
+
+        // Assert
+        Assert.AreEqual((int)WeatherType.Night, restored.weather);
+        Assert.AreEqual(12.5f, restored.duration);
+    }
+
+    [Test]
+    public void WeatherStateMessage_WeatherInt_MatchesWeatherTypeEnum()
+    {
+        // Guards the wire contract shared with web-app/client/src/constants.js
+        Assert.AreEqual(0, (int)WeatherType.None);
+        Assert.AreEqual(1, (int)WeatherType.Snow);
+        Assert.AreEqual(2, (int)WeatherType.Night);
+        Assert.AreEqual(3, (int)WeatherType.Sunset);
+    }
 }

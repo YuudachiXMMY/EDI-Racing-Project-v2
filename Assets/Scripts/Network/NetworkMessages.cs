@@ -180,6 +180,14 @@ public class EventTriggeredMessage
 }
 
 [Serializable]
+public class WeatherStateMessage
+{
+    public string type = "weather_state";
+    public int weather;    // WeatherType: 0=None/Day, 1=Snow, 2=Night, 3=Sunset
+    public float duration; // informational only; host is authoritative on end
+}
+
+[Serializable]
 public class LeaderboardMessage
 {
     public string type = "leaderboard";

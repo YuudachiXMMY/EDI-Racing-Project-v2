@@ -400,3 +400,67 @@ describe('late-join roster replay (students who join after race_start still spaw
     expect(start.yourCarIndex).toBe(-1);
   });
 });
+
+describe('weather_state sync (host-authoritative weather reaches students incl. late joiners)', () => {
+  // The host emits weather_state on every visible weather change (day-cycle transition or
+  // Snow/Night/Sunset event). The relay forwards it live AND caches the latest so a late
+  // joiner snaps to the professor's current sky. Students that never see it stay on day.
+  // weather ints mirror Unity's WeatherType: 0=None/Day, 1=Snow, 2=Night, 3=Sunset.
+
+  it('forwards a live weather_state to an already-joined student', async () => {
+    const { prof, roomCode } = await hostARoom();
+    const student = await joinAsStudent(roomCode, 'Red');
+
+    prof.send({ type: 'weather_state', weather: 1, duration: 10 });
+    const w = await student.next((m) => m.type === 'weather_state');
+    expect(w.weather).toBe(1);
+    expect(w.duration).toBe(10);
+  });
+
+  it('replays the cached weather_state to a late-joining student', async () => {
+    const { prof, roomCode } = await hostARoom();
+    prof.send({ type: 'weather_state', weather: 2, duration: 0 });
+
+    // Join AFTER the weather changed — the replay is emitted right after room_joined.
+    const student = await joinAsStudent(roomCode, 'Blue');
+    const w = await student.next((m) => m.type === 'weather_state');
+    expect(w.weather).toBe(2); // Night, matching the professor's current sky
+  });
+
+  it('does NOT send a weather_state to a student when none was cached', async () => {
+    const { prof, roomCode } = await hostARoom();
+    prof.send({ type: 'race_start', cars: [{ teamName: 'Red', colorIndex: 2 }] });
+
+    const s = makeClient();
+    await s.ready();
+    const window = s.collect(200);
+    s.send({ type: 'join_room', roomCode, teamName: 'Red' });
+    const got = await window;
+
+    expect(got.some((m) => m.type === 'weather_state')).toBe(false);
+  });
+
+  it('replays only the LATEST weather_state when several were sent', async () => {
+    const { prof, roomCode } = await hostARoom();
+    prof.send({ type: 'weather_state', weather: 1, duration: 5 });
+    prof.send({ type: 'weather_state', weather: 3, duration: 0 });
+
+    const student = await joinAsStudent(roomCode, 'Red');
+    const w = await student.next((m) => m.type === 'weather_state');
+    expect(w.weather).toBe(3); // Sunset — the most recent state wins
+  });
+
+  it('does NOT replay weather_state to a 2D web (React) viewer', async () => {
+    const { prof, roomCode } = await hostARoom();
+    prof.send({ type: 'weather_state', weather: 2, duration: 0 });
+
+    const webapp = makeClient();
+    await webapp.ready();
+    const window = webapp.collect(200);
+    webapp.send({ type: 'web_join_room', roomCode });
+    const got = await window;
+
+    expect(got.some((m) => m.type === 'room_joined')).toBe(true); // join succeeded
+    expect(got.some((m) => m.type === 'weather_state')).toBe(false); // but no weather (no skybox)
+  });
+});
