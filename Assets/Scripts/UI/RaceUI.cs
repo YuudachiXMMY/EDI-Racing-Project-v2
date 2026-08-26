@@ -171,6 +171,14 @@ public class RaceUI : MonoBehaviour
     public static CameraManager.CameraMode CameraModeForRole(bool isProfessor)
         => isProfessor ? CameraManager.CameraMode.Free : CameraManager.CameraMode.AutoTopCars;
 
+    /// <summary>
+    /// Caption for the student Auto Cam button given the camera's current mode: "Auto: All Cam" in
+    /// AutoAllCams, otherwise "Auto: Top 3". Pure so the label rule is unit-testable and matches the
+    /// professor RaceControlPanel wording. (Shown after a toggle, so the label reflects the new mode.)
+    /// </summary>
+    public static string AutoCamButtonLabel(CameraManager.CameraMode mode)
+        => mode == CameraManager.CameraMode.AutoAllCams ? "Auto: All Cam" : "Auto: Top 3";
+
     // A row in the full-screen leaderboard was clicked (both roles): follow that car in a 3rd-person
     // chase and shrink the board back to Normal so the race is visible again. Resolving the clicked
     // team name to a spawned car works for host and student alike (both set CarIdentity.TeamName).
@@ -208,6 +216,10 @@ public class RaceUI : MonoBehaviour
             // hidden for them.
             if (cameraHint == null) BuildCameraHint();
             if (cameraHint != null) cameraHint.SetActive(isRacing);
+
+            // The touch controls are student-only. Defensive hide in case a role flip reaches here
+            // before the student lock (the professor already has RaceControlPanel for the same jobs).
+            if (studentTouchControls != null) studentTouchControls.SetActive(false);
         }
         else
         {
@@ -216,6 +228,17 @@ public class RaceUI : MonoBehaviour
             if (cameraHint != null) cameraHint.SetActive(false);
             if (studentHint == null) BuildStudentHint();
             if (studentHint != null) studentHint.SetActive(isRacing);
+
+            // Touch-friendly buttons for tablet/mobile students (no keyboard): resize the leaderboard
+            // and switch the auto camera — the two controls otherwise bound to Tab and the pro-only C.
+            if (studentTouchControls == null) BuildStudentTouchControls();
+            if (studentTouchControls != null)
+            {
+                studentTouchControls.SetActive(isRacing);
+                // Keep the panel above a full-screen leaderboard (bg alpha 0.95) so its "Leaderboard"
+                // button stays tappable to cycle back out of fullscreen.
+                if (isRacing) studentTouchControls.transform.SetAsLastSibling();
+            }
         }
     }
 
@@ -280,5 +303,92 @@ public class RaceUI : MonoBehaviour
         rt.sizeDelta = new Vector2(820f, 24f);
 
         studentHint = obj;
+    }
+
+    // Runtime-built, student-only touch controls (bottom-right). Mirrors BuildStudentHint/BuildCameraHint:
+    // constructed in code under this Canvas so no scene wiring is required and it ships in the WebGL build.
+    // Two buttons — resize the leaderboard (shares LeaderboardPanel.CycleDisplayMode with Tab) and switch
+    // the auto camera (CameraManager.ToggleAutoSwitch, otherwise the professor-only C key) — for tablet/
+    // mobile spectators who have no keyboard.
+    private GameObject studentTouchControls;
+    private Text autoCamButtonLabel;
+
+    private void BuildStudentTouchControls()
+    {
+        var panel = new GameObject("StudentTouchControls", typeof(RectTransform));
+        panel.transform.SetParent(transform, false);
+
+        var prt = panel.GetComponent<RectTransform>();
+        prt.anchorMin = new Vector2(1f, 0f);
+        prt.anchorMax = new Vector2(1f, 0f);
+        prt.pivot = new Vector2(1f, 0f);
+        prt.anchoredPosition = new Vector2(-14f, 14f);
+        prt.sizeDelta = new Vector2(150f, 96f);
+
+        var vlg = panel.AddComponent<VerticalLayoutGroup>();
+        vlg.spacing = 8f;
+        vlg.childControlWidth = true;
+        vlg.childControlHeight = true;
+        vlg.childForceExpandWidth = true;
+        vlg.childForceExpandHeight = true;
+
+        CreateTouchButton(panel.transform, "LeaderboardBtn", "Leaderboard", OnLeaderboardButton, out _);
+        CreateTouchButton(panel.transform, "AutoCamBtn",
+            AutoCamButtonLabel(CameraManager != null ? CameraManager.CurrentMode
+                                                     : CameraManager.CameraMode.AutoTopCars),
+            OnAutoCamButton, out autoCamButtonLabel);
+
+        studentTouchControls = panel;
+    }
+
+    // Runtime UGUI button: Image (target graphic + touch area) + Button + a centered child Text. Built
+    // in-file rather than via the Editor-only TrackSetupEditor.CreateUIButton, which cannot compile into
+    // the runtime/WebGL build. Clicks fire on touch and mouse via the scene's existing EventSystem +
+    // GraphicRaycaster (the same path LeaderboardPanel.MakeRowClickable relies on for students).
+    private void CreateTouchButton(Transform parent, string name, string label,
+                                   UnityEngine.Events.UnityAction onClick, out Text labelText)
+    {
+        var go = new GameObject(name, typeof(RectTransform), typeof(CanvasRenderer),
+                                typeof(Image), typeof(Button));
+        go.transform.SetParent(parent, false);
+
+        var img = go.GetComponent<Image>();
+        img.color = new Color(0f, 0f, 0f, 0.6f);
+
+        var btn = go.GetComponent<Button>();
+        btn.targetGraphic = img;
+        btn.onClick.AddListener(onClick);
+
+        var txtGO = new GameObject("Text", typeof(RectTransform));
+        txtGO.transform.SetParent(go.transform, false);
+        var rt = txtGO.GetComponent<RectTransform>();
+        rt.anchorMin = Vector2.zero;
+        rt.anchorMax = Vector2.one;
+        rt.offsetMin = Vector2.zero;
+        rt.offsetMax = Vector2.zero;
+
+        labelText = txtGO.AddComponent<Text>();
+        labelText.text = label;
+        labelText.alignment = TextAnchor.MiddleCenter;
+        labelText.fontSize = 16;
+        labelText.color = Color.white;
+        labelText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+    }
+
+    // Tap "Leaderboard": cycle the board size (Normal → Enlarged → Fullscreen → Normal), the same
+    // entry the Tab hotkey uses.
+    private void OnLeaderboardButton()
+    {
+        if (Leaderboard != null) Leaderboard.CycleDisplayMode();
+    }
+
+    // Tap "Auto Cam": flip the auto camera (Top-3 chase ↔ all-cams-on-leader) and relabel to the new
+    // mode. From a click-to-follow shot this returns the student to an auto broadcast camera.
+    private void OnAutoCamButton()
+    {
+        if (CameraManager == null) return;
+        CameraManager.ToggleAutoSwitch();
+        if (autoCamButtonLabel != null)
+            autoCamButtonLabel.text = AutoCamButtonLabel(CameraManager.CurrentMode);
     }
 }
