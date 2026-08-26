@@ -85,10 +85,12 @@ function verifyHostToken(token, now = Date.now()) {
   return { valid: true, surveyId: payload.sid ?? null };
 }
 
-// Room: { professor: WebSocket|null, students: Set<WebSocket>, webapps: Set<WebSocket>, raceStarted: boolean, latestState: string|null, latestRaceStart: string|null, gamePhase: string, raceResults: string|null, surveyData: string|null, professorSessionId: string|null, graceTimer: NodeJS.Timeout|null }
+// Room: { professor: WebSocket|null, students: Set<WebSocket>, webapps: Set<WebSocket>, raceStarted: boolean, latestState: string|null, latestRaceStart: string|null, latestWeather: string|null, gamePhase: string, raceResults: string|null, surveyData: string|null, professorSessionId: string|null, graceTimer: NodeJS.Timeout|null }
 // latestState holds the most recent position frame (overwritten by every state_update).
 // latestRaceStart holds the one-time race_start roster (car list) — cached SEPARATELY so a
 // late joiner can be replayed the roster (spawn cars) before latestState (snap to positions).
+// latestWeather holds the most recent weather_state (day-cycle transition OR event weather)
+// so a late joiner is snapped to the professor's CURRENT weather. Unity students only.
 const rooms = new Map();
 const clientRooms = new Map(); // WebSocket -> { roomCode, role, sessionId }
 const sessions = new Map();   // sessionId -> { roomCode, role }
@@ -145,6 +147,14 @@ function sendRaceStartTo(ws, room, teamName) {
     }
     ws.send(JSON.stringify({ ...startMsg, yourCarIndex: yourIndex }));
   } catch { /* malformed cache — caller still sends latestState */ }
+}
+
+// Replay the cached weather so a late-joining Unity student snaps to the professor's current
+// sky/lighting/particles. No-op before any weather change or if nothing cached. Weather is
+// independent of cars, so ordering vs latestState/race_start does not matter.
+function sendWeatherStateTo(ws, room) {
+  if (!room.latestWeather || ws.readyState !== 1) return;
+  ws.send(room.latestWeather);
 }
 
 const API_URL = process.env.API_URL || 'http://localhost:3001';
@@ -435,6 +445,7 @@ wss.on('connection', (ws) => {
           raceStarted: false,
           latestState: null,
           latestRaceStart: null,
+          latestWeather: null,
           gamePhase: 'Setup',
           raceResults: null,
           latestLeaderboard: null,
@@ -493,6 +504,8 @@ wss.on('connection', (ws) => {
         }
         // If race already started, replay the roster (spawn cars) BEFORE the latest positions.
         sendRaceStartTo(ws, room, teamName);
+        // Snap the late joiner to the professor's current weather (day-cycle or event).
+        sendWeatherStateTo(ws, room);
         // If race already started, send latest state to late-joiner
         if (room.latestState) {
           ws.send(room.latestState);
@@ -552,6 +565,7 @@ wss.on('connection', (ws) => {
           // Replay the roster (spawn cars) before positions, so a student who reconnected
           // after the race started re-spawns its cars instead of dropping state_updates.
           sendRaceStartTo(ws, room, teamName);
+          sendWeatherStateTo(ws, room);
           if (room.latestState) {
             ws.send(room.latestState);
           }
@@ -693,6 +707,10 @@ wss.on('connection', (ws) => {
             postRaceResults(info.roomCode, raw);
           } else if (msg.type === 'race_end') {
             room.gamePhase = 'Finished';
+          } else if (msg.type === 'weather_state') {
+            // Cache latest weather so late joiners snap to the professor's current sky.
+            // The broadcastToStudents below already forwards it live — no new relay code.
+            room.latestWeather = raw;
           }
 
           broadcastToStudents(info.roomCode, raw);

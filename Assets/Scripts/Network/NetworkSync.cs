@@ -53,6 +53,11 @@ public class NetworkSync : MonoBehaviour
         {
             RaceManager.EventManager.OnEventTriggered += OnEventTriggered;
         }
+
+        if (RaceManager != null && RaceManager.WeatherEffect != null)
+        {
+            RaceManager.WeatherEffect.OnWeatherStateChanged += OnWeatherStateChanged;
+        }
     }
 
     private void OnDestroy()
@@ -71,6 +76,9 @@ public class NetworkSync : MonoBehaviour
 
         if (RaceManager != null && RaceManager.EventManager != null)
             RaceManager.EventManager.OnEventTriggered -= OnEventTriggered;
+
+        if (RaceManager != null && RaceManager.WeatherEffect != null)
+            RaceManager.WeatherEffect.OnWeatherStateChanged -= OnWeatherStateChanged;
     }
 
     private void Update()
@@ -182,6 +190,16 @@ public class NetworkSync : MonoBehaviour
         NetworkManager.Send(JsonUtility.ToJson(msg));
     }
 
+    // Host-authoritative weather. Fires for both day-cycle transitions and event weather;
+    // students mirror whatever the host last sent (see HandleWeatherState). Host-only guard
+    // is essential — a mis-wired student must never rebroadcast.
+    private void OnWeatherStateChanged(WeatherType state, float duration)
+    {
+        if (NetworkManager == null || !NetworkManager.IsConnected || !NetworkManager.IsHost) return;
+        var msg = new WeatherStateMessage { weather = (int)state, duration = duration };
+        NetworkManager.Send(JsonUtility.ToJson(msg));
+    }
+
     private void OnRaceFinishedHandler(CarIdentity winner)
     {
         BroadcastRaceResults();
@@ -253,6 +271,9 @@ public class NetworkSync : MonoBehaviour
                 break;
             case "event_triggered":
                 HandleEventTriggered(json);
+                break;
+            case "weather_state":
+                HandleWeatherState(json);
                 break;
             case "leaderboard":
                 HandleLeaderboard(json);
@@ -384,6 +405,14 @@ public class NetworkSync : MonoBehaviour
     {
         var msg = JsonUtility.FromJson<EventTriggeredMessage>(json);
         Debug.Log($"[NetworkSync] Event: {msg.name} ({msg.affected}/{msg.total} cars)");
+    }
+
+    private void HandleWeatherState(string json)
+    {
+        var msg = JsonUtility.FromJson<WeatherStateMessage>(json);
+        if (RaceManager != null && RaceManager.WeatherEffect != null)
+            RaceManager.WeatherEffect.ApplyNetworkState((WeatherType)msg.weather);
+        Debug.Log($"[NetworkSync] Weather → {(WeatherType)msg.weather}");
     }
 
     // Student-side leaderboard data for UI
