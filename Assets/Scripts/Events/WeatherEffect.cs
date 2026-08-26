@@ -14,6 +14,11 @@ public class WeatherEffect : MonoBehaviour
     public bool IsNightActive { get; private set; }
     public bool IsSunsetActive { get; private set; }
 
+    /// <summary>Fires on the HOST whenever the visible weather changes (cycle transition or
+    /// event). NetworkSync broadcasts this to students. Args: (state, durationSeconds);
+    /// duration is 0 for continuous cycle states. ApplyNetworkState does NOT raise this.</summary>
+    public event System.Action<WeatherType, float> OnWeatherStateChanged;
+
     [Header("Skybox Materials (Customizable Skybox)")]
     [Tooltip("Default daytime skybox material")]
     public Material DaySkybox;
@@ -154,12 +159,14 @@ public class WeatherEffect : MonoBehaviour
         {
             cycleInSunset = true;
             TransitionTo(SunsetSkybox, SunsetLightIntensity, SunsetLightColor, SunsetAmbientColor);
+            OnWeatherStateChanged?.Invoke(WeatherType.Sunset, 0f);
             Debug.Log("[Weather] Cycle → Sunset");
         }
         else if (!shouldBeSunset && cycleInSunset)
         {
             cycleInSunset = false;
             TransitionTo(DaySkybox, originalLightIntensity, originalLightColor, DayAmbientColor);
+            OnWeatherStateChanged?.Invoke(WeatherType.None, 0f);
             Debug.Log("[Weather] Cycle → Day");
         }
     }
@@ -306,6 +313,7 @@ public class WeatherEffect : MonoBehaviour
         eventOverrideActive = true;
         if (snowParticles != null) snowParticles.Play();
         TransitionTo(SnowSkybox, originalLightIntensity * 0.7f, originalLightColor, SnowAmbientColor);
+        OnWeatherStateChanged?.Invoke(WeatherType.Snow, duration);
         Debug.Log("[Weather] Snow started");
 
         StartCoroutine(DeactivateAfter(duration, () =>
@@ -325,6 +333,7 @@ public class WeatherEffect : MonoBehaviour
         IsNightActive = true;
         eventOverrideActive = true;
         TransitionTo(NightSkybox, NightLightIntensity, originalLightColor, NightAmbientColor);
+        OnWeatherStateChanged?.Invoke(WeatherType.Night, duration);
         Debug.Log("[Weather] Night started");
 
         StartCoroutine(DeactivateAfter(duration, () =>
@@ -342,6 +351,7 @@ public class WeatherEffect : MonoBehaviour
         IsSunsetActive = true;
         eventOverrideActive = true;
         TransitionTo(SunsetSkybox, SunsetLightIntensity, SunsetLightColor, SunsetAmbientColor);
+        OnWeatherStateChanged?.Invoke(WeatherType.Sunset, duration);
         Debug.Log("[Weather] Sunset started (event)");
 
         StartCoroutine(DeactivateAfter(duration, () =>
@@ -375,10 +385,12 @@ public class WeatherEffect : MonoBehaviour
                 TransitionTo(SunsetSkybox, SunsetLightIntensity, SunsetLightColor, SunsetAmbientColor);
             else
                 TransitionTo(DaySkybox, originalLightIntensity, originalLightColor, DayAmbientColor);
+            OnWeatherStateChanged?.Invoke(shouldBeSunset ? WeatherType.Sunset : WeatherType.None, 0f);
         }
         else
         {
             TransitionTo(originalSkybox, originalLightIntensity, originalLightColor, originalAmbientColor);
+            OnWeatherStateChanged?.Invoke(WeatherType.None, 0f);
         }
     }
 
@@ -475,6 +487,40 @@ public class WeatherEffect : MonoBehaviour
             RenderSettings.ambientLight = originalAmbientColor;
             if (originalSkybox != null)
                 RenderSettings.skybox = originalSkybox;
+        }
+
+        OnWeatherStateChanged?.Invoke(WeatherType.None, 0f);
+    }
+
+    /// <summary>
+    /// Student-side: apply a host-authoritative weather state directly. Does NOT start the
+    /// auto-deactivate coroutine or the day cycle — the host drives every change, so the
+    /// student only mirrors the last state it was told. Does NOT raise OnWeatherStateChanged.
+    /// </summary>
+    public void ApplyNetworkState(WeatherType state)
+    {
+        if (!hasStoredOriginals) return; // Start() not run yet; host resends on next change
+        IsSnowActive = state == WeatherType.Snow;
+        IsNightActive = state == WeatherType.Night;
+        IsSunsetActive = state == WeatherType.Sunset;
+        switch (state)
+        {
+            case WeatherType.Snow:
+                if (snowParticles != null) snowParticles.Play();
+                TransitionTo(SnowSkybox, originalLightIntensity * 0.7f, originalLightColor, SnowAmbientColor);
+                break;
+            case WeatherType.Night:
+                if (snowParticles != null) snowParticles.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+                TransitionTo(NightSkybox, NightLightIntensity, originalLightColor, NightAmbientColor);
+                break;
+            case WeatherType.Sunset:
+                if (snowParticles != null) snowParticles.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+                TransitionTo(SunsetSkybox, SunsetLightIntensity, SunsetLightColor, SunsetAmbientColor);
+                break;
+            default: // None / Day
+                if (snowParticles != null) snowParticles.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+                TransitionTo(DaySkybox, originalLightIntensity, originalLightColor, DayAmbientColor);
+                break;
         }
     }
 }
