@@ -265,8 +265,14 @@ public class LeaderboardPanel : MonoBehaviour
     {
         if (Keyboard.current == null) return;
         if (Keyboard.current[ToggleKey].wasPressedThisFrame)
-            SetDisplayMode(NextMode(currentMode));
+            CycleDisplayMode();
     }
+
+    /// <summary>
+    /// Advance the leaderboard size one step (Normal → Enlarged → Fullscreen → Normal). Public so a
+    /// touch button (student HUD) drives the same cycle as the <see cref="ToggleKey"/> hotkey.
+    /// </summary>
+    public void CycleDisplayMode() => SetDisplayMode(NextMode(currentMode));
 
     // Turn a pooled row into a click target. The row prefab's Text is the raycast graphic, so a
     // click anywhere on the name selects that row. Transition is None so the Button never tints over
