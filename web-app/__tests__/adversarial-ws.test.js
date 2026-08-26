@@ -313,3 +313,90 @@ describe('host-only messages are role-gated against a student', () => {
     expect(msg.direction).toBe('export');
   });
 });
+
+describe('late-join roster replay (students who join after race_start still spawn cars)', () => {
+  // The roster (race_start) is a one-time message; latestState is overwritten by the first
+  // state_update ~100ms later. Without caching the roster, a late joiner receives only
+  // positions for cars it never created and its spawn path never runs (no cars). These tests
+  // prove the relay caches race_start and replays it (personalized) before latestState.
+  const roster = [
+    { teamName: 'Red', colorIndex: 2 },
+    { teamName: 'Blue', colorIndex: 3 },
+  ];
+
+  it('replays race_start with the full roster and correct yourCarIndex to a late joiner', async () => {
+    const { prof, roomCode } = await hostARoom();
+    prof.send({ type: 'race_start', cars: roster });
+
+    // Join AFTER the race started. joinAsStudent resolves on room_joined; the roster replay
+    // is emitted synchronously right after, so it is already in the inbox for next().
+    const student = await joinAsStudent(roomCode, 'Blue');
+    const start = await student.next((m) => m.type === 'race_start');
+    expect(start.cars).toHaveLength(2);
+    expect(start.cars.map((c) => c.teamName)).toEqual(['Red', 'Blue']);
+    expect(start.yourCarIndex).toBe(1); // Blue is index 1
+  });
+
+  it('sends the roster BEFORE the latest position frame (spawn-then-position ordering)', async () => {
+    const { prof, roomCode } = await hostARoom();
+    prof.send({ type: 'race_start', cars: roster });
+    // A position frame overwrites latestState — the exact condition that used to drop the roster.
+    prof.send({ type: 'state_update', t: 1.0, cars: [{ i: 0, px: 5, py: 0, pz: 5, ry: 90, l: 0, c: 1 }] });
+
+    // Drive the join manually so we can capture arrival ORDER from a single collect window.
+    const s = makeClient();
+    await s.ready();
+    const window = s.collect(400);
+    s.send({ type: 'join_room', roomCode, teamName: 'Red' });
+    const got = await window;
+
+    const startIdx = got.findIndex((m) => m.type === 'race_start');
+    const stateIdx = got.findIndex((m) => m.type === 'state_update');
+    expect(startIdx).toBeGreaterThanOrEqual(0); // roster replayed at all
+    expect(stateIdx).toBeGreaterThanOrEqual(0); // positions also replayed
+    expect(startIdx).toBeLessThan(stateIdx);    // roster first, so cars spawn before snapping
+  });
+
+  it('replays the full roster with yourCarIndex -1 for an unknown/anonymous team', async () => {
+    const { prof, roomCode } = await hostARoom();
+    prof.send({ type: 'race_start', cars: roster });
+
+    const unknown = await joinAsStudent(roomCode, 'Zebra');
+    const s1 = await unknown.next((m) => m.type === 'race_start');
+    expect(s1.cars).toHaveLength(2);
+    expect(s1.yourCarIndex).toBe(-1);
+
+    const anon = await joinAsStudent(roomCode, '');
+    const s2 = await anon.next((m) => m.type === 'race_start');
+    expect(s2.cars).toHaveLength(2);
+    expect(s2.yourCarIndex).toBe(-1);
+  });
+
+  it('does NOT duplicate race_start for a student who joined before the race started', async () => {
+    const { prof, roomCode } = await hostARoom();
+    // Join BEFORE race_start — the pre-race path must not replay a cached roster (there is none).
+    const student = await joinAsStudent(roomCode, 'Red');
+
+    const window = student.collect(400);
+    prof.send({ type: 'race_start', cars: roster });
+    const got = await window;
+
+    // Exactly one race_start (the live personalized broadcast), not a live + a replayed copy.
+    const starts = got.filter((m) => m.type === 'race_start');
+    expect(starts).toHaveLength(1);
+    expect(starts[0].yourCarIndex).toBe(0); // Red is index 0
+  });
+
+  it('replays the roster to a late-joining web (2D) viewer with yourCarIndex -1', async () => {
+    const { prof, roomCode } = await hostARoom();
+    prof.send({ type: 'race_start', cars: roster });
+
+    const webapp = makeClient();
+    await webapp.ready();
+    webapp.send({ type: 'web_join_room', roomCode });
+    await webapp.next((m) => m.type === 'room_joined');
+    const start = await webapp.next((m) => m.type === 'race_start');
+    expect(start.cars).toHaveLength(2);
+    expect(start.yourCarIndex).toBe(-1);
+  });
+});
