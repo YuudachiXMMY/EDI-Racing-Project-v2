@@ -105,8 +105,13 @@ export async function updateSurvey(id, data) {
   });
 }
 
-export async function deleteSurvey(id) {
-  return request(`/surveys/${id}`, { method: 'DELETE' });
+// Archive (soft-delete) or restore a survey. Replaces the former hard delete —
+// archived surveys drop off the main list but keep their responses and can be restored.
+export async function archiveSurvey(id, archived) {
+  return request(`/surveys/${id}/archive`, {
+    method: 'PATCH',
+    body: JSON.stringify({ archived })
+  });
 }
 
 export async function duplicateSurvey(id) {

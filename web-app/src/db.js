@@ -37,6 +37,13 @@ export function applyMigrations(db) {
     // Column already exists — ignore
   }
 
+  // Migration: add is_archived to existing surveys table (soft-delete / archive support)
+  try {
+    db.exec('ALTER TABLE surveys ADD COLUMN is_archived INTEGER NOT NULL DEFAULT 0');
+  } catch {
+    // Column already exists — ignore
+  }
+
   // Migration: add post_processing_json to existing templates table
   try {
     db.exec("ALTER TABLE templates ADD COLUMN post_processing_json TEXT NOT NULL DEFAULT '[]'");

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getSurveys, createSurvey, deleteSurvey, duplicateSurvey, getTemplates, toggleSurveyActive, logout, clearToken, requestHostToken } from '../api.js';
+import { getSurveys, createSurvey, archiveSurvey, duplicateSurvey, getTemplates, toggleSurveyActive, logout, clearToken, requestHostToken } from '../api.js';
 import { submitHostLaunch, buildShareUrl } from '../gameLaunch.js';
 import HostRoomPanel from '../components/HostRoomPanel.jsx';
 
@@ -11,6 +11,8 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   // Survey whose Host Room panel (student link + QR) is open, or null when dismissed.
   const [hostingSurveyId, setHostingSurveyId] = useState(null);
+  // Whether the collapsible "Archived" section is expanded.
+  const [showArchived, setShowArchived] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -54,10 +56,15 @@ export default function DashboardPage() {
     navigator.clipboard.writeText(url).catch(() => {});
   }
 
-  async function handleDelete(id, name) {
-    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
-    const result = await deleteSurvey(id);
-    if (result.success) setSurveys(prev => prev.filter(s => s.id !== id));
+  async function handleArchive(id, name) {
+    if (!confirm(`Archive "${name}"? It will be hidden from your active surveys but can be restored anytime.`)) return;
+    const result = await archiveSurvey(id, true);
+    if (result.success) setSurveys(prev => prev.map(s => s.id === id ? { ...s, is_archived: 1 } : s));
+  }
+
+  async function handleRestore(id) {
+    const result = await archiveSurvey(id, false);
+    if (result.success) setSurveys(prev => prev.map(s => s.id === id ? { ...s, is_archived: 0 } : s));
   }
 
   async function handleDuplicate(id, e) {
@@ -101,6 +108,9 @@ export default function DashboardPage() {
     navigate('/login');
   }
 
+  const activeSurveys = surveys.filter(s => !s.is_archived);
+  const archivedSurveys = surveys.filter(s => s.is_archived);
+
   return (
     <div className="dashboard-page">
       <header className="app-header">
@@ -126,11 +136,11 @@ export default function DashboardPage() {
 
       {loading ? (
         <p className="loading">Loading...</p>
-      ) : surveys.length === 0 ? (
+      ) : activeSurveys.length === 0 ? (
         <p className="empty">No surveys yet. Create one to get started.</p>
       ) : (
         <div className="survey-grid">
-          {surveys.map(s => (
+          {activeSurveys.map(s => (
             <div key={s.id} className="survey-card" onClick={() => navigate(`/surveys/${s.id}`)}>
               <div className="card-title-row">
                 <h3>{s.config_name}</h3>
@@ -175,14 +185,50 @@ export default function DashboardPage() {
                 </button>
                 <button
                   className="btn-ghost-danger btn-small"
-                  onClick={e => { e.stopPropagation(); handleDelete(s.id, s.config_name); }}
+                  onClick={e => { e.stopPropagation(); handleArchive(s.id, s.config_name); }}
                 >
-                  Delete
+                  Archive
                 </button>
               </div>
             </div>
           ))}
         </div>
+      )}
+
+      {!loading && archivedSurveys.length > 0 && (
+        <section className="archived-section">
+          <button
+            className="btn-secondary archived-toggle"
+            onClick={() => setShowArchived(v => !v)}
+          >
+            {showArchived ? '▾' : '▸'} Archived ({archivedSurveys.length})
+          </button>
+
+          {showArchived && (
+            <div className="survey-grid archived-grid">
+              {archivedSurveys.map(s => (
+                <div key={s.id} className="survey-card archived-card">
+                  <div className="card-title-row">
+                    <h3>{s.config_name}</h3>
+                  </div>
+                  {s.description && <p className="description">{s.description}</p>}
+                  <div className="card-meta">
+                    <span className="response-count">{s.response_count ?? 0} response(s)</span>
+                    <span className="updated">Updated: {new Date(s.updated_at).toLocaleDateString()}</span>
+                  </div>
+                  <div className="card-actions">
+                    <button
+                      className="btn-primary btn-small"
+                      onClick={() => handleRestore(s.id)}
+                    >
+                      Restore
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       )}
 
       {hostingSurveyId !== null && (
