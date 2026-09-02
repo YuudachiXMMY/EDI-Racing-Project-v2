@@ -164,16 +164,17 @@ public class RaceUI : MonoBehaviour
         => isProfessor && isRacing && !leaderboardFullscreen;
 
     /// <summary>
-    /// Camera mode a role starts in: the professor free-flies (Free); the student gets the auto-
-    /// switching top-N chase (AutoTopCars, broadcast feel) rather than the single-car leader lock.
-    /// Pure so the mapping is unit-testable without a live scene.
+    /// Camera mode a role starts in: the professor loads parked at the first fixed camera
+    /// (Fixed → FixedCam_F1); the student gets the "Auto: All Cam" broadcast (AutoAllCams — parks
+    /// at the fixed camera nearest the leader and cuts between them) rather than the single-car
+    /// leader lock or the top-N chase. Pure so the mapping is unit-testable without a live scene.
     ///
-    /// The professor loads parked at the first fixed camera (Fixed → FixedCam_F1, since SetMode's
-    /// default fixedIndex 0 maps to F1) instead of the free-fly camera — a clean static shot on
-    /// load. AllowFreeControl stays on, so F1-F9 / Auto Cam / Esc (→ Free) still work as before.
+    /// Professor: SetMode's default fixedIndex 0 maps to F1 — a clean static shot on load.
+    /// AllowFreeControl stays on, so F1-F9 / Auto Cam / Esc (→ Free) still work as before. The
+    /// student's Esc still returns to AutoTopCars (see <see cref="CameraManager.ModeForEscape"/>).
     /// </summary>
     public static CameraManager.CameraMode CameraModeForRole(bool isProfessor)
-        => isProfessor ? CameraManager.CameraMode.Fixed : CameraManager.CameraMode.AutoTopCars;
+        => isProfessor ? CameraManager.CameraMode.Fixed : CameraManager.CameraMode.AutoAllCams;
 
     /// <summary>
     /// Caption for the student Auto Cam button given the camera's current mode: "Auto: All Cam" in
