@@ -173,6 +173,16 @@ label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; co
 .card-actions { display: flex; align-items: center; gap: 8px; }
 .card-actions .btn-ghost-danger { margin-left: auto; }
 
+/* --- Archived Surveys section --- */
+.archived-section { margin-top: 28px; }
+.archived-toggle { font-weight: 600; }
+.archived-grid { margin-top: 12px; }
+/* Archived cards are dimmed and non-clickable (no hover cue) to distinguish them
+   from active surveys; only the Restore action brings them back. */
+.survey-card.archived-card { cursor: default; opacity: 0.7; }
+.survey-card.archived-card:hover { border-color: var(--border); }
+.archived-card .card-actions .btn-primary { margin-left: auto; }
+
 /* --- Responses Tab --- */
 .responses-tab { padding: 0; }
 .tab-summary { color: var(--text-dim); font-size: 13px; margin-bottom: 12px; }

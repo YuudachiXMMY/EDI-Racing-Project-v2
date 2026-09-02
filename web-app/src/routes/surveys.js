@@ -10,7 +10,7 @@ const router = Router();
 router.get('/', requireAuth, (req, res) => {
   const db = getDb();
   const surveys = db.prepare(
-    `SELECT s.id, s.config_name, s.description, s.share_code, s.is_active, s.created_at, s.updated_at,
+    `SELECT s.id, s.config_name, s.description, s.share_code, s.is_active, s.is_archived, s.created_at, s.updated_at,
        (SELECT COUNT(*) FROM responses r WHERE r.survey_id = s.id) AS response_count
      FROM surveys s WHERE s.user_id = ? ORDER BY s.updated_at DESC`
   ).all(req.user.userId);
@@ -161,11 +161,20 @@ router.delete('/:id/link-room', requireAuth, (req, res) => {
   res.json({ success: true });
 });
 
-// DELETE /api/surveys/:id
-router.delete('/:id', requireAuth, (req, res) => {
+// PATCH /api/surveys/:id/archive — archive or restore a survey (soft delete).
+// Replaces the former hard DELETE /:id: archiving hides the survey from the main
+// dashboard list while preserving its responses, and it can be restored anytime.
+router.patch('/:id/archive', requireAuth, (req, res) => {
+  const { archived } = req.body;
+  if (typeof archived !== 'boolean') {
+    return res.status(400).json({ success: false, error: 'archived (boolean) is required' });
+  }
+
   const db = getDb();
-  const result = db.prepare('DELETE FROM surveys WHERE id = ? AND user_id = ?')
-    .run(req.params.id, req.user.userId);
+  const result = db.prepare(
+    "UPDATE surveys SET is_archived = ?, updated_at = datetime('now') WHERE id = ? AND user_id = ?"
+  ).run(archived ? 1 : 0, req.params.id, req.user.userId);
+
   if (result.changes === 0) {
     return res.status(404).json({ success: false, error: 'Survey not found' });
   }

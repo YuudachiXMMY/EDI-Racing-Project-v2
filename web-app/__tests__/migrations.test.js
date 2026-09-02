@@ -55,6 +55,7 @@ describe('applyMigrations', () => {
     const surveyCols = db.prepare('PRAGMA table_info(surveys)').all().map(c => c.name);
     expect(surveyCols).toContain('linked_room_code');
     expect(surveyCols).toContain('post_processing_json');
+    expect(surveyCols).toContain('is_archived');
 
     const templateCols = db.prepare('PRAGMA table_info(templates)').all().map(c => c.name);
     expect(templateCols).toContain('post_processing_json');

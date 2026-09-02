@@ -36,6 +36,8 @@ CREATE TABLE IF NOT EXISTS surveys (
   -- Share code for student access
   share_code TEXT UNIQUE,
   is_active INTEGER NOT NULL DEFAULT 1,
+  -- Soft-delete flag: archived surveys are hidden from the main list but can be restored.
+  is_archived INTEGER NOT NULL DEFAULT 0,
   -- Room code linked for real-time response notifications
   linked_room_code TEXT DEFAULT NULL,
   created_at TEXT NOT NULL DEFAULT (datetime('now')),
