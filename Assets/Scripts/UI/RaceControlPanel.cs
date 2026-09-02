@@ -60,6 +60,35 @@ public class RaceControlPanel : MonoBehaviour
 
         if (StatusText != null)
             StatusText.text = "";
+
+        // The race now starts Paused (RaceManager.LoadAndStartRace pauses on entry). Track the
+        // state here so the button opens showing "Resume" — otherwise isPaused stays false and the
+        // professor's first click re-pauses instead of resuming (a dead click).
+        if (RaceManager != null)
+            RaceManager.OnStateChanged += HandleStateChanged;
+    }
+
+    private void OnDestroy()
+    {
+        if (RaceManager != null)
+            RaceManager.OnStateChanged -= HandleStateChanged;
+    }
+
+    // Keep the Pause/Resume toggle in sync with the authoritative RaceManager state, whatever the
+    // pause source (start-paused, this button, or a future one). Only Racing/Paused are relevant;
+    // Setup and Finished leave the label as-is.
+    private void HandleStateChanged(GameState state)
+    {
+        if (state == GameState.Paused)
+        {
+            isPaused = true;
+            if (PauseResumeLabel != null) PauseResumeLabel.text = "Resume";
+        }
+        else if (state == GameState.Racing)
+        {
+            isPaused = false;
+            if (PauseResumeLabel != null) PauseResumeLabel.text = "Pause";
+        }
     }
 
     private void ToggleNames()
