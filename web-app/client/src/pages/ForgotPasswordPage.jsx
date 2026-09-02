@@ -27,7 +27,7 @@ export default function ForgotPasswordPage() {
   return (
     <div className="login-page">
       <div className="login-card">
-        <h1>EDI Survey</h1>
+        <h1>Survey</h1>
         <p className="subtitle">Forgot Password</p>
 
         {sent ? (
