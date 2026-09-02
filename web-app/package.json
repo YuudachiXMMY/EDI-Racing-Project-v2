@@ -2,7 +2,7 @@
   "name": "edi-survey-web-app",
   "version": "1.0.0",
   "type": "module",
-  "description": "Survey management web app for EDI Racing Game",
+  "description": "Survey management web app for the Racing Game",
   "main": "src/index.js",
   "scripts": {
     "start": "node --env-file=.env src/index.js",

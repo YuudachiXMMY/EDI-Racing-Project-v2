@@ -40,7 +40,7 @@ export default function ResetPasswordPage() {
   return (
     <div className="login-page">
       <div className="login-card">
-        <h1>EDI Survey</h1>
+        <h1>Survey</h1>
         <p className="subtitle">Reset Your Password</p>
 
         {!token ? (

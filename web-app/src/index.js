@@ -98,7 +98,7 @@ app.use((err, req, res, _next) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`[API] EDI Survey Web App listening on port ${PORT}`);
+  console.log(`[API] Survey Web App listening on port ${PORT}`);
 });
 
 process.on('SIGTERM', () => {
