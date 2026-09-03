@@ -117,6 +117,15 @@ describe('carStatus — resolveSelectedCar', () => {
     expect(vm.speedApprox).toBe(true);
   });
 
+  it('test_resolve_nonfinite_authoritative_speed_is_dropped', () => {
+    // Arrange: Unity (or the wire) delivered a NaN `s` — the panel must fall through to "n/a".
+    const nanPositions = [{ i: 0, px: 5, py: 0, pz: 7, ry: 90, l: 3, c: 14, s: NaN }];
+    // Act
+    const vm = resolveSelectedCar('Red', cars, nanPositions, leaderboard);
+    // Assert: non-finite speed gated to undefined (Number.isFinite, not typeof === 'number')
+    expect(vm.speed).toBeUndefined();
+  });
+
   it('test_resolve_missing_position_leaves_speed_undefined', () => {
     // Arrange: leaderboard has the car but no state_update frame yet
     const vm = resolveSelectedCar('Blue', cars, [], leaderboard);
@@ -146,6 +155,19 @@ describe('carStatus — deriveSpeed', () => {
     expect(deriveSpeed(undefined, { px: 1, pz: 1 }, 0.1)).toBeUndefined();
     // Assert: non-positive dt is also undefined (no divide-by-zero)
     expect(deriveSpeed({ px: 0, pz: 0 }, { px: 1, pz: 1 }, 0)).toBeUndefined();
+  });
+
+  it('test_derive_speed_negative_dt_returns_undefined', () => {
+    // Arrange/Act: a clock that went backwards (dt < 0) must not yield a bogus speed
+    expect(deriveSpeed({ px: 0, pz: 0 }, { px: 1, pz: 1 }, -0.1)).toBeUndefined();
+  });
+
+  it('test_derive_speed_nonfinite_input_returns_undefined', () => {
+    // Arrange/Act: a malformed frame (NaN/Infinity coord) must render "n/a", never "NaN u/s"
+    expect(deriveSpeed({ px: 0, pz: 0 }, { px: NaN, pz: 1 }, 0.1)).toBeUndefined();
+    expect(deriveSpeed({ px: 0, pz: 0 }, { px: 1, pz: Infinity }, 0.1)).toBeUndefined();
+    // A non-finite dt is guarded too (dt > 0 is false for NaN)
+    expect(deriveSpeed({ px: 0, pz: 0 }, { px: 1, pz: 1 }, NaN)).toBeUndefined();
   });
 });
 

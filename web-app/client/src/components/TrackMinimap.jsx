@@ -25,6 +25,16 @@ export default function TrackMinimap({ positions, cars, selectedTeamName, onSele
   const accBounds = useRef({ minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity });
   const startFallback = useRef(null);
 
+  // A new race clears trackGeometry (useRaceWebSocket sets it null on race_start). Reset the
+  // accumulated fallback bounds + start snapshot on that transition so a second race in the same
+  // session re-fits to the new track instead of inheriting the previous race's extent.
+  useEffect(() => {
+    if (trackGeometry === null) {
+      accBounds.current = { minX: Infinity, maxX: -Infinity, minZ: Infinity, maxZ: -Infinity };
+      startFallback.current = null;
+    }
+  }, [trackGeometry]);
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -123,7 +133,8 @@ export default function TrackMinimap({ positions, cars, selectedTeamName, onSele
         let color;
         if (car) {
           const { colorIndex } = parseCarAttrs(car);
-          color = CAR_COLORS[colorIndex] || CAR_COLORS[0];
+          // Out-of-range colorIndex -> neutral gray (matches CarDetailPanel's "Unknown" swatch).
+          color = colorIndex >= 0 && colorIndex < CAR_COLORS.length ? CAR_COLORS[colorIndex] : '#888';
         } else {
           color = FALLBACK_COLORS[p.i % FALLBACK_COLORS.length];
         }
@@ -148,7 +159,10 @@ export default function TrackMinimap({ positions, cars, selectedTeamName, onSele
         ctx.textAlign = 'center';
         ctx.fillText(teamName, x, y - DOT_RADIUS - 4);
 
-        dots.push({ x, y, teamName });
+        // Only real (roster-resolved) cars are clickable. A dot whose cars[p.i] is absent is
+        // drawn with its synthetic "#N" label for visibility but NOT added to the hit-test set,
+        // so an unresolvable phantom cannot be selected into an empty detail panel.
+        if (car) dots.push({ x, y, teamName });
       }
     }
     dotsRef.current = dots;

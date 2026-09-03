@@ -673,6 +673,9 @@ wss.on('connection', (ws) => {
             // after the first state_update overwrites latestState (~100ms later). Store the
             // RAW host message (no yourCarIndex) — personalization is per-recipient.
             room.latestRaceStart = raw;
+            // A new race invalidates the previous race's cached map. Drop it so a late joiner
+            // between race_start and this race's track_geometry gets no map rather than stale one.
+            room.latestTrackGeometry = null;
 
             // Send personalized race_start to each student with yourCarIndex
             const cars = msg.cars || [];

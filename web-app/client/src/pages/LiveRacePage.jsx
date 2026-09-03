@@ -1,5 +1,5 @@
 import { useParams, Link } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import useRaceWebSocket from '../hooks/useRaceWebSocket.js';
 import LiveLeaderboard from '../components/LiveLeaderboard.jsx';
 import LiveEventFeed from '../components/LiveEventFeed.jsx';
@@ -23,7 +23,9 @@ export default function LiveRacePage() {
   // the detail panel. Join key is teamName (rows/dots share no index). Clicking the current
   // selection again clears it.
   const [selectedTeamName, setSelectedTeamName] = useState(null);
-  const handleSelect = (name) => setSelectedTeamName((prev) => (prev === name ? null : name));
+  // Functional updater -> stable identity (deps []), so the memo-friendly leaderboard/minimap
+  // children are not handed a fresh handler every render.
+  const handleSelect = useCallback((name) => setSelectedTeamName((prev) => (prev === name ? null : name)), []);
 
   const phaseClass = {
     Setup: 'room-status-setup',

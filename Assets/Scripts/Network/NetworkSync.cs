@@ -198,8 +198,13 @@ public class NetworkSync : MonoBehaviour
                 break;
             }
         }
-        if (!foundStart && RaceManager.CarSpawner.SpawnPoint != null)
-            startPos = RaceManager.CarSpawner.SpawnPoint.position;
+        if (!foundStart)
+        {
+            if (RaceManager.CarSpawner.SpawnPoint != null)
+                startPos = RaceManager.CarSpawner.SpawnPoint.position;
+            else
+                Debug.LogWarning("[NetworkSync] No CheckpointTrigger(index 0) or SpawnPoint found; track_geometry start defaults to (0,0)");
+        }
 
         msg.startX = startPos.x;
         msg.startZ = startPos.z;

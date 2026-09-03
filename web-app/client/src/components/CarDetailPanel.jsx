@@ -15,13 +15,16 @@ export default function CarDetailPanel({ selectedTeamName, cars, positions, lead
     );
   }
 
-  const color = CAR_COLORS[vm.colorIndex] || CAR_COLORS[0];
-  const colorName = CAR_COLOR_NAMES[vm.colorIndex] || 'Default';
+  // Out-of-range colorIndex -> neutral gray swatch + "Unknown" (both consistent), never a green
+  // swatch mislabeled: the swatch and the name must agree on the same fallback semantic.
+  const colorInRange = vm.colorIndex >= 0 && vm.colorIndex < CAR_COLORS.length;
+  const color = colorInRange ? CAR_COLORS[vm.colorIndex] : '#888';
+  const colorName = colorInRange ? CAR_COLOR_NAMES[vm.colorIndex] : 'Unknown';
   const rankClass = vm.rank && vm.rank <= 3 ? `rank-${vm.rank}` : '';
   const speedDisplay =
-    vm.speed === undefined
-      ? 'n/a'
-      : `${vm.speed.toFixed(1)} u/s${vm.speedApprox ? ' (approx)' : ''}`;
+    Number.isFinite(vm.speed)
+      ? `${vm.speed.toFixed(1)} u/s${vm.speedApprox ? ' (approx)' : ''}`
+      : 'n/a';
 
   return (
     <div className="car-detail-panel">

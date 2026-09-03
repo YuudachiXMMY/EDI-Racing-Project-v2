@@ -54,6 +54,9 @@ export default function useRaceWebSocket(roomCode) {
           // New race -> drop any stale frame so the first speed delta is not a teleport spike.
           prevPositions.current = [];
           prevTime.current = 0;
+          // Drop the previous race's map so it is not shown before this race's track_geometry
+          // arrives (the minimap re-fits/re-accumulates from scratch — see TrackMinimap).
+          setTrackGeometry(null);
           break;
         case 'state_update': {
           const frame = msg.cars || [];

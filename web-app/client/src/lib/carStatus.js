@@ -48,8 +48,9 @@ export function resolveSelectedCar(selectedTeamName, cars = [], positions = [], 
     pz: pos ? pos.pz : null,
     ry: pos ? pos.ry : null,
     // Authoritative `s` (Unity rebuilt) or a client-derived value merged upstream; undefined
-    // on the very first frame before a delta exists.
-    speed: pos && typeof pos.s === 'number' ? pos.s : undefined,
+    // on the very first frame before a delta exists. Number.isFinite rejects NaN/Infinity from
+    // a malformed frame so the panel shows "n/a" rather than "NaN u/s".
+    speed: pos && Number.isFinite(pos.s) ? pos.s : undefined,
     speedApprox: pos ? !!pos.sApprox : false,
   };
 }
@@ -58,9 +59,12 @@ export function resolveSelectedCar(selectedTeamName, cars = [], positions = [], 
 // travelled between two frames over the elapsed time. Undefined when a delta cannot be formed
 // (frame 1, missing frame, or non-positive dt).
 export function deriveSpeed(prevPos, curPos, dt) {
-  if (!prevPos || !curPos || !dt || dt <= 0) return undefined;
+  if (!prevPos || !curPos) return undefined;
   const dpx = curPos.px - prevPos.px;
   const dpz = curPos.pz - prevPos.pz;
+  // Reject a non-finite delta (malformed frame) or a non-positive/NaN dt so a bad frame yields
+  // undefined ("n/a") rather than NaN u/s. dt > 0 subsumes the old !dt || dt <= 0 guard.
+  if (!(Number.isFinite(dpx) && Number.isFinite(dpz) && dt > 0)) return undefined;
   return Math.hypot(dpx, dpz) / dt;
 }
 

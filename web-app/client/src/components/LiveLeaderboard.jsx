@@ -11,11 +11,20 @@ export default function LiveLeaderboard({ rankings, selectedTeamName, onSelect }
           <tr><th>#</th><th>Team</th><th>Lap</th><th>CP</th></tr>
         </thead>
         <tbody>
-          {rankings.map((entry, i) => (
+          {rankings.map((entry) => (
             <tr
-              key={i}
+              key={entry.name}
               className={`response-row${entry.name === selectedTeamName ? ' selected' : ''}`}
+              tabIndex={0}
+              role="button"
+              aria-pressed={entry.name === selectedTeamName}
               onClick={() => onSelect && onSelect(entry.name)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  if (e.key === ' ') e.preventDefault();
+                  if (onSelect) onSelect(entry.name);
+                }
+              }}
             >
               <td className={entry.rank <= 3 ? `rank-${entry.rank}` : ''}>{entry.rank}</td>
               <td>{entry.name}</td>
