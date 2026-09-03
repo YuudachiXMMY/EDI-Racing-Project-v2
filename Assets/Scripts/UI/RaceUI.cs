@@ -259,7 +259,7 @@ public class RaceUI : MonoBehaviour
 
         var text = obj.AddComponent<Text>();
         text.text = "Camera:  WASD move  |  Right-drag look  |  Q/E up-down  |  Scroll speed\n"
-                  + "F1-F9 fixed cams  |  C auto-cam (top 3 / all cams)  |  Esc free cam  |  Keys 1-9 trigger events\n"
+                  + "F1-F9 fixed cams  |  C auto-cam (top 3 / all cams)  |  Esc free cam  |  Keys 1-6 event menus  |  9 Snow  0 Night\n"
                   + "Tab leaderboard size (normal / enlarged / fullscreen)";
         text.fontSize = 15;
         text.alignment = TextAnchor.LowerLeft;

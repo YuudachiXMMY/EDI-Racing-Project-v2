@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import { readFileSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { seedTemplates } from './seed-templates.js';
+import { seedTemplates, refreshTemplateContent } from './seed-templates.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DB_PATH = process.env.DB_PATH || join(__dirname, '..', 'data', 'edi-survey.db');
@@ -59,6 +59,15 @@ export function applyMigrations(db) {
   db.prepare(
     "DELETE FROM templates WHERE name IN ('V1 Parity', 'Accessibility', 'Diversity')"
   ).run();
+
+  // Migration: refresh mappings + post-processing on already-seeded template rows so DBs
+  // seeded before the strict-gt / difference-based male rules pick up the new config.
+  // No-op on a fresh DB (templates table is empty until seedTemplates runs below).
+  try {
+    refreshTemplateContent(db);
+  } catch {
+    // templates table not present yet — first-run seed handles content
+  }
 
   // Migration: make the per-email response uniqueness partial. Email is now optional,
   // so a full UNIQUE(survey_id, email) index (present in older DBs) would reject a second

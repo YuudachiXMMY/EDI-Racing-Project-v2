@@ -85,12 +85,16 @@ function mapResponsesToCarData(teamName, answers, mappings) {
 
 /**
  * Apply aggregate post-processing rules across all car data.
- * Implements the DataTool.py average-threshold algorithm:
+ * Implements the average-threshold algorithm:
  *   - average_threshold: compare each car's attribute against the mean of all cars
- *   - fixed_threshold: compare against a fixed value
+ *     (directions: gt / gte / lt / lte)
+ *   - fixed_threshold: compare a single attribute against a fixed value
+ *   - difference_threshold: compare (sourceMinuend - sourceSubtrahend) against a fixed value
  * Tags are combined into a slash-separated string (e.g., "facerecog/glasses/male").
+ *
+ * Exported for unit testing (see __tests__/postProcessing.test.js).
  */
-function applyPostProcessing(carDataArray, postProcessing) {
+export function applyPostProcessing(carDataArray, postProcessing) {
   if (!postProcessing || postProcessing.length === 0) return carDataArray;
 
   // Step 1: Compute averages for average_threshold rules
@@ -119,12 +123,25 @@ function applyPostProcessing(carDataArray, postProcessing) {
         const avg = averages[rule.sourceAttribute] || 0;
         if (rule.direction === 'gte') passes = value >= avg;
         else if (rule.direction === 'lte') passes = value <= avg;
+        else if (rule.direction === 'gt') passes = value > avg;
+        else if (rule.direction === 'lt') passes = value < avg;
       } else if (rule.type === 'fixed_threshold') {
         const threshold = parseFloat(rule.threshold) || 0;
         if (rule.direction === 'gt') passes = value > threshold;
         else if (rule.direction === 'gte') passes = value >= threshold;
         else if (rule.direction === 'lt') passes = value < threshold;
         else if (rule.direction === 'lte') passes = value <= threshold;
+      } else if (rule.type === 'difference_threshold') {
+        // Compare (minuend - subtrahend) across two mapped attributes against a fixed threshold.
+        // Used for the 'male' tag: (member_count - male_count) < 2.
+        const a = car.attributes.find(x => x.key === rule.sourceMinuend);
+        const b = car.attributes.find(x => x.key === rule.sourceSubtrahend);
+        const diff = (a ? parseFloat(a.value) : 0) - (b ? parseFloat(b.value) : 0);
+        const threshold = parseFloat(rule.threshold) || 0;
+        if (rule.direction === 'lt') passes = diff < threshold;
+        else if (rule.direction === 'lte') passes = diff <= threshold;
+        else if (rule.direction === 'gt') passes = diff > threshold;
+        else if (rule.direction === 'gte') passes = diff >= threshold;
       }
 
       if (passes) {
