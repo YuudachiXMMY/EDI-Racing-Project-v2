@@ -306,6 +306,9 @@ public static class SurveyTemplates
             Mappings = new AttributeMapping[]
             {
                 new AttributeMapping { QuestionId = "color", AttributeName = "colorIndex", DefaultValue = "0", TransformType = "lookup", LookupEntries = new AttributeEntry[] { new AttributeEntry { Key = "Green", Value = "0" }, new AttributeEntry { Key = "Black", Value = "1" }, new AttributeEntry { Key = "Red", Value = "2" }, new AttributeEntry { Key = "Blue", Value = "3" }, new AttributeEntry { Key = "White", Value = "4" } } },
+                // member_count is mapped for web-app/Unity parity (web-app's difference_threshold uses
+                // member_count - male_count for the 'male' tag). Unity itself does not post-process.
+                new AttributeMapping { QuestionId = "member_count", AttributeName = "member_count", DefaultValue = "0", TransformType = "numeric", LookupEntries = Array.Empty<AttributeEntry>() },
                 new AttributeMapping { QuestionId = "facial_count", AttributeName = "facial_count", DefaultValue = "0", TransformType = "numeric", LookupEntries = Array.Empty<AttributeEntry>() },
                 new AttributeMapping { QuestionId = "glasses_count", AttributeName = "glasses_count", DefaultValue = "0", TransformType = "numeric", LookupEntries = Array.Empty<AttributeEntry>() },
                 new AttributeMapping { QuestionId = "language_count", AttributeName = "language_count", DefaultValue = "0", TransformType = "numeric", LookupEntries = Array.Empty<AttributeEntry>() },

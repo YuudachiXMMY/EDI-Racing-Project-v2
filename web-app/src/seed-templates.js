@@ -25,6 +25,7 @@ const templates = [
     ],
     mappings: [
       { QuestionId: 'color', AttributeName: 'colorIndex', DefaultValue: '0', TransformType: 'lookup', LookupEntries: [{ Key: 'Green', Value: '0' }, { Key: 'Black', Value: '1' }, { Key: 'Red', Value: '2' }, { Key: 'Blue', Value: '3' }, { Key: 'White', Value: '4' }] },
+      { QuestionId: 'member_count', AttributeName: 'member_count', DefaultValue: '0', TransformType: 'numeric', LookupEntries: [] },
       { QuestionId: 'facial_count', AttributeName: 'facial_count', DefaultValue: '0', TransformType: 'numeric', LookupEntries: [] },
       { QuestionId: 'glasses_count', AttributeName: 'glasses_count', DefaultValue: '0', TransformType: 'numeric', LookupEntries: [] },
       { QuestionId: 'language_count', AttributeName: 'language_count', DefaultValue: '0', TransformType: 'numeric', LookupEntries: [] },
@@ -33,12 +34,14 @@ const templates = [
       { QuestionId: 'distance_km', AttributeName: 'distance_km', DefaultValue: '0', TransformType: 'numeric', LookupEntries: [] },
     ],
     postProcessing: [
-      { type: 'average_threshold', sourceAttribute: 'facial_count', direction: 'gte', tagName: 'facerecog', targetAttribute: 'functions' },
-      { type: 'average_threshold', sourceAttribute: 'glasses_count', direction: 'gte', tagName: 'glasses', targetAttribute: 'functions' },
-      { type: 'average_threshold', sourceAttribute: 'language_count', direction: 'gte', tagName: 'language', targetAttribute: 'functions' },
-      { type: 'average_threshold', sourceAttribute: 'pwd_count', direction: 'lte', tagName: 'password', targetAttribute: 'functions' },
-      { type: 'average_threshold', sourceAttribute: 'distance_km', direction: 'gte', tagName: 'distance', targetAttribute: 'functions' },
-      { type: 'fixed_threshold', sourceAttribute: 'male_count', threshold: 2, direction: 'gt', tagName: 'male', targetAttribute: 'functions' },
+      // A team gets each feature when its count is STRICTLY GREATER than the cohort average.
+      { type: 'average_threshold', sourceAttribute: 'facial_count', direction: 'gt', tagName: 'facerecog', targetAttribute: 'functions' },
+      { type: 'average_threshold', sourceAttribute: 'glasses_count', direction: 'gt', tagName: 'glasses', targetAttribute: 'functions' },
+      { type: 'average_threshold', sourceAttribute: 'language_count', direction: 'gt', tagName: 'language', targetAttribute: 'functions' },
+      { type: 'average_threshold', sourceAttribute: 'pwd_count', direction: 'gt', tagName: 'password', targetAttribute: 'functions' },
+      { type: 'average_threshold', sourceAttribute: 'distance_km', direction: 'gt', tagName: 'distance', targetAttribute: 'functions' },
+      // Male feature when non-male members (member_count - male_count) < 2.
+      { type: 'difference_threshold', sourceMinuend: 'member_count', sourceSubtrahend: 'male_count', threshold: 2, direction: 'lt', tagName: 'male', targetAttribute: 'functions' },
     ],
     rules: [
       { DisplayName: 'Name Length Penalty', AttributeName: 'teamName', Operator: 6, CompareValue: '10', SpeedDelta: -10, Duration: 8, Weather: 0, AllowRepeat: false },
@@ -71,4 +74,31 @@ export function seedTemplates(db) {
   });
 
   insertMany(templates);
+}
+
+/**
+ * Refresh the mappings + post-processing of already-seeded template rows.
+ * seedTemplates() uses INSERT OR IGNORE and never updates existing rows, so a DB
+ * seeded before a template-content change (e.g. the strict-gt / difference male
+ * rules) keeps the stale config. This idempotent UPDATE brings those rows current.
+ * Only content that is safe to overwrite is touched — questions/rules are left as-is
+ * to avoid clobbering any professor edits made directly on templates.
+ *
+ * Note: surveys already created from a template hold their own copy and are NOT
+ * touched here — create a new survey from the refreshed template to pick up changes.
+ */
+export function refreshTemplateContent(db) {
+  const update = db.prepare(
+    'UPDATE templates SET mappings_json = ?, post_processing_json = ? WHERE name = ?'
+  );
+  const updateMany = db.transaction((items) => {
+    for (const t of items) {
+      update.run(
+        JSON.stringify(t.mappings),
+        JSON.stringify(t.postProcessing || []),
+        t.name
+      );
+    }
+  });
+  updateMany(templates);
 }

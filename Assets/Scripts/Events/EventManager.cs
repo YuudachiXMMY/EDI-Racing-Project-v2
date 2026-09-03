@@ -44,18 +44,10 @@ public class EventManager : MonoBehaviour
         isActive = false;
     }
 
-    private void Update()
-    {
-        if (!isActive || Schedule == null) return;
-
-        for (int i = 0; i < Schedule.Events.Length; i++)
-        {
-            if (Keyboard.current != null && Keyboard.current[Schedule.Events[i].TriggerKey].wasPressedThisFrame)
-            {
-                TriggerEvent(i);
-            }
-        }
-    }
+    // Update() and its digit-key polling were removed: the professor's live control is now the
+    // parameterized event menu (EventPanel), which builds rules at trigger time and calls
+    // TriggerRule. Snow/Night weather keys (9/0) are handled there too. TriggerEvent(index) is
+    // kept for programmatic/schedule access and the EditMode tests.
 
     public void TriggerEvent(int eventIndex)
     {
@@ -69,6 +61,28 @@ public class EventManager : MonoBehaviour
             return;
         }
 
+        Schedule.Events[eventIndex].HasBeenTriggered = true;
+        ApplyRule(rule);
+    }
+
+    /// <summary>
+    /// Apply an ad-hoc rule built at trigger time (the parameterized event menu). Runs the same
+    /// affected-cars loop as TriggerEvent and fires OnEventTriggered — so weather VFX
+    /// (RaceManager) and the student network broadcast (NetworkSync), which both hang off that
+    /// event, keep working. Has no schedule slot, so HasBeenTriggered/AllowRepeat do not apply.
+    /// Gated on IsActive (mirrors the old Update() guard).
+    /// </summary>
+    /// <returns>Number of cars affected.</returns>
+    public int TriggerRule(EventRule rule)
+    {
+        if (!isActive) return 0;
+        return ApplyRule(rule);
+    }
+
+    // Shared core: evaluate the rule against every registered car, apply the speed modifier to
+    // matches, log, and fire OnEventTriggered. Returns the affected count.
+    private int ApplyRule(EventRule rule)
+    {
         int affectedCount = 0;
         foreach (var car in registeredCars)
         {
@@ -83,11 +97,10 @@ public class EventManager : MonoBehaviour
             }
         }
 
-        Schedule.Events[eventIndex].HasBeenTriggered = true;
-
         Debug.Log($"[EventManager] '{rule.DisplayName}' triggered: {affectedCount}/{registeredCars.Count} cars affected (speed {rule.SpeedDelta:+#;-#;0} for {rule.Duration}s)");
 
         OnEventTriggered?.Invoke(rule, affectedCount);
+        return affectedCount;
     }
 
     /// <summary>

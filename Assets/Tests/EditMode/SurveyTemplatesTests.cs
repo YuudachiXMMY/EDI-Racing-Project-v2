@@ -60,7 +60,7 @@ public class SurveyTemplatesTests
         Assert.IsNotNull(config);
         Assert.AreEqual("ENGG*1100 Survey", config.ConfigName);
         Assert.AreEqual(14, config.Questions.Length);
-        Assert.AreEqual(7, config.Mappings.Length);
+        Assert.AreEqual(8, config.Mappings.Length);
         Assert.AreEqual(8, config.Rules.Length);
     }
 

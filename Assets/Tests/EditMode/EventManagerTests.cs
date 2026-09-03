@@ -210,4 +210,60 @@ public class EventManagerTests
         Assert.AreEqual(0, eventManager.RegisteredCarCount);
         Assert.IsFalse(eventManager.IsActive);
     }
+
+    // --- TriggerRule (parameterized event menu path) ---
+
+    [Test]
+    public void TriggerRule_Active_AppliesToMatchingCar_FiresEvent()
+    {
+        // Arrange
+        var car = CreateCar("A", new[] { new AttributeEntry { Key = "functions", Value = "male" } });
+        eventManager.RegisterCar(car);
+        eventManager.Activate();
+
+        int fired = 0;
+        int affected = -1;
+        eventManager.OnEventTriggered += (rule, count) => { fired++; affected = count; };
+
+        // Act
+        int result = eventManager.TriggerRule(EventActionBuilder.Male(true));
+
+        // Assert
+        Assert.AreEqual(1, result);
+        Assert.AreEqual(1, fired);
+        Assert.AreEqual(1, affected);
+    }
+
+    [Test]
+    public void TriggerRule_Inactive_ReturnsZero_NoEvent()
+    {
+        // Arrange — a matching car, but the manager was never Activated
+        var car = CreateCar("A", new[] { new AttributeEntry { Key = "functions", Value = "male" } });
+        eventManager.RegisterCar(car);
+
+        int fired = 0;
+        eventManager.OnEventTriggered += (rule, count) => fired++;
+
+        // Act
+        int result = eventManager.TriggerRule(EventActionBuilder.Male(true));
+
+        // Assert
+        Assert.AreEqual(0, result);
+        Assert.AreEqual(0, fired);
+    }
+
+    [Test]
+    public void TriggerRule_Active_NonMatchingCar_AffectsNone()
+    {
+        // Arrange — car has a different function, so the male rule matches nobody
+        var car = CreateCar("A", new[] { new AttributeEntry { Key = "functions", Value = "glasses" } });
+        eventManager.RegisterCar(car);
+        eventManager.Activate();
+
+        // Act
+        int result = eventManager.TriggerRule(EventActionBuilder.Male(true));
+
+        // Assert
+        Assert.AreEqual(0, result);
+    }
 }
