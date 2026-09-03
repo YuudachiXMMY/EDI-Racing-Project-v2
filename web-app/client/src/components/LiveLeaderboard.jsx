@@ -1,4 +1,4 @@
-export default function LiveLeaderboard({ rankings }) {
+export default function LiveLeaderboard({ rankings, selectedTeamName, onSelect }) {
   if (!rankings || rankings.length === 0) {
     return <div className="live-leaderboard empty">Waiting for race data...</div>;
   }
@@ -12,7 +12,11 @@ export default function LiveLeaderboard({ rankings }) {
         </thead>
         <tbody>
           {rankings.map((entry, i) => (
-            <tr key={i} className="response-row">
+            <tr
+              key={i}
+              className={`response-row${entry.name === selectedTeamName ? ' selected' : ''}`}
+              onClick={() => onSelect && onSelect(entry.name)}
+            >
               <td className={entry.rank <= 3 ? `rank-${entry.rank}` : ''}>{entry.rank}</td>
               <td>{entry.name}</td>
               <td>{entry.lap}</td>

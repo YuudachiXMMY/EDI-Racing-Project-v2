@@ -133,7 +133,8 @@ public class NetworkSync : MonoBehaviour
                 pz = t.position.z,
                 ry = t.eulerAngles.y,
                 l = id != null ? id.CurrentLap : 0,
-                c = id != null ? id.TotalCheckpointsPassed : 0
+                c = id != null ? id.TotalCheckpointsPassed : 0,
+                s = cars[i].GetComponent<CarController>()?.CurrentSpeed ?? 0f
             };
         }
         msg.cars = states;
@@ -167,6 +168,72 @@ public class NetworkSync : MonoBehaviour
         msg.cars = new NetCarData[carDataList.Count];
         for (int i = 0; i < carDataList.Count; i++)
             msg.cars[i] = NetCarData.FromCarData(carDataList[i]);
+        NetworkManager.Send(JsonUtility.ToJson(msg));
+    }
+
+    /// <summary>
+    /// Sends the precise start point and track bounds (plus an optional waypoint polyline) once,
+    /// at race start, so student/web viewers can render a stable minimap without per-frame
+    /// bounding-box jitter. Start point prefers the CheckpointTrigger marking the start/finish
+    /// line (CheckpointIndex == 0); falls back to CarSpawner.SpawnPoint if none is found. Bounds
+    /// and polyline come from WaypointPath.Waypoints; if no WaypointPath is assigned, only the
+    /// start point is sent and wpx/wpz stay empty.
+    /// </summary>
+    public void BroadcastTrackGeometry()
+    {
+        if (NetworkManager == null || !NetworkManager.IsHost) return;
+        if (RaceManager == null || RaceManager.CarSpawner == null) return;
+
+        var msg = new TrackGeometryMessage();
+
+        Vector3 startPos = Vector3.zero;
+        bool foundStart = false;
+        var checkpoints = FindObjectsByType<CheckpointTrigger>(FindObjectsSortMode.None);
+        foreach (var cp in checkpoints)
+        {
+            if (cp.CheckpointIndex == 0)
+            {
+                startPos = cp.transform.position;
+                foundStart = true;
+                break;
+            }
+        }
+        if (!foundStart && RaceManager.CarSpawner.SpawnPoint != null)
+            startPos = RaceManager.CarSpawner.SpawnPoint.position;
+
+        msg.startX = startPos.x;
+        msg.startZ = startPos.z;
+
+        var waypointPath = RaceManager.CarSpawner.WaypointPath;
+        if (waypointPath != null && waypointPath.Waypoints != null && waypointPath.Waypoints.Length > 0)
+        {
+            int count = waypointPath.Waypoints.Length;
+            var wpx = new float[count];
+            var wpz = new float[count];
+            float minX = float.MaxValue, maxX = float.MinValue;
+            float minZ = float.MaxValue, maxZ = float.MinValue;
+
+            for (int i = 0; i < count; i++)
+            {
+                Vector3 p = waypointPath.Waypoints[i] != null
+                    ? waypointPath.Waypoints[i].position
+                    : Vector3.zero;
+                wpx[i] = p.x;
+                wpz[i] = p.z;
+                if (p.x < minX) minX = p.x;
+                if (p.x > maxX) maxX = p.x;
+                if (p.z < minZ) minZ = p.z;
+                if (p.z > maxZ) maxZ = p.z;
+            }
+
+            msg.wpx = wpx;
+            msg.wpz = wpz;
+            msg.minX = minX;
+            msg.maxX = maxX;
+            msg.minZ = minZ;
+            msg.maxZ = maxZ;
+        }
+
         NetworkManager.Send(JsonUtility.ToJson(msg));
     }
 
