@@ -60,6 +60,7 @@
 
 <!-- Add approved third-party dependencies here -->
 - **nodemailer** (web-app runtime dependency) — SMTP client for password-recovery emails via the self-hosted Stalwart server. Pure-JS, no native build. Approved 2026-08-25.
+- **QRCoder** (Unity runtime, vendored core only — `Assets/ThirdParty/QRCoder/`) — pure-C# QR generation for the host-screen student-join QR. Only the generator core is vendored (QRCodeGenerator/QRCodeData + Framework4.0Methods/Exceptions/Extensions polyfills, from tag v1.4.3); the `System.Drawing`-based renderers and the `PayloadGenerator` are excluded, so it is WebGL/IL2CPP-safe. QR pixels are rendered to a `Texture2D` by `QrCodeRenderer`. MIT license (see `Assets/ThirdParty/QRCoder/LICENSE.txt`). Approved 2026-09-04.
 
 ## Architecture Decisions Log
 
