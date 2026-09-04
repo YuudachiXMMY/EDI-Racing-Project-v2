@@ -43,12 +43,9 @@ const templates = [
       // Male feature when non-male members (member_count - male_count) < 2.
       { type: 'difference_threshold', sourceMinuend: 'member_count', sourceSubtrahend: 'male_count', threshold: 2, direction: 'lt', tagName: 'male', targetAttribute: 'functions' },
     ],
+    // Unity's live EventPanel builds Color/Function/Name/Male events on the fly (fixed +20/-15) and
+    // ignores imported rules — only the fixed weather events keep a pre-baked identity here.
     rules: [
-      { DisplayName: 'Name Length Penalty', AttributeName: 'teamName', Operator: 6, CompareValue: '10', SpeedDelta: -10, Duration: 8, Weather: 0, AllowRepeat: false },
-      { DisplayName: 'Color Boost (Blue)', AttributeName: 'colorIndex', Operator: 0, CompareValue: '3', SpeedDelta: 15, Duration: 6, Weather: 0, AllowRepeat: false },
-      { DisplayName: 'Color Penalty (Red)', AttributeName: 'colorIndex', Operator: 0, CompareValue: '2', SpeedDelta: -12, Duration: 8, Weather: 0, AllowRepeat: false },
-      { DisplayName: 'Function Boost (Password)', AttributeName: 'functions', Operator: 2, CompareValue: 'password', SpeedDelta: 10, Duration: 6, Weather: 0, AllowRepeat: false },
-      { DisplayName: 'Function Penalty (Face Recog)', AttributeName: 'functions', Operator: 2, CompareValue: 'facerecog', SpeedDelta: -10, Duration: 8, Weather: 0, AllowRepeat: false },
       { DisplayName: 'Snow Weather', AttributeName: '', Operator: 8, CompareValue: '', SpeedDelta: -8, Duration: 12, Weather: 1, AllowRepeat: true },
       { DisplayName: 'Night Weather', AttributeName: '', Operator: 8, CompareValue: '', SpeedDelta: -5, Duration: 15, Weather: 2, AllowRepeat: true },
     ]
@@ -77,24 +74,27 @@ export function seedTemplates(db) {
 }
 
 /**
- * Refresh the mappings + post-processing of already-seeded template rows.
+ * Refresh the mappings + rules + post-processing of already-seeded template rows.
  * seedTemplates() uses INSERT OR IGNORE and never updates existing rows, so a DB
  * seeded before a template-content change (e.g. the strict-gt / difference male
- * rules) keeps the stale config. This idempotent UPDATE brings those rows current.
- * Only content that is safe to overwrite is touched — questions/rules are left as-is
- * to avoid clobbering any professor edits made directly on templates.
+ * rules, or the reduction of ENGG event rules to just Snow/Night) keeps the stale
+ * config. This idempotent UPDATE brings those rows current. rules_json is refreshed
+ * too: the built-in templates table has no professor-facing edit endpoint (professors
+ * edit their own surveys, which are separate copies), so there are no direct template
+ * edits to clobber. questions_json is still left as-is.
  *
  * Note: surveys already created from a template hold their own copy and are NOT
  * touched here — create a new survey from the refreshed template to pick up changes.
  */
 export function refreshTemplateContent(db) {
   const update = db.prepare(
-    'UPDATE templates SET mappings_json = ?, post_processing_json = ? WHERE name = ?'
+    'UPDATE templates SET mappings_json = ?, rules_json = ?, post_processing_json = ? WHERE name = ?'
   );
   const updateMany = db.transaction((items) => {
     for (const t of items) {
       update.run(
         JSON.stringify(t.mappings),
+        JSON.stringify(t.rules),
         JSON.stringify(t.postProcessing || []),
         t.name
       );

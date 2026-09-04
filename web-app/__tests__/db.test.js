@@ -130,6 +130,14 @@ describe('Seed Templates', () => {
       expect(rules.length).toBeGreaterThan(0);
     }
   });
+
+  it('ENGG*1100 rules are reduced to the two weather events', () => {
+    seedTemplates(db);
+
+    const row = db.prepare("SELECT rules_json FROM templates WHERE name = 'ENGG*1100 Survey'").get();
+    const names = JSON.parse(row.rules_json).map(r => r.DisplayName);
+    expect(names).toEqual(['Snow Weather', 'Night Weather']);
+  });
 });
 
 describe('Survey CRUD', () => {
