@@ -65,8 +65,12 @@ export function applyMigrations(db) {
   // No-op on a fresh DB (templates table is empty until seedTemplates runs below).
   try {
     refreshTemplateContent(db);
-  } catch {
-    // templates table not present yet — first-run seed handles content
+  } catch (err) {
+    // Non-fatal so startup stays resilient, but the templates table always exists by now
+    // (schema.sql CREATE ... IF NOT EXISTS runs before this), so a throw here signals a
+    // real regression (e.g. a future column rename) rather than a first-run empty table.
+    // Log instead of silently swallowing so it is not invisible to operators.
+    console.warn('[DB] refreshTemplateContent skipped:', err.message);
   }
 
   // Migration: make the per-email response uniqueness partial. Email is now optional,
