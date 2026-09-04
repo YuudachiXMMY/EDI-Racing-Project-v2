@@ -61,3 +61,22 @@ Packages/packages-lock.json
 928eb57 fix(unity): wire JoinScreen.NetworkManager so students can join the 3D race
 ---
 
+## Session End: 20260825_112158
+### Commits
+cc5d708 feat: change RaceConfig to run race infinitely by default
+### Uncommitted Changes
+.claude/docs/technical-preferences.md
+web-app/.env.example
+web-app/client/src/App.jsx
+web-app/client/src/api.js
+web-app/client/src/pages/LoginPage.jsx
+web-app/package-lock.json
+web-app/package.json
+web-app/src/config.js
+web-app/src/db.js
+web-app/src/index.js
+web-app/src/middleware/auth.js
+web-app/src/routes/auth.js
+web-app/src/schema.sql
+---
+
