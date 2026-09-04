@@ -30,6 +30,19 @@ public class SetupScreen : MonoBehaviour
     public Button CopyLinkButton;
     private string currentStudentLink = "";
 
+    [Header("Join QR (Optional)")]
+    // Scannable QR of the student join link, shown on the host screen beside StudentLinkText.
+    // ToggleQrButton shows/hides it; QrSizeButton cycles Small <-> Large. All optional: if unwired
+    // the QR simply never appears (the null-guards below no-op), so the feature degrades gracefully.
+    public RawImage StudentQrImage;
+    public Button ToggleQrButton;
+    public Text ToggleQrLabel;
+    public Button QrSizeButton;
+    public Text QrSizeLabel;
+    private QrPanelState.QrSize qrSize = QrPanelState.QrSize.Small;
+    private bool qrVisible = true;
+    private Texture2D qrTexture; // owned; destroyed on regen and in OnDestroy to avoid a WebGL leak
+
     [Header("Survey Config (Optional)")]
     public SurveyConfigManager SurveyConfigManager;
     public Text ActiveConfigText;
@@ -99,6 +112,19 @@ public class SetupScreen : MonoBehaviour
         {
             CopyLinkButton.gameObject.SetActive(false);
             CopyLinkButton.onClick.AddListener(OnCopyStudentLink);
+        }
+
+        // Join QR starts hidden; shown by ShowStudentLink once the room (and page origin) exist.
+        if (StudentQrImage != null) StudentQrImage.gameObject.SetActive(false);
+        if (ToggleQrButton != null)
+        {
+            ToggleQrButton.gameObject.SetActive(false);
+            ToggleQrButton.onClick.AddListener(OnToggleQr);
+        }
+        if (QrSizeButton != null)
+        {
+            QrSizeButton.gameObject.SetActive(false);
+            QrSizeButton.onClick.AddListener(OnCycleQrSize);
         }
 
         // Config sync button
@@ -190,6 +216,13 @@ public class SetupScreen : MonoBehaviour
         }
     }
 
+    private void OnDestroy()
+    {
+        // Free the generated QR texture (Texture2D is not garbage-collected on WebGL until GC runs;
+        // explicit Destroy releases it deterministically).
+        if (qrTexture != null) Destroy(qrTexture);
+    }
+
     public void RefreshActiveConfigDisplay()
     {
         if (ActiveConfigText == null) return;
@@ -233,7 +266,8 @@ public class SetupScreen : MonoBehaviour
     }
 
     // Build and surface the shareable student join link (room code only, no host token) so the
-    // professor can copy it once the room exists. Empty origin (Editor) → keep the UI hidden.
+    // professor can copy it — and scan it via the QR — once the room exists. Empty origin (Editor)
+    // → keep the UI hidden.
     private void ShowStudentLink(string roomCode)
     {
         currentStudentLink = StudentLinkBuilder.BuildJoinLink(WebSocketBridge.GetPageOrigin(), roomCode);
@@ -244,12 +278,51 @@ public class SetupScreen : MonoBehaviour
             StudentLinkText.text = $"学生链接: {currentStudentLink}";
         }
         if (CopyLinkButton != null) CopyLinkButton.gameObject.SetActive(true);
+
+        // Render the QR for the same link and reveal its controls.
+        RenderStudentQr();
+        if (ToggleQrButton != null) ToggleQrButton.gameObject.SetActive(true);
+        ApplyQrVisibility();
     }
 
     private void OnCopyStudentLink()
     {
         if (!string.IsNullOrEmpty(currentStudentLink))
             WebSocketBridge.CopyToClipboard(currentStudentLink);
+    }
+
+    // Generate (or regenerate) the QR texture for the current student link at the current size, and
+    // size the RawImage to match. Regenerating at the display resolution keeps the modules crisp.
+    private void RenderStudentQr()
+    {
+        if (StudentQrImage == null || string.IsNullOrEmpty(currentStudentLink)) return;
+        if (qrTexture != null) Destroy(qrTexture); // free the previous texture before replacing
+        int px = QrPanelState.PixelSize(qrSize);
+        qrTexture = QrCodeRenderer.Render(currentStudentLink, px);
+        StudentQrImage.texture = qrTexture;
+        StudentQrImage.rectTransform.sizeDelta = new Vector2(px, px);
+    }
+
+    private void OnToggleQr()
+    {
+        qrVisible = !qrVisible;
+        ApplyQrVisibility();
+    }
+
+    // Apply the visible/size state to the QR image, the size button, and the button labels.
+    private void ApplyQrVisibility()
+    {
+        if (StudentQrImage != null) StudentQrImage.gameObject.SetActive(qrVisible);
+        if (QrSizeButton != null) QrSizeButton.gameObject.SetActive(qrVisible);
+        if (ToggleQrLabel != null) ToggleQrLabel.text = QrPanelState.VisibilityLabel(qrVisible);
+        if (QrSizeLabel != null) QrSizeLabel.text = QrPanelState.SizeLabel(qrSize);
+    }
+
+    private void OnCycleQrSize()
+    {
+        qrSize = QrPanelState.NextSize(qrSize);
+        RenderStudentQr(); // regen at the new resolution for crispness
+        if (QrSizeLabel != null) QrSizeLabel.text = QrPanelState.SizeLabel(qrSize);
     }
 
     private void OnStudentCountChanged(int count)
@@ -297,6 +370,9 @@ public class SetupScreen : MonoBehaviour
         if (StudentCountText != null) StudentCountText.gameObject.SetActive(false);
         if (StudentLinkText != null) StudentLinkText.gameObject.SetActive(false);
         if (CopyLinkButton != null) CopyLinkButton.gameObject.SetActive(false);
+        if (StudentQrImage != null) StudentQrImage.gameObject.SetActive(false);
+        if (ToggleQrButton != null) ToggleQrButton.gameObject.SetActive(false);
+        if (QrSizeButton != null) QrSizeButton.gameObject.SetActive(false);
     }
 
     // --- Web App Direct Send ---
