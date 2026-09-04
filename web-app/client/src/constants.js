@@ -31,3 +31,9 @@ export const TransformTypes = ['direct', 'lookup', 'numeric'];
 export const MAX_QUESTIONS = 20;
 export const MAX_MAPPINGS = 20;
 export const MAX_RULES = 9;
+
+// Must match Unity CarSpawner.GetTrailColor (colorIndex 0-4)
+export const CAR_COLORS = ['#33cc33', '#4d4d4d', '#e63333', '#3366e6', '#e6e6e6'];
+export const CAR_COLOR_NAMES = ['Green', 'Black', 'Red', 'Blue', 'White'];
+// Must match Unity EventActionBuilder.Functions tag->label
+export const FUNCTION_LABELS = { facerecog: 'Facial', glasses: 'Glasses', language: 'Language', password: 'Password', distance: 'Distance', male: 'Male' };

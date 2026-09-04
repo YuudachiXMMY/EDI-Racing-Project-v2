@@ -177,15 +177,15 @@ if (count === 0) { seedTemplates(db); }
   { Id: 'team_name', Text: 'Name your autonomous vehicle team.\n[Letters and numbers only, NO space] (e.g. Apollo3)', Type: 0 /* Text */, Options: [], MinValue: 0, MaxValue: 0, Required: true },
   { Id: 'color', Text: 'Choose the colour for your autonomous vehicle.', Type: 1 /* MC */, Options: ['Blue', 'Red', 'Black', 'White', 'Green'], MinValue: 0, MaxValue: 0, Required: true },
   { Id: 'member_count', Text: 'How many members in the team?', Type: 2 /* Numeric */, Options: [], MinValue: 1, MaxValue: 20, Required: true },
-  { Id: 'member_names', Text: 'Please enter the first names of the members of your group, separated by commas. (e.g. Steve, Albert, Hussein, Wael). This information will only be used to distribute prizes after', Type: 0, Options: [], MinValue: 0, MaxValue: 0, Required: true },
+  { Id: 'member_names', Text: 'Please enter the first names of the members of your group, separated by commas. (e.g. Steve, Albert, John). This information will only be used to distribute prizes after. If you do not want the prize, enter NA.', Type: 0, Options: [], MinValue: 0, MaxValue: 0, Required: true },
   { Id: 'facial_count', Text: 'How many members in your team use a facial recognition function on their phones/PCs?', Type: 2, Options: [], MinValue: 0, MaxValue: 20, Required: true },
   { Id: 'glasses_count', Text: 'How many members in your team wear glasses or contact lenses?', Type: 2, Options: [], MinValue: 0, MaxValue: 20, Required: true },
   { Id: 'language_count', Text: 'How many different languages overall are spoken in your team?', Type: 2, Options: [], MinValue: 0, MaxValue: 50, Required: true },
   { Id: 'male_count', Text: 'How many members in the group identify themselves as male?', Type: 2, Options: [], MinValue: 0, MaxValue: 20, Required: true },
-  { Id: 'pwd_count', Text: 'How many members in the team has their PPW* 5 characters or more?', Type: 2, Options: [], MinValue: 0, MaxValue: 20, Required: true },
+  { Id: 'pwd_count', Text: 'How many members in the team has their password with 5 characters or more?', Type: 2, Options: [], MinValue: 0, MaxValue: 20, Required: true },
   { Id: 'distance_km', Text: 'Consider all members, whose hometown (attended their high school) is the furthest from the University of Guelph? Enter the distance in kilometers below.', Type: 2, Options: [], MinValue: 0, MaxValue: 99999, Required: true },
-  { Id: 'vehicle_type', Text: 'What type of vehicle would your team prefer to ride in?', Type: 1, Options: ['Convertible', 'Hatchback', 'Pickup truck', 'Sedan', 'SUV', 'Van'], MinValue: 0, MaxValue: 0, Required: true },
-  { Id: 'entertainment', Text: 'What type of entertainment system do you utilize the most?', Type: 1, Options: ['Bluetooth', 'CD player', 'AUX connected devices', 'Apple CarPlay', 'Android AutoCar'], MinValue: 0, MaxValue: 0, Required: true },
+  { Id: 'vehicle_type', Text: 'What type of vehicle would your team prefer to ride in?', Type: 1, Options: ['Convertible', 'Hatchback', 'Pickup truck', 'Sedan', 'SUV', 'Van'], MinValue: 0, MaxValue: 0, Required: false },
+  { Id: 'entertainment', Text: 'What type of entertainment system do you utilize the most?', Type: 1, Options: ['Bluetooth', 'CD player', 'AUX connected devices', 'Apple CarPlay', 'Android AutoCar'], MinValue: 0, MaxValue: 0, Required: false },
   { Id: 'driving_experience', Text: 'What is the cumulative driving experience of your team (in years)?', Type: 2, Options: [], MinValue: 0, MaxValue: 200, Required: false },
   { Id: 'car_features', Text: 'Rank the following advanced in-car features in terms of importance to your team. (Select up to 3)', Type: 3 /* MultiSelect */, Options: ['Heads-up display', 'Automatic High Beams', 'Electronic Door Handles', 'Do-It-All Touchscreens', 'Camera Vision', 'Lane-Keep Assist', 'Full-self driving'], MinValue: 0, MaxValue: 3, Required: false },
   ```
@@ -225,11 +225,11 @@ if (count === 0) { seedTemplates(db); }
   Rules (identical to V1 Parity):
   ```js
   [
-    { DisplayName: 'Name Length Penalty', AttributeName: 'teamName', Operator: 6, CompareValue: '10', SpeedDelta: -10, Duration: 8, Weather: 0, AllowRepeat: false },
-    { DisplayName: 'Color Boost (Blue)', AttributeName: 'colorIndex', Operator: 0, CompareValue: '3', SpeedDelta: 15, Duration: 6, Weather: 0, AllowRepeat: false },
-    { DisplayName: 'Color Penalty (Red)', AttributeName: 'colorIndex', Operator: 0, CompareValue: '2', SpeedDelta: -12, Duration: 8, Weather: 0, AllowRepeat: false },
-    { DisplayName: 'Function Boost (Password)', AttributeName: 'functions', Operator: 2, CompareValue: 'password', SpeedDelta: 10, Duration: 6, Weather: 0, AllowRepeat: false },
-    { DisplayName: 'Function Penalty (Face Recog)', AttributeName: 'functions', Operator: 2, CompareValue: 'facerecog', SpeedDelta: -10, Duration: 8, Weather: 0, AllowRepeat: false },
+    { DisplayName: 'Name Length Penalty', AttributeName: 'teamName', Operator: 6, CompareValue: '10', SpeedDelta: -15, Duration: 8, Weather: 0, AllowRepeat: true },
+    { DisplayName: 'Color Boost (Blue)', AttributeName: 'colorIndex', Operator: 0, CompareValue: '3', SpeedDelta: 20, Duration: 8, Weather: 0, AllowRepeat: true },
+    { DisplayName: 'Color Penalty (Red)', AttributeName: 'colorIndex', Operator: 0, CompareValue: '2', SpeedDelta: -15, Duration: 8, Weather: 0, AllowRepeat: true },
+    { DisplayName: 'Function Boost (Password)', AttributeName: 'functions', Operator: 2, CompareValue: 'password', SpeedDelta: 15, Duration: 6, Weather: 0, AllowRepeat: true },
+    { DisplayName: 'Function Penalty (Face Recog)', AttributeName: 'functions', Operator: 2, CompareValue: 'facerecog', SpeedDelta: -15, Duration: 8, Weather: 0, AllowRepeat: true },
     { DisplayName: 'Snow Weather', AttributeName: '', Operator: 8, CompareValue: '', SpeedDelta: -8, Duration: 12, Weather: 1, AllowRepeat: true },
     { DisplayName: 'Night Weather', AttributeName: '', Operator: 8, CompareValue: '', SpeedDelta: -5, Duration: 15, Weather: 2, AllowRepeat: true },
   ]

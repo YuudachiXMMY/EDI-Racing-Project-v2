@@ -76,7 +76,7 @@ export default function StudentSurveyPage() {
     return (
       <div className="student-page">
         <div className="student-card">
-          <h1>EDI Survey</h1>
+          <h1>Survey</h1>
           <p className="student-error">{error}</p>
         </div>
       </div>
@@ -103,7 +103,7 @@ export default function StudentSurveyPage() {
   return (
     <div className="student-page">
       <div className="student-card">
-        <h1>{survey?.configName || 'EDI Survey'}</h1>
+        <h1>{survey?.configName || 'Survey'}</h1>
         {survey?.description && <p className="student-desc">{survey.description}</p>}
 
         <div className="student-form">

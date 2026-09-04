@@ -3780,7 +3780,7 @@ MonoBehaviour:
   DaySkybox: {fileID: 2100000, guid: 56113b3b655ab7349bab4d7d405c258a, type: 2}
   NightSkybox: {fileID: 2100000, guid: 135a7036ca1a07b4e9e162d80e6b6e77, type: 2}
   SnowSkybox: {fileID: 2100000, guid: ed1387202b1349540a5d6464f0f27488, type: 2}
-  SunsetSkybox: {fileID: 2100000, guid: 7ed994c1997814049b44c36a823bba6c, type: 2}
+  SunsetSkybox: {fileID: 0}
   DayCycleEnabled: 1
   DayCycleDuration: 90
   DayFraction: 0.6

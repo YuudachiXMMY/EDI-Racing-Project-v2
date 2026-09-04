@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import { readFileSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { seedTemplates } from './seed-templates.js';
+import { seedTemplates, refreshTemplateContent } from './seed-templates.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DB_PATH = process.env.DB_PATH || join(__dirname, '..', 'data', 'edi-survey.db');
@@ -37,6 +37,13 @@ export function applyMigrations(db) {
     // Column already exists — ignore
   }
 
+  // Migration: add is_archived to existing surveys table (soft-delete / archive support)
+  try {
+    db.exec('ALTER TABLE surveys ADD COLUMN is_archived INTEGER NOT NULL DEFAULT 0');
+  } catch {
+    // Column already exists — ignore
+  }
+
   // Migration: add post_processing_json to existing templates table
   try {
     db.exec("ALTER TABLE templates ADD COLUMN post_processing_json TEXT NOT NULL DEFAULT '[]'");
@@ -52,6 +59,19 @@ export function applyMigrations(db) {
   db.prepare(
     "DELETE FROM templates WHERE name IN ('V1 Parity', 'Accessibility', 'Diversity')"
   ).run();
+
+  // Migration: refresh mappings + post-processing on already-seeded template rows so DBs
+  // seeded before the strict-gt / difference-based male rules pick up the new config.
+  // No-op on a fresh DB (templates table is empty until seedTemplates runs below).
+  try {
+    refreshTemplateContent(db);
+  } catch (err) {
+    // Non-fatal so startup stays resilient, but the templates table always exists by now
+    // (schema.sql CREATE ... IF NOT EXISTS runs before this), so a throw here signals a
+    // real regression (e.g. a future column rename) rather than a first-run empty table.
+    // Log instead of silently swallowing so it is not invisible to operators.
+    console.warn('[DB] refreshTemplateContent skipped:', err.message);
+  }
 
   // Migration: make the per-email response uniqueness partial. Email is now optional,
   // so a full UNIQUE(survey_id, email) index (present in older DBs) would reject a second

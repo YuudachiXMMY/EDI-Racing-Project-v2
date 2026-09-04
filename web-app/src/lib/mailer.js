@@ -23,7 +23,7 @@ export function buildResetEmail(toEmail, resetUrl) {
   return {
     from: mailConfig.from,
     to: toEmail,
-    subject: 'Reset your EDI Survey password',
+    subject: 'Reset your Survey password',
     text: `Someone requested a password reset for this account.\n\n` +
           `Reset your password: ${resetUrl}\n\n` +
           `This link expires in 1 hour. If you did not request this, ignore this email.`,

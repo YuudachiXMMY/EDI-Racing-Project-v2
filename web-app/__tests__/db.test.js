@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { createTestDb, createTestUser } from './test-helpers.js';
-import { seedTemplates } from '../src/seed-templates.js';
+import { seedTemplates, refreshTemplateContent } from '../src/seed-templates.js';
 
 describe('Database Schema', () => {
   let db;
@@ -129,6 +129,43 @@ describe('Seed Templates', () => {
       expect(Array.isArray(rules)).toBe(true);
       expect(rules.length).toBeGreaterThan(0);
     }
+  });
+
+  it('ENGG*1100 seeds exactly the two weather rules', () => {
+    seedTemplates(db);
+
+    const row = db.prepare("SELECT rules_json FROM templates WHERE name = 'ENGG*1100 Survey'").get();
+    const names = JSON.parse(row.rules_json).map(r => r.DisplayName);
+    expect(names).toEqual(['Snow Weather', 'Night Weather']);
+  });
+
+  it('refreshTemplateContent rewrites a stale ENGG*1100 row down to the two weather rules', () => {
+    // Simulate a DB seeded before the rule reduction: a full 7-rule rules_json already
+    // present on the built-in ENGG*1100 row. seedTemplates()'s INSERT OR IGNORE would
+    // skip this existing row, so refreshTemplateContent() is the ONLY path that brings
+    // it current — this is the migration that rewrites live production DBs.
+    const staleRules = [
+      { DisplayName: 'Name Length Penalty', AttributeName: 'teamName', Operator: 6, CompareValue: '10', SpeedDelta: -10, Duration: 8, Weather: 0, AllowRepeat: false },
+      { DisplayName: 'Color Boost (Blue)', AttributeName: 'colorIndex', Operator: 0, CompareValue: '3', SpeedDelta: 15, Duration: 6, Weather: 0, AllowRepeat: false },
+      { DisplayName: 'Color Penalty (Red)', AttributeName: 'colorIndex', Operator: 0, CompareValue: '2', SpeedDelta: -12, Duration: 8, Weather: 0, AllowRepeat: false },
+      { DisplayName: 'Function Boost (Password)', AttributeName: 'functions', Operator: 2, CompareValue: 'password', SpeedDelta: 10, Duration: 6, Weather: 0, AllowRepeat: false },
+      { DisplayName: 'Function Penalty (Face Recog)', AttributeName: 'functions', Operator: 2, CompareValue: 'facerecog', SpeedDelta: -10, Duration: 8, Weather: 0, AllowRepeat: false },
+      { DisplayName: 'Snow Weather', AttributeName: '', Operator: 8, CompareValue: '', SpeedDelta: -8, Duration: 12, Weather: 1, AllowRepeat: true },
+      { DisplayName: 'Night Weather', AttributeName: '', Operator: 8, CompareValue: '', SpeedDelta: -5, Duration: 15, Weather: 2, AllowRepeat: true },
+    ];
+    db.prepare(
+      "INSERT INTO templates (name, rules_json) VALUES ('ENGG*1100 Survey', ?)"
+    ).run(JSON.stringify(staleRules));
+
+    refreshTemplateContent(db);
+
+    const row = db.prepare("SELECT rules_json FROM templates WHERE name = 'ENGG*1100 Survey'").get();
+    const names = JSON.parse(row.rules_json).map(r => r.DisplayName);
+    expect(names).toEqual(['Snow Weather', 'Night Weather']);
+
+    // Updates the existing row in place — no duplicate row created.
+    const count = db.prepare("SELECT COUNT(*) as c FROM templates WHERE name = 'ENGG*1100 Survey'").get().c;
+    expect(count).toBe(1);
   });
 });
 

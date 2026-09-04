@@ -9,7 +9,7 @@ describe('buildResetEmail', () => {
     const msg = buildResetEmail('a@b.com', RESET_URL);
     expect(msg.to).toBe('a@b.com');
     expect(msg.from).toBe(mailConfig.from);
-    expect(msg.subject).toBe('Reset your EDI Survey password');
+    expect(msg.subject).toBe('Reset your Survey password');
     expect(msg.text).toContain(RESET_URL);
     expect(msg.html).toContain(RESET_URL);
     expect(msg.html).toContain(`href="${RESET_URL}"`);

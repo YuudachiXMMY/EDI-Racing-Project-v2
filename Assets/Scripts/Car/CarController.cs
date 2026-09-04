@@ -451,4 +451,12 @@ public class CarController : MonoBehaviour
     }
 
     public float BaseSpeed => baseSpeed;
+
+    /// <summary>
+    /// Live ground speed including all active event modifiers, curvature slowdown,
+    /// forward-collision slowdown, and collision recovery. Unlike <see cref="BaseSpeed"/>
+    /// (the configured target) or <c>agent.speed</c> (the current target), this reads the
+    /// NavMeshAgent's actual instantaneous velocity magnitude.
+    /// </summary>
+    public float CurrentSpeed => agent != null ? agent.velocity.magnitude : 0f;
 }

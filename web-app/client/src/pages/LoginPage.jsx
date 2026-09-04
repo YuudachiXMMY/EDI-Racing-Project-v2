@@ -32,7 +32,7 @@ export default function LoginPage() {
   return (
     <div className="login-page">
       <div className="login-card">
-        <h1>EDI Survey</h1>
+        <h1>Survey</h1>
         <p className="subtitle">{isRegister ? 'Create Account' : 'Professor Login'}</p>
 
         <form onSubmit={handleSubmit}>
