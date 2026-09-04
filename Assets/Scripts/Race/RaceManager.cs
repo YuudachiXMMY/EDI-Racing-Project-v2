@@ -119,7 +119,10 @@ public class RaceManager : MonoBehaviour
 
         // Broadcast to students if hosting
         if (NetworkSync != null)
+        {
             NetworkSync.BroadcastRaceStart(carDataList);
+            NetworkSync.BroadcastTrackGeometry();
+        }
 
         // Enter the race paused: the professor presses Resume to start the action. Racing is set
         // above first so raceStarted is true (PauseRace's guard passes) and the network race_start

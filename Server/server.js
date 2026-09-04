@@ -449,6 +449,7 @@ wss.on('connection', (ws) => {
           gamePhase: 'Setup',
           raceResults: null,
           latestLeaderboard: null,
+          latestTrackGeometry: null,
           surveyData: null,
           latestConfig: null,
           professorSessionId: msg.sessionId || null,
@@ -593,6 +594,9 @@ wss.on('connection', (ws) => {
         if (webRoom.latestState) ws.send(webRoom.latestState);
         if (webRoom.latestLeaderboard) ws.send(webRoom.latestLeaderboard);
         if (webRoom.latestConfig) ws.send(webRoom.latestConfig);
+        // One-time track geometry (start point + bounds) — replay so a late-joining 2D
+        // viewer draws a stable minimap without waiting for the next race start.
+        if (webRoom.latestTrackGeometry) ws.send(webRoom.latestTrackGeometry);
         console.log(`[Room ${webCode}] Web-app client joined`);
         break;
       }
@@ -669,6 +673,9 @@ wss.on('connection', (ws) => {
             // after the first state_update overwrites latestState (~100ms later). Store the
             // RAW host message (no yourCarIndex) — personalization is per-recipient.
             room.latestRaceStart = raw;
+            // A new race invalidates the previous race's cached map. Drop it so a late joiner
+            // between race_start and this race's track_geometry gets no map rather than stale one.
+            room.latestTrackGeometry = null;
 
             // Send personalized race_start to each student with yourCarIndex
             const cars = msg.cars || [];
@@ -711,13 +718,17 @@ wss.on('connection', (ws) => {
             // Cache latest weather so late joiners snap to the professor's current sky.
             // The broadcastToStudents below already forwards it live — no new relay code.
             room.latestWeather = raw;
+          } else if (msg.type === 'track_geometry') {
+            // One-time per race: cache the start point + track bounds so late-joining web
+            // viewers can be replayed it (see web_join_room). Relayed live via the whitelist.
+            room.latestTrackGeometry = raw;
           }
 
           broadcastToStudents(info.roomCode, raw);
 
           // Relay game messages to web-app live viewers
           const WEBAPP_RELAY_TYPES = ['state_update', 'leaderboard', 'game_state',
-            'event_triggered', 'race_start', 'race_end', 'race_results'];
+            'event_triggered', 'race_start', 'race_end', 'race_results', 'track_geometry'];
           if (WEBAPP_RELAY_TYPES.includes(msg.type)) {
             for (const webapp of room.webapps) {
               if (webapp.readyState === 1) webapp.send(raw);

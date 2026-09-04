@@ -464,3 +464,70 @@ describe('weather_state sync (host-authoritative weather reaches students incl. 
     expect(got.some((m) => m.type === 'weather_state')).toBe(false); // but no weather (no skybox)
   });
 });
+
+describe('track_geometry relay (start point + bounds reaches live and late-joining 2D viewers)', () => {
+  // The host emits track_geometry once at race start (precise start coords + track bounds so
+  // the 2D minimap draws a stable elliptical map). The relay forwards it live to web viewers
+  // AND caches the latest so a late joiner is replayed it on web_join_room. Mirrors the
+  // weather_state + roster-replay caching pattern but for the (unpersonalized) map geometry.
+  const geometry = {
+    type: 'track_geometry',
+    startX: 12.5, startZ: -3.25,
+    minX: -20, maxX: 40, minZ: -15, maxZ: 25,
+    wpx: [0, 10, 20], wpz: [0, 5, 10],
+  };
+
+  it('forwards a live track_geometry frame to an already-joined web viewer', async () => {
+    // Arrange: a hosted room with a connected 2D web viewer.
+    const { prof, roomCode } = await hostARoom();
+    const webapp = makeClient();
+    await webapp.ready();
+    webapp.send({ type: 'web_join_room', roomCode });
+    await webapp.next((m) => m.type === 'room_joined');
+
+    // Act: the host broadcasts the one-time geometry.
+    prof.send(geometry);
+
+    // Assert: the viewer receives it verbatim (start coords + bounds preserved).
+    const g = await webapp.next((m) => m.type === 'track_geometry');
+    expect(g.startX).toBe(12.5);
+    expect(g.startZ).toBe(-3.25);
+    expect(g.minX).toBe(-20);
+    expect(g.maxX).toBe(40);
+    expect(g.wpx).toEqual([0, 10, 20]);
+  });
+
+  it('replays the cached track_geometry to a late-joining web viewer', async () => {
+    // Arrange: the host sends geometry BEFORE the viewer joins (the one-time-message race).
+    const { prof, roomCode } = await hostARoom();
+    prof.send(geometry);
+
+    // Act: a second viewer joins after the fact.
+    const late = makeClient();
+    await late.ready();
+    late.send({ type: 'web_join_room', roomCode });
+    await late.next((m) => m.type === 'room_joined');
+
+    // Assert: the cached geometry is delivered on join (replayed after latestConfig).
+    const g = await late.next((m) => m.type === 'track_geometry');
+    expect(g.minZ).toBe(-15);
+    expect(g.maxZ).toBe(25);
+    expect(g.startX).toBe(12.5);
+  });
+
+  it('does NOT send track_geometry to a web viewer when none was cached', async () => {
+    // Arrange: a hosted room with no geometry ever broadcast.
+    const { roomCode } = await hostARoom();
+
+    // Act: a viewer joins; capture everything that arrives.
+    const webapp = makeClient();
+    await webapp.ready();
+    const window = webapp.collect(200);
+    webapp.send({ type: 'web_join_room', roomCode });
+    const got = await window;
+
+    // Assert: join succeeded but no phantom geometry frame was sent.
+    expect(got.some((m) => m.type === 'room_joined')).toBe(true);
+    expect(got.some((m) => m.type === 'track_geometry')).toBe(false);
+  });
+});

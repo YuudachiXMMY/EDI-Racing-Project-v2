@@ -167,6 +167,7 @@ public struct CarNetState
     public float ry; // y-axis rotation
     public int l;   // current lap
     public int c;   // total checkpoints passed
+    public float s; // current speed (NavMeshAgent.velocity.magnitude)
 }
 
 [Serializable]
@@ -207,6 +208,22 @@ public struct LeaderboardEntry
 public class RaceEndMessage
 {
     public string type = "race_end";
+}
+
+/// <summary>
+/// Professor → Students/Web App: sent once at race start with the precise start point and
+/// track bounds (and optional waypoint polyline) so viewers can render a stable, non-jittering
+/// minimap. JsonUtility cannot serialize Vector3[] directly, so the waypoint polyline is
+/// flattened into parallel float[] arrays.
+/// </summary>
+[Serializable]
+public class TrackGeometryMessage
+{
+    public string type = "track_geometry";
+    public float startX, startZ;
+    public float minX, maxX, minZ, maxZ;
+    public float[] wpx = Array.Empty<float>();
+    public float[] wpz = Array.Empty<float>();
 }
 
 // --- Survey Messages ---

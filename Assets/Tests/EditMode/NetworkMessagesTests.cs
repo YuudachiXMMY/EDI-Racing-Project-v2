@@ -347,4 +347,86 @@ public class NetworkMessagesTests
         Assert.AreEqual(2, (int)WeatherType.Night);
         Assert.AreEqual(3, (int)WeatherType.Sunset);
     }
+
+    [Test]
+    public void CarNetState_JsonRoundTrip_PreservesSpeed()
+    {
+        var original = new CarNetState { i = 1, px = 5f, py = 0f, pz = 3f, ry = 45f, l = 1, c = 2, s = 12.5f };
+
+        string json = JsonUtility.ToJson(original);
+        var restored = JsonUtility.FromJson<CarNetState>(json);
+
+        Assert.AreEqual(12.5f, restored.s);
+        Assert.AreEqual(1, restored.i);
+        Assert.AreEqual(45f, restored.ry);
+    }
+
+    [Test]
+    public void StateUpdateMessage_JsonRoundTrip_PreservesSpeedPerCar()
+    {
+        var original = new StateUpdateMessage();
+        original.t = 10f;
+        original.cars = new[]
+        {
+            new CarNetState { i = 0, px = 1f, py = 0f, pz = 1f, ry = 0f, l = 0, c = 0, s = 8.25f }
+        };
+
+        string json = JsonUtility.ToJson(original);
+        var restored = JsonUtility.FromJson<StateUpdateMessage>(json);
+
+        Assert.AreEqual(8.25f, restored.cars[0].s);
+    }
+
+    [Test]
+    public void TrackGeometryMessage_TypeField_IsCorrect()
+    {
+        var msg = new TrackGeometryMessage();
+        Assert.AreEqual("track_geometry", msg.type);
+    }
+
+    [Test]
+    public void TrackGeometryMessage_JsonRoundTrip_PreservesGeometry()
+    {
+        var original = new TrackGeometryMessage
+        {
+            startX = 10f,
+            startZ = -5f,
+            minX = -50f,
+            maxX = 50f,
+            minZ = -30f,
+            maxZ = 30f,
+            wpx = new[] { 0f, 10f, 20f },
+            wpz = new[] { 0f, 5f, 10f }
+        };
+
+        string json = JsonUtility.ToJson(original);
+        var restored = JsonUtility.FromJson<TrackGeometryMessage>(json);
+
+        Assert.AreEqual("track_geometry", restored.type);
+        Assert.AreEqual(10f, restored.startX);
+        Assert.AreEqual(-5f, restored.startZ);
+        Assert.AreEqual(-50f, restored.minX);
+        Assert.AreEqual(50f, restored.maxX);
+        Assert.AreEqual(-30f, restored.minZ);
+        Assert.AreEqual(30f, restored.maxZ);
+        Assert.AreEqual(3, restored.wpx.Length);
+        Assert.AreEqual(20f, restored.wpx[2]);
+        Assert.AreEqual(10f, restored.wpz[2]);
+    }
+
+    [Test]
+    public void TrackGeometryMessage_EmptyWaypoints_SerializesAsEmptyArray()
+    {
+        var msg = new TrackGeometryMessage { startX = 1f, startZ = 2f };
+        Assert.IsNotNull(msg.wpx);
+        Assert.AreEqual(0, msg.wpx.Length);
+
+        string json = JsonUtility.ToJson(msg);
+        var restored = JsonUtility.FromJson<TrackGeometryMessage>(json);
+
+        Assert.IsNotNull(restored.wpx);
+        Assert.AreEqual(0, restored.wpx.Length);
+        Assert.IsNotNull(restored.wpz);
+        Assert.AreEqual(0, restored.wpz.Length);
+    }
 }

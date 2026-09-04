@@ -1,8 +1,10 @@
 import { useParams, Link } from 'react-router-dom';
+import { useState, useCallback } from 'react';
 import useRaceWebSocket from '../hooks/useRaceWebSocket.js';
 import LiveLeaderboard from '../components/LiveLeaderboard.jsx';
 import LiveEventFeed from '../components/LiveEventFeed.jsx';
 import TrackMinimap from '../components/TrackMinimap.jsx';
+import CarDetailPanel from '../components/CarDetailPanel.jsx';
 
 const PHASE_LABELS = {
   Connecting: 'Connecting...',
@@ -16,7 +18,14 @@ const PHASE_LABELS = {
 
 export default function LiveRacePage() {
   const { roomCode } = useParams();
-  const { connected, gamePhase, cars, positions, leaderboard, events, raceTime } = useRaceWebSocket(roomCode);
+  const { connected, gamePhase, cars, positions, leaderboard, events, raceTime, trackGeometry } = useRaceWebSocket(roomCode);
+  // Single selection source of truth — drives the leaderboard highlight, the minimap ring, and
+  // the detail panel. Join key is teamName (rows/dots share no index). Clicking the current
+  // selection again clears it.
+  const [selectedTeamName, setSelectedTeamName] = useState(null);
+  // Functional updater -> stable identity (deps []), so the memo-friendly leaderboard/minimap
+  // children are not handed a fresh handler every render.
+  const handleSelect = useCallback((name) => setSelectedTeamName((prev) => (prev === name ? null : name)), []);
 
   const phaseClass = {
     Setup: 'room-status-setup',
@@ -61,8 +70,9 @@ export default function LiveRacePage() {
 
       {(gamePhase === 'Racing' || gamePhase === 'Paused' || gamePhase === 'Finished') && (
         <div className="live-grid">
-          <LiveLeaderboard rankings={leaderboard} />
-          <TrackMinimap positions={positions} cars={cars} />
+          <LiveLeaderboard rankings={leaderboard} selectedTeamName={selectedTeamName} onSelect={handleSelect} />
+          <TrackMinimap positions={positions} cars={cars} selectedTeamName={selectedTeamName} onSelect={handleSelect} trackGeometry={trackGeometry} />
+          <CarDetailPanel selectedTeamName={selectedTeamName} cars={cars} positions={positions} leaderboard={leaderboard} />
           <LiveEventFeed events={events} />
         </div>
       )}
