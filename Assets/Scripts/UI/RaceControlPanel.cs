@@ -29,6 +29,7 @@ public class RaceControlPanel : MonoBehaviour
     public Text StatusText;
 
     private bool isPaused;
+    private bool hasStarted;
     private Coroutine statusFadeCoroutine;
 
     private void Start()
@@ -62,7 +63,7 @@ public class RaceControlPanel : MonoBehaviour
             StatusText.text = "";
 
         // The race now starts Paused (RaceManager.LoadAndStartRace pauses on entry). Track the
-        // state here so the button opens showing "Resume" — otherwise isPaused stays false and the
+        // state here so the button opens showing "Start" — otherwise isPaused stays false and the
         // professor's first click re-pauses instead of resuming (a dead click).
         if (RaceManager != null)
             RaceManager.OnStateChanged += HandleStateChanged;
@@ -82,11 +83,15 @@ public class RaceControlPanel : MonoBehaviour
         if (state == GameState.Paused)
         {
             isPaused = true;
-            if (PauseResumeLabel != null) PauseResumeLabel.text = "Resume";
+            // Before the race has ever been resumed it opens Paused, so the button reads "Start"
+            // (the professor's first click begins the action). Once the race has run, any later
+            // pause is a mid-race pause and the button reads "Resume".
+            if (PauseResumeLabel != null) PauseResumeLabel.text = hasStarted ? "Resume" : "Start";
         }
         else if (state == GameState.Racing)
         {
             isPaused = false;
+            hasStarted = true;
             if (PauseResumeLabel != null) PauseResumeLabel.text = "Pause";
         }
     }
