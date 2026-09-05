@@ -16,6 +16,6 @@ public static class QrPanelState
     public static QrSize NextSize(QrSize size) => size == QrSize.Small ? QrSize.Large : QrSize.Small;
 
     // Button labels reflect the ACTION the button performs / the current size.
-    public static string SizeLabel(QrSize size) => size == QrSize.Large ? "尺寸: 大" : "尺寸: 小";
-    public static string VisibilityLabel(bool visible) => visible ? "隐藏二维码" : "显示二维码";
+    public static string SizeLabel(QrSize size) => size == QrSize.Large ? "Size: Large" : "Size: Small";
+    public static string VisibilityLabel(bool visible) => visible ? "Hide QR" : "Show QR";
 }

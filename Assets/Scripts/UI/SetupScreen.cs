@@ -27,7 +27,6 @@ public class SetupScreen : MonoBehaviour
     public Text RoomCodeText;
     public Text StudentCountText;
     public Text StudentLinkText;
-    public Button CopyLinkButton;
     private string currentStudentLink = "";
 
     [Header("Join QR (Optional)")]
@@ -108,11 +107,6 @@ public class SetupScreen : MonoBehaviour
         if (RoomCodeText != null) RoomCodeText.gameObject.SetActive(false);
         if (StudentCountText != null) StudentCountText.gameObject.SetActive(false);
         if (StudentLinkText != null) StudentLinkText.gameObject.SetActive(false);
-        if (CopyLinkButton != null)
-        {
-            CopyLinkButton.gameObject.SetActive(false);
-            CopyLinkButton.onClick.AddListener(OnCopyStudentLink);
-        }
 
         // Join QR starts hidden; shown by ShowStudentLink once the room (and page origin) exist.
         if (StudentQrImage != null) StudentQrImage.gameObject.SetActive(false);
@@ -159,7 +153,6 @@ public class SetupScreen : MonoBehaviour
 
         HideButton(LoadSessionButton);
         HideButton(HostButton);
-        HideButton(CopyLinkButton);
         HideButton(ImportJsonButton);
         HideButton(ConfirmImportButton);
         HideButton(PushConfigButton);
@@ -275,20 +268,13 @@ public class SetupScreen : MonoBehaviour
         if (StudentLinkText != null)
         {
             StudentLinkText.gameObject.SetActive(true);
-            StudentLinkText.text = $"学生链接: {currentStudentLink}";
+            StudentLinkText.text = $"Student link: {currentStudentLink}";
         }
-        if (CopyLinkButton != null) CopyLinkButton.gameObject.SetActive(true);
 
         // Render the QR for the same link and reveal its controls.
         RenderStudentQr();
         if (ToggleQrButton != null) ToggleQrButton.gameObject.SetActive(true);
         ApplyQrVisibility();
-    }
-
-    private void OnCopyStudentLink()
-    {
-        if (!string.IsNullOrEmpty(currentStudentLink))
-            WebSocketBridge.CopyToClipboard(currentStudentLink);
     }
 
     // Generate (or regenerate) the QR texture for the current student link at the current size, and
@@ -369,7 +355,6 @@ public class SetupScreen : MonoBehaviour
         if (RoomCodeText != null) RoomCodeText.gameObject.SetActive(false);
         if (StudentCountText != null) StudentCountText.gameObject.SetActive(false);
         if (StudentLinkText != null) StudentLinkText.gameObject.SetActive(false);
-        if (CopyLinkButton != null) CopyLinkButton.gameObject.SetActive(false);
         if (StudentQrImage != null) StudentQrImage.gameObject.SetActive(false);
         if (ToggleQrButton != null) ToggleQrButton.gameObject.SetActive(false);
         if (QrSizeButton != null) QrSizeButton.gameObject.SetActive(false);
