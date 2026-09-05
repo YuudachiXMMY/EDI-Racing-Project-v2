@@ -4,7 +4,8 @@
     "references": [
         "Unity.InputSystem",
         "Unity.AI.Navigation",
-        "EDIRacing.WebGL"
+        "EDIRacing.WebGL",
+        "QRCoder"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

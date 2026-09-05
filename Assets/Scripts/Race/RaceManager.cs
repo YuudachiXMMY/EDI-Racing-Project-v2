@@ -235,6 +235,26 @@ public class RaceManager : MonoBehaviour
     public void LoadAndStartRaceVisualOnly(List<CarData> carDataList)
     {
         spawnedCars = CarSpawner.SpawnVisualCars(carDataList);
+
+        // Register the visual cars so the student's ScoreManager can rank them. Progress
+        // (TotalCheckpointsPassed) is synced onto these same CarIdentity objects by
+        // NetworkSync.HandleStateUpdate, so ranking — and therefore the auto broadcast camera's
+        // leader / top-N target selection — works on the student client. Without this the student's
+        // ScoreManager stays empty, GetRankedCars() returns [], and SpectatorCamera's AutoTopCars /
+        // AutoAllCams modes have no target (the auto-cam button appears dead). Clear first so a
+        // reconnect / re-sent race_start rebuilds the roster instead of appending duplicates.
+        // NOTE: unlike the host path (LoadAndStartRace) we do NOT seed LastLapStartTime — the student
+        // is visual-only and laps/checkpoints arrive pre-computed over the network.
+        if (ScoreManager != null)
+        {
+            ScoreManager.Clear();
+            foreach (var car in spawnedCars)
+            {
+                var identity = car.GetComponent<CarIdentity>();
+                if (identity != null) ScoreManager.RegisterCar(identity);
+            }
+        }
+
         raceStarted = true;
         raceFinished = false;
         SetState(GameState.Racing);
