@@ -1324,7 +1324,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 1
     m_VerticalOverflow: 1
     m_LineSpacing: 1
-  m_Text: Pause
+  m_Text: Start
 --- !u!1 &165845431
 GameObject:
   m_ObjectHideFlags: 0
